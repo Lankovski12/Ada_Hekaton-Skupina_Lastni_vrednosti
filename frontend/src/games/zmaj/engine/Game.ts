@@ -1,13 +1,14 @@
 // Igralna zanka: povezuje teren, zmaja, smog in piš. Vue komponenta ga samo ustvari in posluša.
 import * as THREE from 'three'
-import { GAME, gostotaDanes } from '../config'
+import { GAME, gostotaDanes, VETER, VPRASANJA } from '../config'
 import { Breath } from './breath'
 import { Dragon, type SteerInput } from './dragon'
+import { type PickupKind, Pickups } from './pickups'
 import { type Conditions, Smog } from './smog'
 import { Terrain } from './terrain'
 import { buildWorld, GRAD } from './world'
 
-export type { Conditions }
+export type { Conditions, PickupKind }
 
 export interface HudState {
   casDo: number // preostale sekunde
@@ -15,11 +16,14 @@ export interface HudState {
   piha: boolean
   rob: boolean // zmaj je na robu karte
   vMegli: boolean
+  veter: number // preostale sekunde sunka vetra
 }
 
 export interface GameEvents {
   onHud?: (s: HudState) => void
   onEnd?: (ocisceno: number) => void
+  onPickup?: (kind: Exclude<PickupKind, 'vprasanje'>) => void
+  onQuestion?: () => void // igra je ustavljena, dokler ne pokličeš answer()
 }
 
 export class ZmajEngine {
@@ -29,7 +33,11 @@ export class ZmajEngine {
   private terrain!: Terrain
   private dragon!: Dragon
   private smog!: Smog
+  private pickups!: Pickups
   private breath = new Breath()
+  private paused = false
+  private boost = 0
+  private nextQuestion = 0
   private raf = 0
   private clock = new THREE.Clock()
   private time = 0
@@ -58,8 +66,9 @@ export class ZmajEngine {
     this.terrain = terrain
     this.dragon = dragon
     this.smog = new Smog(terrain)
+    this.pickups = new Pickups(terrain, this.smog)
 
-    this.scene.add(buildWorld(terrain), this.smog.group, this.dragon.group, this.breath.points)
+    this.scene.add(buildWorld(terrain), this.smog.group, this.pickups.group, this.dragon.group, this.breath.points)
     this.scene.add(new THREE.HemisphereLight('#dfefff', '#56663f', 1.6))
     const sun = new THREE.DirectionalLight('#fff0d8', 2.2)
     sun.position.set(-4000, 3000, 3000) // nizko zimsko sonce z jugozahoda
@@ -83,13 +92,27 @@ export class ZmajEngine {
     this.sky.copy(this.skyClear).lerp(this.smog.color, Math.min(0.6, k * 0.6))
     this.scene.background = this.sky
     ;(this.scene.fog as THREE.Fog).color.copy(this.sky)
+    this.pickups.reset()
   }
 
   start() {
     this.setConditions(this.conditions) // svež smog za vsako igro
     this.resetDragon()
     this.timeLeft = GAME.trajanje
+    this.boost = 0
+    this.nextQuestion = 0
+    this.paused = false
     this.playing = true
+  }
+
+  /** Odgovor na vprašanje: igra teče naprej; pravilen odgovor da več časa in sunek vetra. */
+  answer(correct: boolean) {
+    if (correct) {
+      this.timeLeft += VPRASANJA.bonusCas
+      this.boost = VETER.trajanje
+    }
+    this.paused = false
+    this.clock.getDelta() // čas med vprašanjem ne šteje
   }
 
   dispose() {
@@ -113,24 +136,41 @@ export class ZmajEngine {
   }
 
   private loop = () => {
-    const dt = Math.min(0.05, this.clock.getDelta())
+    const dt = this.paused ? 0 : Math.min(0.05, this.clock.getDelta())
     this.time += dt
 
     // pred igro in po njej zmaj sam kroži, da je za menijem živa slika
     const input = this.playing ? this.input : { x: 0.25, y: 0.05 }
-    const blowing = this.playing && this.blowing
-    this.dragon.update(dt, this.time, input, this.terrain, blowing)
+    const blowing = this.playing && this.blowing && !this.paused
+    if (this.boost > 0) this.boost = Math.max(0, this.boost - dt)
+    const speedMul = this.boost > 0 ? VETER.hitrost : 1
+    this.dragon.update(dt, this.time, input, this.terrain, blowing, speedMul)
 
     const f = this.dragon.forward()
     const mouth = this.dragon.mouthWorld()
-    this.breath.update(dt, blowing, mouth, f, f.clone().multiplyScalar(GAME.hitrost))
-    if (blowing) this.smog.blow(this.dragon.position, this.dragon.yaw, dt)
+    this.breath.update(dt, blowing, mouth, f, f.clone().multiplyScalar(GAME.hitrost * speedMul))
+    if (blowing) this.smog.blow(this.dragon.position, this.dragon.yaw, dt, this.boost > 0 ? VETER.pih : 1)
+
+    // vprašanja ob določenih sekundah igre
+    const elapsed = GAME.trajanje - this.timeLeft
+    if (this.playing && this.nextQuestion < VPRASANJA.kdaj.length && elapsed >= VPRASANJA.kdaj[this.nextQuestion]!) {
+      this.pickups.spawnQuestion(this.dragon)
+      this.nextQuestion++
+    }
+    for (const kind of this.pickups.update(dt, this.time, this.dragon, this.camera, this.playing && !this.paused)) {
+      if (kind === 'veter') this.boost = VETER.trajanje
+      if (kind === 'vprasanje') {
+        this.paused = true
+        this.blowing = false
+        this.events.onQuestion?.()
+      } else this.events.onPickup?.(kind)
+    }
     this.smog.update(dt, this.time, this.camera, this.host.clientHeight)
 
     this.updateCamera(dt)
     this.updateAtmosphere()
 
-    if (this.playing) {
+    if (this.playing && !this.paused) {
       this.timeLeft -= dt
       this.hudAcc += dt
       if (this.hudAcc > 0.1) {
@@ -141,6 +181,7 @@ export class ZmajEngine {
           piha: blowing,
           rob: this.dragon.outOfBounds,
           vMegli: this.camera.position.y < this.smog.topY,
+          veter: this.boost,
         })
       }
       if (this.timeLeft <= 0) {

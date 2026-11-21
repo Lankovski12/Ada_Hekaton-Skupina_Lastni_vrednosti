@@ -17,6 +17,37 @@ export const PIH = {
   moc: 3, // koliko smoga na sekundo odpiha v središču stožca
 }
 
+/** Oblaček Kapljica: ko zletiš skozenj, na tistem območju nekaj sekund dežuje. */
+export const DEZ = {
+  oblackov: 3, // koliko jih je hkrati na nebu
+  trajanje: 6, // s dežja
+  polmer: 1100, // m – območje dežja
+  moc: 0.13, // delež smoga na sekundo, ki ga dež spere (v 6 s ~ polovica, ne vse)
+  ponovno: 8, // s, preden se oblaček pojavi drugje
+}
+
+/** Sunek vetra: obroč, skozi katerega zletiš, za nekaj sekund pospeši zmaja in razširi piš. */
+export const VETER = {
+  obrocev: 4,
+  trajanje: 5, // s
+  hitrost: 1.6, // krat hitreje
+  pih: 1.5, // krat širši piš
+}
+
+/** Dimnik: če letiš skozi dim, se smog okoli zgosti. */
+export const DIM = {
+  dimnikov: 5,
+  polmer: 700, // m
+  kolicina: 0.35, // koliko smoga doda
+}
+
+/** Vprašanja: lebdeči krogi z vprašajem. Pravilen odgovor = več časa in sunek vetra. */
+export const VPRASANJA = {
+  kdaj: [12, 40, 68], // sekunde igre, ko se pojavi vprašanje
+  zivi: 14, // s, preden izgine, če ga ne ujameš
+  bonusCas: 5, // s za pravilen odgovor
+}
+
 export const SVET = {
   vex: 1.8, // navpična povečava terena, da se hribi lepše vidijo
   h0: 250, // m n. v., ki je y = 0

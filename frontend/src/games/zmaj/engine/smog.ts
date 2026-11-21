@@ -211,7 +211,7 @@ export class Smog {
   }
 
   /** Zmaj piha: zmanjša gostoto v stožcu pred njim (vodoravno). */
-  blow(pos: THREE.Vector3, yaw: number, dt: number) {
+  blow(pos: THREE.Vector3, yaw: number, dt: number, widthMul = 1) {
     const fx = -Math.sin(yaw)
     const fz = -Math.cos(yaw)
     const tanK = Math.tan(PIH.kot)
@@ -224,11 +224,52 @@ export class Smog {
       const along = dx * fx + dz * fz
       if (along < -150 || along > PIH.doseg) continue
       const perp = Math.abs(dx * fz - dz * fx)
-      const width = PIH.sirina + Math.max(0, along) * tanK
+      const width = (PIH.sirina + Math.max(0, along) * tanK) * widthMul
       if (perp > width) continue
       const s = (1 - Math.max(0, along) / PIH.doseg) * (1 - perp / width)
       this.d[j] = Math.max(0, this.d[j]! - PIH.moc * s * vf * dt)
     }
+  }
+
+  /** Dež: v krogu okoli (x, z) spere del smoga (moc = delež na sekundo v središču). */
+  rain(x: number, z: number, radius: number, moc: number, dt: number) {
+    for (let j = 0; j < this.d.length; j++) {
+      const r = Math.hypot(this.cx[j]! - x, this.cz[j]! - z)
+      if (r > radius) continue
+      const f = 1 - (r / radius) ** 2
+      this.d[j]! *= 1 - Math.min(1, moc * f * dt)
+    }
+  }
+
+  /** Dim iz dimnika: v krogu okoli (x, z) doda smog. */
+  thicken(x: number, z: number, radius: number, amount: number) {
+    for (let j = 0; j < this.d.length; j++) {
+      const r = Math.hypot(this.cx[j]! - x, this.cz[j]! - z)
+      if (r > radius) continue
+      this.d[j] = Math.min(1, this.d[j]! + amount * (1 - r / radius))
+    }
+  }
+
+  /** Celice z največ izpusti iz kurišč (za dimnike) in naključne celice s smogom (za oblačke, obroče). */
+  hotspots(n: number, minDist: number): [number, number][] {
+    const idx = Array.from(this.base.keys()).sort((a, b) => this.t.smog[b]! - this.t.smog[a]!)
+    const out: [number, number][] = []
+    for (const j of idx) {
+      if (this.base[j]! < 0.2) continue
+      const x = this.cx[j]!
+      const z = this.cz[j]!
+      if (out.every(([ox, oz]) => Math.hypot(ox - x, oz - z) > minDist)) out.push([x, z])
+      if (out.length >= n) break
+    }
+    return out
+  }
+
+  randomSmogCell(): [number, number] {
+    for (let tries = 0; tries < 200; tries++) {
+      const j = Math.floor(Math.random() * this.base.length)
+      if (this.base[j]! > 0.25) return [this.cx[j]!, this.cz[j]!]
+    }
+    return [0, 0]
   }
 
   /** Smog se vrača; kepe sledijo gostoti svoje celice in se rahlo premikajo. */

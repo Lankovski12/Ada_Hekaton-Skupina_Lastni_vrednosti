@@ -78,7 +78,7 @@ export class Dragon {
     return this.mouth.getWorldPosition(out)
   }
 
-  update(dt: number, time: number, input: SteerInput, t: Terrain, blowing: boolean) {
+  update(dt: number, time: number, input: SteerInput, t: Terrain, blowing: boolean, speedMul = 1) {
     // zavijanje in vzpon
     let yawRate = -input.x * GAME.zavijanje
     const targetPitch = -input.y * GAME.vzpon
@@ -100,7 +100,7 @@ export class Dragon {
     this.roll += (-input.x * 0.7 - this.roll) * Math.min(1, dt * 3)
 
     const f = this.forward()
-    p.addScaledVector(f, GAME.hitrost * dt)
+    p.addScaledVector(f, GAME.hitrost * speedMul * dt)
     p.x = THREE.MathUtils.clamp(p.x, -t.W / 2 + 100, t.W / 2 - 100)
     p.z = THREE.MathUtils.clamp(p.z, -t.H / 2 + 100, t.H / 2 - 100)
 

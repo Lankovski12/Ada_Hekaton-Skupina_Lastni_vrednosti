@@ -28,17 +28,22 @@ public/assets/
 
 ```
 src/games/zmaj/
-  ZmajGame.vue        meniji in HUD
-  config.ts           VSE nastavitve igre (čas, hitrost, moč pihanja, vračanje smoga)
+  ZmajGame.vue        meniji, kartica dneva, HUD, sporočila, vprašanja, povzetek
+  config.ts           VSE nastavitve igre (čas, hitrost, pihanje, smog, dež, veter, dimniki, vprašanja)
+  vprasanja.ts        vprašanja in kratka dejstva (iz podatkov ARSO in priporočil WHO)
   engine/Game.ts      zanka, kamera, vnos (miška, presledek)
   engine/terrain.ts   teren iz public/assets/terrain (višine, mesto, izpusti)
   engine/world.ts     barve terena (mesto, travniki, gozd), reki
   engine/smog.ts      mreža gostote smoga, kepe smoga, pihanje, vračanje, točke
   engine/dragon.ts    model, mahanje kril (shader), let
   engine/breath.ts    delci pihanja
+  engine/pickups.ts   Oblaček Kapljica (dež), obroči vetra, dimniki, zlati vprašaj
 ```
 
 Teren pripravi `backend/scripts/build_game_assets.py` (enkrat; rezultat je v gitu).
+Lepši teren: `python backend/scripts/download_satelit.py` prenese satelitsko sliko (Sentinel-2 cloudless)
+v `public/assets/terrain/satelit.jpg`; igra jo uporabi sama, sicer ostanejo barve iz podatkov.
+Za teste: `/igre/zmaj?debug=1` izpostavi igro kot `window.__zmaj`.
 Če je danes zrak čist (PM2.5 < 30), igra vzame resničen slab dan iz zgodovine ARSO (`public/assets/terrain/slabi_dnevi.json`).
 Za predstavitev lahko stanje zraka nastaviš v naslovu: `/igre/zmaj?pm=70&megla=1&vrh=500`.
 

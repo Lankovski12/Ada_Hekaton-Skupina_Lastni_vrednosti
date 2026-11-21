@@ -45,9 +45,30 @@ export function buildTerrain(t: Terrain): THREE.Mesh {
     colors[i * 3 + 2] = c.b * n
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }))
-  mesh.receiveShadow = false
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true })
+  const mesh = new THREE.Mesh(geo, mat)
+  loadSatellite(mat)
   return mesh
+}
+
+/**
+ * Satelitska slika terena (neobvezno): public/assets/terrain/satelit.jpg.
+ * Pripravi jo backend/scripts/download_satelit.py. Če je ni, ostanejo barve iz podatkov.
+ */
+function loadSatellite(mat: THREE.MeshLambertMaterial) {
+  new THREE.TextureLoader().load(
+    `${import.meta.env.BASE_URL}assets/terrain/satelit.jpg`,
+    (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.anisotropy = 4
+      mat.map = tex
+      mat.vertexColors = false
+      mat.color.set('#ffffff')
+      mat.needsUpdate = true
+    },
+    undefined,
+    () => {}, // slike ni: ostanejo barve iz podatkov
+  )
 }
 
 // --- reki (približni strugi) -------------------------------------------
