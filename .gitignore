@@ -18,3 +18,4 @@ frontend/android/
 frontend/ios/
 frontend/.env
 .DS_Store
+data/data/
