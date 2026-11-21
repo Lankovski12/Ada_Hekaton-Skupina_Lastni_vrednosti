@@ -39,6 +39,7 @@ class SceneHour(BaseModel):
     visina_megle_m: float
     pm25: float
     inverzija: bool
+    megla: bool = False  # prava megla (vodne kapljice) po Open-Meteo: koda vremena 45/48 ali vidljivost < 1 km
 
 
 class SceneResponse(BaseModel):

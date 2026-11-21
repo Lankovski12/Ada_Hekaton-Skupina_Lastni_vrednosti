@@ -25,6 +25,8 @@ FILES = [
     "02_modeli/cams_openmeteo_urno_2016_2026.csv.gz",
     # 3D teren kotline
     "04_prostor/dem_lj_kotlina_30m.tif",
+    # izpusti po mreži 250 m (za smog v igri)
+    "04_prostor/emisije/emisije_mreza_250m_skupaj.csv",
 ]
 
 

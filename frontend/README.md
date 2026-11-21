@@ -24,6 +24,23 @@ public/assets/
   terrain/      heightmap.png, teren.json (iz backend/scripts/dem_to_heightmap.py)
 ```
 
+## Igra Zmajček (3D, three.js)
+
+```
+src/games/zmaj/
+  ZmajGame.vue        meniji in HUD
+  config.ts           VSE nastavitve igre (čas, hitrost, moč pihanja, vračanje smoga)
+  engine/Game.ts      zanka, kamera, vnos (miška, presledek)
+  engine/terrain.ts   teren iz public/assets/terrain (višine, mesto, izpusti)
+  engine/world.ts     barve terena, reki, znamenitosti z napisi
+  engine/smog.ts      mreža gostote smoga + plasti, pihanje, vračanje, točke
+  engine/dragon.ts    model, mahanje kril (shader), let
+  engine/breath.ts    delci pihanja
+```
+
+Teren pripravi `backend/scripts/build_game_assets.py` (enkrat; rezultat je v gitu).
+Za predstavitev lahko stanje zraka nastaviš v naslovu: `/igre/zmaj?pm=70&megla=1&vrh=400`.
+
 ## Nova igra
 
 1. Ustvari `src/games/<ime>/<Ime>Game.vue` (+ `logic.ts`).

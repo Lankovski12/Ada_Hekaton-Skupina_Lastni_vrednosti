@@ -37,6 +37,7 @@ export interface SceneHour {
   visina_megle_m: number // nadmorska višina zgornjega roba megle / onesnaženja
   pm25: number
   inverzija: boolean
+  megla?: boolean // prava megla (vodne kapljice), ne smog
 }
 
 export interface SceneResponse {

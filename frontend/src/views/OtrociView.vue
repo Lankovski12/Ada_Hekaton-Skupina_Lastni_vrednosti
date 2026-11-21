@@ -6,7 +6,7 @@ const progress = useProgressStore()
 
 // Seznam iger. Novo igro dodaš tako, da narediš mapo v src/games/ in jo vpišeš sem + v router.
 const games = [
-  { to: '/igre/zmaj', id: 'zmaj', emoji: '🐉', title: 'Zmajček čisti nebo', desc: 'Pihaj in poberi delce, preden zmajček zakašlja.', color: 'var(--aq-1)', ready: true },
+  { to: '/igre/zmaj', id: 'zmaj', emoji: '🐉', title: 'Zmajček čisti nebo', desc: 'Leti nad 3D Ljubljano z današnjim smogom in ga odpihni.', color: 'var(--aq-1)', ready: true },
   { to: '/igre/daily', id: 'daily', emoji: '🔮', title: 'Vremenski vedeževalec', desc: 'Ugani jutrišnji zrak. Jutri izveš, ali si imel prav!', color: 'var(--brand)', ready: true },
   { to: '/igre/ujemanje', id: 'ujemanje', emoji: '🧩', title: 'Poišči par', desc: 'Kaj onesnažuje in kaj pomaga? Najdi pare.', color: 'var(--accent)', ready: false },
 ]

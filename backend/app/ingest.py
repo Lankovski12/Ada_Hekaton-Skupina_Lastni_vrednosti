@@ -101,7 +101,7 @@ def fetch_sensor_community() -> None:
 def fetch_open_meteo() -> None:
     """Vremenska napoved (temperatura, veter, višina mejne plasti) -> weather."""
     params = {"latitude": LJ_LAT, "longitude": LJ_LON, "timezone": "UTC", "forecast_days": 3,
-              "hourly": "temperature_2m,wind_speed_10m,boundary_layer_height"}
+              "hourly": "temperature_2m,wind_speed_10m,boundary_layer_height,weather_code,visibility"}
     try:
         r = httpx.get(OPEN_METEO_URL, params=params, timeout=20)
         r.raise_for_status()

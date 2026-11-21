@@ -121,16 +121,35 @@ def forecast(lat: float = 46.05, lon: float = 14.51, h: int = Query(48, ge=1, le
 
 @app.get("/api/scene", response_model=SceneResponse)
 def scene():
-    """Podatki za kotlino: višina megle in PM2.5 po urah (naslednjih 24 ur)."""
+    """Podatki za kotlino in igro: višina plasti smoga, PM2.5, inverzija in megla po urah (naslednjih 24 ur)."""
+    from .ingest import LATEST
+
     ure, _ = fc.predict(46.05, 14.51, 24)
+    w = LATEST.get("weather")
+    wx = {}
+    if w:
+        for i, t in enumerate(w["time"]):
+            wx[datetime.fromisoformat(t).replace(tzinfo=UTC)] = {
+                "blh": w["boundary_layer_height"][i],
+                "code": w["weather_code"][i] if "weather_code" in w else None,
+                "vis": w["visibility"][i] if "visibility" in w else None,
+            }
     out = []
     for u in ure:
         t = datetime.fromisoformat(u["cas_utc"])
-        local_h = (t.hour + 1) % 24
-        inv = local_h < 10 or local_h > 17  # TODO: iz vremena (višina mejne plasti / razlika dolina–hrib)
         pm = u["pm25"]
-        out.append({"cas_utc": u["cas_utc"], "pm25": pm, "inverzija": inv,
-                    "visina_megle_m": 330 + pm if inv else 600 + max(0, 24 - pm) * 8})
+        x = wx.get(t)
+        if x and x["blh"] is not None:
+            # nizka mejna plast = zrak se ne meša (inverzija); vrh plasti ~ dno kotline (290 m) + mejna plast
+            inv = x["blh"] < 350
+            top = 290 + max(60, min(x["blh"], 1200))
+            megla = (x["code"] in (45, 48)) or (x["vis"] is not None and x["vis"] < 1000)
+        else:
+            local_h = (t.hour + 1) % 24
+            inv = local_h < 10 or local_h > 17
+            top = 330 + pm if inv else 600 + max(0, 24 - pm) * 8
+            megla = False
+        out.append({"cas_utc": u["cas_utc"], "pm25": pm, "inverzija": inv, "megla": megla, "visina_megle_m": top})
     return SceneResponse(ure=out)
 
 
