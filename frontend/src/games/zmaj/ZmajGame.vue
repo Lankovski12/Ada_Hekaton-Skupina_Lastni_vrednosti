@@ -67,7 +67,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
 
 <template>
   <section class="container page">
-    <RouterLink to="/otroci" class="back">← Igre</RouterLink>
+    <RouterLink to="/igre" class="back">← Igre</RouterLink>
     <div class="arena" :style="{ '--danger': danger }">
       <div class="hud" v-if="state === 'play'">
         <span class="pill">⭐ {{ score }}</span>

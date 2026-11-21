@@ -959,6 +959,7 @@ onBeforeUnmount(() => {
   padding: 4px 10px;
 }
 .station small {
+  margin-left: 3px;
   color: #9fb3c8;
   font-weight: 700;
 }

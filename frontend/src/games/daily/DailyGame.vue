@@ -34,7 +34,7 @@ function choose(o: string) {
 
 <template>
   <section class="container page">
-    <RouterLink to="/otroci" class="back">← Igre</RouterLink>
+    <RouterLink to="/igre" class="back">← Igre</RouterLink>
     <div class="card game" v-if="daily">
       <span class="pill">{{ daily.datum }}</span>
       <h1>🔮 {{ daily.vprasanje }}</h1>

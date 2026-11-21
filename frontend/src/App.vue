@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { RouterView } from 'vue-router'
+import { computed, onMounted } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 import AppNav from '@/components/AppNav.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
@@ -9,18 +9,22 @@ const { refresh } = useAirData()
 const { profile } = useProfile()
 
 onMounted(() => refresh(profile.lokacija ?? undefined))
+
+// domača stran je celozaslonska: brez zgornje navigacije in noge (spodnja navigacija na telefonu ostane)
+const route = useRoute()
+const domov = computed(() => route.name === 'domov')
 </script>
 
 <template>
-  <AppNav />
-  <main>
+  <AppNav :brez-glave="domov" />
+  <main :class="{ domov }">
     <RouterView v-slot="{ Component }">
       <Transition name="fade" mode="out-in">
         <component :is="Component" />
       </Transition>
     </RouterView>
   </main>
-  <footer class="container footer">
+  <footer v-if="!domov" class="container footer">
     Podatki: ARSO (živo in ARSOhack), Open-Meteo, CAMS, © OpenStreetMap · Ada hekaton 2026 · Skupina Lastne vrednosti
   </footer>
 </template>
@@ -29,6 +33,9 @@ onMounted(() => refresh(profile.lokacija ?? undefined))
 main {
   min-height: 70vh;
   padding-bottom: 96px; /* prostor za spodnjo navigacijo na telefonu */
+}
+main.domov {
+  padding-bottom: 0;
 }
 .footer {
   padding-top: 24px;

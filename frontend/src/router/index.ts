@@ -6,8 +6,12 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
   routes: [
     { path: '/', name: 'domov', component: HomeView },
-    { path: '/otroci', name: 'otroci', component: () => import('@/views/OtrociView.vue') },
-    { path: '/starsi', name: 'starsi', component: () => import('@/views/StarsiView.vue') },
+    { path: '/igre', name: 'igre', component: () => import('@/views/OtrociView.vue') },
+    { path: '/zemljevid', name: 'zemljevid', component: () => import('@/views/ZemljevidView.vue') },
+    { path: '/grafi', name: 'grafi', component: () => import('@/views/GrafiView.vue') },
+    // stari naslovi (nekdanja zavihka Naloge in Blogi)
+    { path: '/otroci', redirect: '/igre' },
+    { path: '/starsi', redirect: '/grafi' },
     { path: '/nastavitve', name: 'nastavitve', component: () => import('@/views/NastavitveView.vue') },
     // Igre – vsaka je svoja komponenta v src/games/<ime>/
     { path: '/igre/zmaj', name: 'igra-zmaj', component: () => import('@/games/zmaj/ZmajGame.vue') },

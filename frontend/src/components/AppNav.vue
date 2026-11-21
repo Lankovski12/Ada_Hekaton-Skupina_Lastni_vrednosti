@@ -3,17 +3,20 @@ import { RouterLink } from 'vue-router'
 import { useProgressStore } from '@/stores/progress'
 
 const progress = useProgressStore()
+// na domači strani (celozaslonska pljuča) zgornje vrstice ne prikažemo
+defineProps<{ brezGlave?: boolean }>()
 
 const links = [
   { to: '/', label: 'Domov', icon: '🏠' },
-  { to: '/otroci', label: 'Naloge' },
-  { to: '/starsi', label: 'Blogi' },
+  { to: '/igre', label: 'Igre' },
+  { to: '/zemljevid', label: 'Zemljevid' },
+  { to: '/grafi', label: 'Podatki' },
   { to: '/nastavitve', label: 'Profil' },
 ]
 </script>
 
 <template>
-  <header class="top">
+  <header v-if="!brezGlave" class="top">
     <div class="container bar">
       <RouterLink to="/" class="logo">
         <span>Zrak, ki ga dihamo</span>
@@ -107,7 +110,7 @@ const links = [
     right: 0;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     background: var(--card);
     border-top: 1px solid var(--line);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));

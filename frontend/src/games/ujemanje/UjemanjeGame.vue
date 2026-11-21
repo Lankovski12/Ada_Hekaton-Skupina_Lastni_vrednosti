@@ -6,7 +6,7 @@ import { RouterLink } from 'vue-router'
 
 <template>
   <section class="container page">
-    <RouterLink to="/otroci" class="back">← Igre</RouterLink>
+    <RouterLink to="/igre" class="back">← Igre</RouterLink>
     <div class="card">
       <h1>🧩 Poišči par</h1>
       <p>Ta igra še nastaja. Prostor za vajino kodo!</p>

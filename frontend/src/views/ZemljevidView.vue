@@ -1,17 +1,12 @@
 <script setup lang="ts">
-// Zavihek »Blogi«: drseča zgodba iz naših podatkov (isti slog kot Domov), na koncu podrobnosti in gumb na igre.
-//   1. Kotlina z meglo   2. 10 let meritev ARSO (ARSOhack)   3. Napoved za 48 ur   4. 3D zemljevid   5. Podrobnosti
+// Zavihek »Zemljevid«: 3D zemljevid občutljivih lokacij in stanje v Ljubljani ta trenutek.
 import { defineAsyncComponent } from 'vue'
 import { RouterLink } from 'vue-router'
-import KotlinaStory from '@/components/stories/KotlinaStory.vue'
-import ZgodovinaStory from '@/components/stories/ZgodovinaStory.vue'
-import NapovedStory from '@/components/stories/NapovedStory.vue'
-import StoryNext from '@/components/StoryNext.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
 
-// 3D zemljevid (three.js) se naloži šele, ko odpreš Blogi
+// 3D zemljevid (three.js) se naloži šele, ko odpreš ta zavihek
 const Zemljevid3D = defineAsyncComponent(() => import('@/scenes/Zemljevid3D.vue'))
 
 const { now, facts, origin } = useAirData()
@@ -19,26 +14,11 @@ const { profile, sensitivity } = useProfile()
 </script>
 
 <template>
-  <div class="story blogi">
-    <!-- uvod -->
-    <header class="intro">
-      <span class="kicker">Blogi · zgodbe iz naših podatkov</span>
-      <h1>Kaj nam povedo meritve?</h1>
-      <p>
-        Deset let meritev ARSO, megla v kotlini in napoved za naslednja dva dni. Drsi navzdol in poglej, kdaj in zakaj
-        je zrak v Ljubljani slab.
-      </p>
-      <span class="scroll-hint" aria-hidden="true">↓ drsi</span>
-    </header>
-
-    <KotlinaStory />
-    <ZgodovinaStory />
-    <NapovedStory />
-
+  <div class="story zemljevid">
     <!-- 3D zemljevid občutljivih lokacij -->
     <section class="container mapsec">
       <span class="kicker">Zemljevid</span>
-      <h2>Kje so vrtci, šole in bolnišnice?</h2>
+      <h1>Kje so vrtci, šole in bolnišnice?</h1>
       <p class="lead">
         3D model Ljubljane iz katastra stavb in reliefa. Premakni drsnik megle in poglej, katere lokacije ostanejo pod
         njo, ko se ob inverziji hladen zrak ujame na dnu kotline. Pokaži na buciko za podrobnosti.
@@ -46,7 +26,7 @@ const { profile, sensitivity } = useProfile()
       <Zemljevid3D />
     </section>
 
-    <!-- podrobnosti (zemljevid pride kasneje) -->
+    <!-- ta trenutek -->
     <section class="container details">
       <span class="kicker">Podrobnosti</span>
       <h2>Ta trenutek v Ljubljani</h2>
@@ -82,36 +62,17 @@ const { profile, sensitivity } = useProfile()
       </div>
     </section>
 
-    <StoryNext
-      to="/otroci"
-      label="Igre"
-      kicker="Zdaj pa ti"
-      title="Preizkusi, kaj že veš"
-      text="Igre uporabljajo prave podatke o zraku v Ljubljani. Pomagaj zmajčku očistiti nebo in ugani jutrišnji zrak."
-      color="var(--aq-1)"
-    />
     <div class="story-end" aria-hidden="true" />
   </div>
 </template>
 
 <style scoped>
-.intro {
-  --lvl: #5aa2ff;
-  min-height: calc(100svh - 64px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 40px max(24px, 5vw);
-  background: radial-gradient(ellipse at 80% 40%, rgba(90, 162, 255, 0.14), transparent 60%);
-}
-.intro p {
-  max-width: 560px;
-}
 .mapsec {
   --lvl: #ffb547;
-  padding-top: 80px;
+  padding-top: 40px;
+}
+.mapsec h1 {
+  font-size: clamp(2rem, 5vw, 3.2rem);
 }
 .mapsec .lead {
   max-width: 720px;
