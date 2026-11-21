@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // 48-urna napoved kot stolpci. Tapni stolpec za podrobnosti; zvezdica = najboljša ura za ven.
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import type { ForecastResponse } from '@/lib/types'
 import { formatDayHour, levelFor } from '@/lib/airQuality'
 
 const props = defineProps<{ forecast: ForecastResponse; sensitivity?: number }>()
 
-const selected = ref(0)
+// izbrana ura; starš jo lahko nastavlja z v-model:selected
+const selected = defineModel<number>('selected', { default: 0 })
 const max = computed(() => Math.max(30, ...props.forecast.ure.map((u) => u.pm25)))
 const sel = computed(() => props.forecast.ure[selected.value])
 const selLevel = computed(() => levelFor(sel.value?.pm25 ?? 0, props.sensitivity))
@@ -73,7 +74,7 @@ const bestIdx = computed(() => props.forecast.ure.findIndex((u) => u.cas_utc ===
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  height: 160px;
+  height: var(--bars-h, 160px);
   padding-top: 24px;
 }
 .bar {
@@ -99,7 +100,7 @@ const bestIdx = computed(() => props.forecast.ure.findIndex((u) => u.cas_utc ===
   position: absolute;
   left: -2px;
   bottom: 0;
-  height: 150px;
+  height: calc(var(--bars-h, 160px) - 10px);
   border-left: 1px dashed var(--line);
 }
 .star {

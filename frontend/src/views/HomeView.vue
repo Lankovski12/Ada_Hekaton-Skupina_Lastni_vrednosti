@@ -1,20 +1,24 @@
 <script setup lang="ts">
 // Domača stran = zgodba, ki naredi nevidno vidno (navdih: »Seeing the Invisible«, WHO + Google Arts & Culture).
-// Skulptura ostane pripeta, besedilo drsi čez njo; vsak korak skulpturi pove, kakšen zrak naj pokaže.
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+// Tri poglavja v istem slogu: scena ostane pripeta, besedilo drsi čez njo; vsak korak sceni pove, kaj naj pokaže.
+//   1. Oblak delcev (DataSculpture)   2. Kotlina z meglo   3. Napoved za 48 ur
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import DataSculpture from '@/scenes/DataSculpture.vue'
 import ForecastStrip from '@/components/ForecastStrip.vue'
 import AirBuddy from '@/components/AirBuddy.vue'
+import ScrollStory from '@/components/ScrollStory.vue'
 import Kotlina from '@/scenes/Kotlina.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
-import { levelFor } from '@/lib/airQuality'
+import { formatDayHour, levelFor } from '@/lib/airQuality'
 
 const { currentPm25, forecast, scene, origin, now } = useAirData()
 const { sensitivity } = useProfile()
 
 const live = computed(() => currentPm25.value ?? 15)
+
+/* ---------- 1. poglavje: oblak delcev ---------- */
 const myPm = ref(30) // zadnji korak: »ustvari svoj zrak«
 
 interface Step {
@@ -79,75 +83,202 @@ const stationTime = computed(() => {
   return t ? new Date(t).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) : ''
 })
 
-const stepEls = ref<HTMLElement[]>([])
-let io: IntersectionObserver | undefined
-onMounted(() => {
-  io = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) if (e.isIntersecting) active.value = Number((e.target as HTMLElement).dataset.i)
+/* ---------- 2. poglavje: kotlina ---------- */
+const kotActive = ref(0)
+const kotHour = ref(0)
+const kotPlaying = ref(false)
+const ure = computed(() => scene.value?.ure ?? [])
+const hourOf = (iso: string) => new Date(iso).getHours()
+
+// poiščemo ure v podatkih, ki najbolje pokažejo vsak korak
+function pick(filter: (i: number) => boolean, score: (i: number) => number, fallback = 0) {
+  let best = -1
+  ure.value.forEach((_, i) => {
+    if (filter(i) && (best < 0 || score(i) > score(best))) best = i
+  })
+  return best < 0 ? fallback : best
+}
+const isNight = (i: number) => {
+  const h = hourOf(ure.value[i]!.cas_utc)
+  return h >= 21 || h <= 5
+}
+const kotSteps = computed(() => {
+  const night = pick((i) => isNight(i) && ure.value[i]!.inverzija, (i) => -i)
+  const worst = pick((i) => ure.value[i]!.inverzija, (i) => ure.value[i]!.pm25, night)
+  const clear = pick((i) => !ure.value[i]!.inverzija, (i) => -ure.value[i]!.pm25, worst)
+  return [
+    {
+      kicker: 'Zakaj je pozimi v kotlini megla?',
+      title: 'Ljubljana leži v skledi',
+      text: 'Okoli mesta so hribi. Ponoči se zrak ob tleh ohladi. Hladen zrak je težji, zato zdrsne na dno kotline in tam obleži.',
+      hour: night,
     },
-    { rootMargin: '-45% 0px -45% 0px' },
-  )
-  stepEls.value.forEach((el) => io!.observe(el))
+    {
+      kicker: 'Temperaturna inverzija',
+      title: 'Kot pod pokrovko',
+      text: 'Nad hladnim zrakom leži plast toplejšega. Dim iz dimnikov in izpuhov ne more navzgor, zato se megla zgosti in zrak je slabši.',
+      hour: worst,
+    },
+    {
+      kicker: 'Sredi dneva',
+      title: 'Sonce dvigne pokrovko',
+      text: 'Sonce ogreje tla, zrak se začne mešati in delci se razredčijo v višino. Megla se dvigne in zrak je bolj čist.',
+      hour: clear,
+    },
+    {
+      kicker: 'Zdaj ti',
+      title: 'Predvajaj dan',
+      text: 'Pritisni gumb ali povleci drsnik in opazuj, kako se megla čez dan spušča in dviga.',
+      hour: -1, // uro izbiraš sam
+    },
+  ]
 })
-onBeforeUnmount(() => io?.disconnect())
+watch(
+  [kotActive, kotSteps],
+  () => {
+    const h = kotSteps.value[kotActive.value]?.hour ?? -1
+    if (h >= 0) {
+      kotHour.value = h
+      kotPlaying.value = false
+    }
+  },
+  { immediate: true },
+)
+const kotLevel = computed(() => levelFor(ure.value[kotHour.value]?.pm25 ?? live.value, sensitivity.value))
+const kotClock = computed(() => {
+  const u = ure.value[kotHour.value]
+  return u ? `${String(hourOf(u.cas_utc)).padStart(2, '0')}:00` : ''
+})
+
+let timer: number | undefined
+watch(kotPlaying, (on) => {
+  window.clearInterval(timer)
+  if (on) timer = window.setInterval(() => (kotHour.value = (kotHour.value + 1) % ure.value.length), 700)
+})
+onBeforeUnmount(() => window.clearInterval(timer))
+
+/* ---------- 3. poglavje: napoved ---------- */
+const fcActive = ref(0)
+const fcSelected = ref(0)
+const fcUre = computed(() => forecast.value?.ure ?? [])
+const fcBest = computed(() => Math.max(0, fcUre.value.findIndex((u) => u.cas_utc === forecast.value?.najboljsa_ura)))
+const fcWorst = computed(() => fcUre.value.reduce((w, u, i, a) => (u.pm25 > a[w]!.pm25 ? i : w), 0))
+const fcSteps = computed(() => {
+  const best = fcUre.value[fcBest.value]
+  const worst = fcUre.value[fcWorst.value]
+  return [
+    {
+      kicker: 'Kdaj je najboljši čas za ven?',
+      title: 'Naslednjih 48 ur',
+      text: 'Vsak stolpec je ena ura. Višji in bolj rdeč kot je, več delcev bo v zraku.',
+      sel: 0,
+    },
+    {
+      kicker: 'Najslabša ura',
+      title: worst ? `${formatDayHour(worst.cas_utc)}h` : '',
+      text: `Takrat bo v zraku največ delcev${worst ? ` (${worst.pm25} µg/m³)` : ''}. Pozimi je to najpogosteje zvečer, ko ljudje kurijo, zrak pa se umiri.`,
+      sel: fcWorst.value,
+    },
+    {
+      kicker: 'Najboljša ura ⭐',
+      title: best ? `${formatDayHour(best.cas_utc)}h` : '',
+      text: 'Najčistejša ura podnevi. Takrat je pravi čas za igro zunaj, sprehod ali zračenje stanovanja.',
+      sel: fcBest.value,
+    },
+    {
+      kicker: 'Zdaj ti',
+      title: 'Poišči svojo uro',
+      text: 'Povleci s prstom ali miško čez stolpce in poglej, kakšen bo zrak ob uri, ki jo izbereš.',
+      sel: -1,
+    },
+  ]
+})
+watch(
+  [fcActive, fcSteps],
+  () => {
+    const s = fcSteps.value[fcActive.value]?.sel ?? -1
+    if (s >= 0) fcSelected.value = s
+  },
+  { immediate: true },
+)
+const fcLevel = computed(() => levelFor(fcUre.value[fcSelected.value]?.pm25 ?? live.value, sensitivity.value))
 </script>
 
 <template>
-  <!-- ZGODBA: pripeta skulptura + besedilo, ki drsi čez -->
-  <section class="story" :style="{ '--lvl': level.color }">
-    <div class="stage">
-      <DataSculpture :pm25="pm" :color="level.hex" />
-      <div class="readout" aria-live="polite">
-        <span class="num">{{ Math.round(pm) }}</span>
-        <span class="unit">µg/m³ PM2.5</span>
-        <span class="lvl">{{ level.label }}</span>
-      </div>
-      <ol class="dots" aria-hidden="true">
-        <li v-for="(s, i) in steps" :key="i" :class="{ on: i === active }" />
-      </ol>
-    </div>
-
-    <div class="steps">
-      <article v-for="(s, i) in steps" :key="i" ref="stepEls" :data-i="i" class="step">
-        <div class="step-card" :class="{ first: i === 0 }">
-          <span class="kicker">{{ s.kicker }}</span>
-          <h1 v-if="i === 0">{{ s.title }}</h1>
-          <h2 v-else-if="i === 1" class="big">
-            {{ live }} <small>µg/m³</small>
-          </h2>
-          <h2 v-else>{{ s.title }}</h2>
-          <p>{{ s.text }}</p>
-          <p v-if="i === 1" class="src">
-            {{ isMeasured ? `Meritev ARSO ob ${stationTime}` : 'Demo vrednost – meritve ARSO še niso prispele' }}
-          </p>
-          <label v-if="s.interactive" class="slider">
-            <input v-model.number="myPm" type="range" min="0" max="100" aria-label="PM2.5" />
-            <span>{{ myPm }} µg/m³ · {{ levelFor(myPm).kids }}</span>
-          </label>
-          <span v-if="i === 0" class="scroll-hint" aria-hidden="true">↓ drsi</span>
+  <div class="story">
+    <!-- 1. POGLAVJE: oblak delcev -->
+    <ScrollStory v-model:active="active" :count="steps.length" :color="level.color" plain-first>
+      <template #stage>
+        <DataSculpture :pm25="pm" :color="level.hex" />
+        <div class="readout" aria-live="polite">
+          <span class="num">{{ Math.round(pm) }}</span>
+          <span class="unit">µg/m³ PM2.5</span>
+          <span class="lvl">{{ level.label }}</span>
         </div>
-      </article>
-    </div>
-  </section>
+      </template>
+      <template #step="{ i }">
+        <span class="kicker">{{ steps[i]!.kicker }}</span>
+        <h1 v-if="i === 0">{{ steps[i]!.title }}</h1>
+        <h2 v-else-if="i === 1" class="big">
+          {{ live }} <small>µg/m³</small>
+        </h2>
+        <h2 v-else>{{ steps[i]!.title }}</h2>
+        <p>{{ steps[i]!.text }}</p>
+        <p v-if="i === 1" class="src">
+          {{ isMeasured ? `Meritev ARSO ob ${stationTime}` : 'Demo vrednost – meritve ARSO še niso prispele' }}
+        </p>
+        <label v-if="steps[i]!.interactive" class="slider">
+          <input v-model.number="myPm" type="range" min="0" max="100" aria-label="PM2.5" />
+          <span>{{ myPm }} µg/m³ · {{ levelFor(myPm).kids }}</span>
+        </label>
+        <span v-if="i === 0" class="scroll-hint" aria-hidden="true">↓ drsi</span>
+      </template>
+    </ScrollStory>
 
-  <section class="container section">
-    <div class="section-head">
-      <h2>Zakaj je pozimi v kotlini megla?</h2>
-      <p>Ponoči se hladen zrak ujame na dnu kotline – kot pod pokrovko. Dim iz dimnikov ne more ven. Predvajaj dan in opazuj meglo.</p>
-    </div>
-    <Kotlina v-if="scene" :scene="scene" />
-  </section>
+    <!-- 2. POGLAVJE: kotlina z meglo -->
+    <ScrollStory v-if="scene" v-model:active="kotActive" :count="kotSteps.length" :color="kotLevel.color">
+      <template #stage>
+        <div class="kot-stage">
+          <Kotlina v-model:hour="kotHour" :scene="scene" bare :controls="false" />
+        </div>
+        <div class="readout" aria-live="polite">
+          <span class="num">{{ ure[kotHour]?.pm25 }}</span>
+          <span class="unit">µg/m³ PM2.5</span>
+          <span class="lvl">{{ kotClock }} · {{ ure[kotHour]?.inverzija ? 'inverzija – zrak je ujet' : 'zrak se meša' }}</span>
+        </div>
+      </template>
+      <template #step="{ i }">
+        <span class="kicker">{{ kotSteps[i]!.kicker }}</span>
+        <h2>{{ kotSteps[i]!.title }}</h2>
+        <p>{{ kotSteps[i]!.text }}</p>
+        <div v-if="kotSteps[i]!.hour < 0" class="slider">
+          <button class="btn play" :aria-pressed="kotPlaying" @click="kotPlaying = !kotPlaying">
+            {{ kotPlaying ? '⏸ Ustavi' : '▶ Predvajaj dan' }}
+          </button>
+          <input v-model.number="kotHour" type="range" min="0" :max="ure.length - 1" aria-label="Ura" />
+          <span>{{ kotClock }} · {{ ure[kotHour]?.pm25 }} µg/m³ · {{ kotLevel.kids }}</span>
+        </div>
+      </template>
+    </ScrollStory>
 
-  <section class="container section">
-    <div class="section-head">
-      <h2>Kdaj je najboljši čas za ven?</h2>
-      <p>Napoved za naslednjih 48 ur. Zvezdica ⭐ pokaže najčistejšo uro podnevi.</p>
-    </div>
-    <div class="card">
-      <ForecastStrip v-if="forecast" :forecast="forecast" :sensitivity="sensitivity" />
-    </div>
-  </section>
+    <!-- 3. POGLAVJE: napoved za 48 ur -->
+    <ScrollStory v-if="forecast" v-model:active="fcActive" :count="fcSteps.length" :color="fcLevel.color">
+      <template #stage>
+        <div class="fc-stage">
+          <div class="fc-panel">
+            <ForecastStrip v-model:selected="fcSelected" :forecast="forecast" :sensitivity="sensitivity" />
+          </div>
+        </div>
+      </template>
+      <template #step="{ i }">
+        <span class="kicker">{{ fcSteps[i]!.kicker }}</span>
+        <h2>{{ fcSteps[i]!.title }}</h2>
+        <p>{{ fcSteps[i]!.text }}</p>
+      </template>
+    </ScrollStory>
+
+    <div class="story-end" aria-hidden="true" />
+  </div>
 
   <section class="container section doors">
     <RouterLink to="/otroci" class="door kids">
@@ -171,13 +302,21 @@ onBeforeUnmount(() => io?.disconnect())
   position: relative;
   background: #05080f;
   color: #eaf2fb;
+  /* temne barve tudi za vgrajene komponente (Kotlina, ForecastStrip), ne glede na temo strani */
+  --ink: #eaf2fb;
+  --ink-soft: #9fb3c8;
+  --line: rgba(255, 255, 255, 0.14);
+  --card: #0b1422;
+  --bg-soft: rgba(255, 255, 255, 0.08);
+  --sky-top: #3a78ad;
+  --sky-bottom: #8fbedf;
+  --mountain-far: #2d4a60;
+  --mountain-mid: #20364a;
+  --mountain-near: #142433;
+  --city: #0b1621;
 }
-.stage {
-  position: sticky;
-  top: 64px;
-  height: calc(100svh - 64px);
-  overflow: hidden;
-}
+
+/* 1. poglavje */
 .readout {
   position: absolute;
   left: 24px;
@@ -187,6 +326,7 @@ onBeforeUnmount(() => io?.disconnect())
   align-items: baseline;
   column-gap: 10px;
   pointer-events: none;
+  z-index: 1;
 }
 .readout .num {
   font-family: var(--font-head);
@@ -207,55 +347,41 @@ onBeforeUnmount(() => io?.disconnect())
   font-weight: 800;
   color: var(--lvl);
 }
-.dots {
+
+/* 2. poglavje */
+.kot-stage {
   position: absolute;
-  right: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
+  inset: 0;
 }
-.dots li {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  transition: transform 0.3s, background 0.3s;
+.kot-stage::after {
+  /* mehak prehod v temno ozadje zgoraj in spodaj */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(#05080f 0, transparent 18%, transparent 85%, #05080f 100%);
 }
-.dots li.on {
-  background: var(--lvl);
-  transform: scale(1.6);
-}
-.steps {
-  position: relative;
-  margin-top: calc(-100svh + 64px);
-  pointer-events: none; /* da lahko skulpturo vrtiš skozi besedilo */
-}
-.step {
-  min-height: 100svh;
+
+/* 3. poglavje */
+.fc-stage {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 0 max(56px, 6vw) 0 24px;
+  padding: 0 calc(420px + max(56px, 6vw) + 40px) 0 max(24px, 5vw);
+  background: radial-gradient(ellipse at 30% 60%, color-mix(in srgb, var(--lvl) 18%, transparent), transparent 60%);
+  transition: background 0.6s;
 }
-.step-card {
-  pointer-events: auto;
-  max-width: 420px;
+.fc-panel {
+  width: 100%;
   padding: 24px 26px;
   border-radius: var(--radius);
   background: rgba(10, 18, 30, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
+  --bars-h: clamp(180px, 34vh, 320px);
 }
-.step-card.first {
-  background: transparent;
-  border: 0;
-  backdrop-filter: none;
-  max-width: 520px;
-}
+
+/* besedilo na karticah – enako v vseh poglavjih */
 .kicker {
   display: block;
   text-transform: uppercase;
@@ -266,26 +392,27 @@ onBeforeUnmount(() => io?.disconnect())
   margin-bottom: 8px;
   transition: color 0.6s;
 }
-.step-card h1 {
+h1 {
   font-size: clamp(2.6rem, 7vw, 4.6rem);
 }
-.step-card h2 {
+.story h2 {
   font-size: clamp(1.8rem, 5vw, 2.8rem);
+  text-transform: none;
 }
-.step-card h2.big {
+h2.big {
   font-size: clamp(3rem, 9vw, 5rem);
   color: var(--lvl);
 }
-.step-card h2.big small {
+h2.big small {
   font-size: 1.2rem;
   color: #9fb3c8;
 }
-.step-card p {
+.story p {
   color: #c4d3e2;
   font-size: 1.1rem;
   margin: 0;
 }
-.step-card .src {
+.story .src {
   margin-top: 10px;
   font-size: 0.85rem;
   color: #8197ad;
@@ -299,6 +426,11 @@ onBeforeUnmount(() => io?.disconnect())
 .slider input {
   accent-color: var(--lvl);
 }
+.slider .play {
+  justify-self: start;
+  background: var(--lvl);
+  color: #05080f;
+}
 .scroll-hint {
   display: inline-block;
   margin-top: 24px;
@@ -311,21 +443,14 @@ onBeforeUnmount(() => io?.disconnect())
     transform: translateY(6px);
   }
 }
+.story-end {
+  height: 120px;
+  background: linear-gradient(#05080f, var(--bg));
+}
 
-/* --- ostale sekcije --- */
+/* --- vrata: otroci / starši --- */
 .section {
-  padding-top: 56px;
-}
-.section-head {
-  max-width: 680px;
-  margin-bottom: 18px;
-}
-.section-head p {
-  color: var(--ink-soft);
-  margin: 0;
-}
-h2 {
-  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  padding-top: 32px;
 }
 .doors {
   display: grid;
@@ -362,15 +487,13 @@ h2 {
   font-size: 3rem;
 }
 
+@media (max-width: 1000px) {
+  .fc-stage {
+    align-items: flex-start;
+    padding: 24px 40px 0 16px;
+  }
+}
 @media (max-width: 720px) {
-  .step {
-    justify-content: center;
-    align-items: flex-end;
-    padding: 0 16px 140px;
-  }
-  .step-card.first {
-    background: rgba(10, 18, 30, 0.5);
-  }
   .readout {
     left: 16px;
     top: 14px;
@@ -379,8 +502,12 @@ h2 {
   .readout .num {
     font-size: 2.6rem;
   }
-  .dots {
-    right: 10px;
+  .kot-stage {
+    bottom: 48%;
+  }
+  .fc-panel {
+    padding: 16px;
+    --bars-h: 160px;
   }
   .doors {
     grid-template-columns: 1fr;
