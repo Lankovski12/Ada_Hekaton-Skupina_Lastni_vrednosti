@@ -9,6 +9,7 @@ const links = [
   { to: '/igre', label: 'Igre' },
   { to: '/zemljevid', label: 'Zemljevid' },
   { to: '/grafi', label: 'Podatki' },
+  { to: '/moj-zrak', label: 'Moj zrak' },
 ]
 </script>
 
@@ -101,7 +102,7 @@ const links = [
     right: 0;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     background: var(--card);
     border-top: 1px solid var(--line);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
