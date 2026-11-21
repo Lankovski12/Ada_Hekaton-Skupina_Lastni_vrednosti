@@ -179,11 +179,6 @@ const virZdaj = computed(() => {
     return { vrsta: 'meritev', text: `Meritev ARSO${t ? ` ob ${t}` : ''}, postaja ${postaja.value.ime} (${km(postaja.value.d)} od tebe)` }
   return { vrsta: 'ocena', text: `povprečje starih meritev ARSO (Bežigrad ${z.pm25Od}–${z.zadnjeLeto}) za ta mesec in uro – žive meritve trenutno niso na voljo` }
 })
-const virNapoved = computed(() =>
-  forecast.value?.model === 'klima'
-    ? { vrsta: 'ocena', text: `ocena iz povprečja starih meritev ARSO (${z.pm25Od}–${z.zadnjeLeto}) – napoved trenutno ni na voljo` }
-    : { vrsta: 'napoved', text: 'napoved modela CAMS (Copernicus, prek Open-Meteo) za Ljubljano – izračun, ne meritev' },
-)
 
 // --- naslednjih 24 ur ---
 const ura = (iso: string) => new Date(iso).getHours()
@@ -255,10 +250,38 @@ const kategorija = (l: { key: string }) => {
   return s <= 1 ? 'dobro' : s === 2 ? 'zmerno' : 'slabo'
 }
 
-// graf
+// --- graf 24 ur ---
 const izbrana = ref<number | null>(null)
-const maxPm = computed(() => Math.max(25, ...ure.value.map((u) => Math.max(u.pm, u.obicajno))) * 1.1)
 const izbranaUra = computed(() => (izbrana.value == null ? null : ure.value[izbrana.value] ?? null))
+const jeNapoved = computed(() => forecast.value?.model !== 'klima') // sicer so stolpci že »običajne« vrednosti
+// os y: lepi koraki po 5 ali 10 µg/m³
+const os = computed(() => {
+  const vrh = Math.max(20, ...ure.value.map((u) => Math.max(u.pm, jeNapoved.value ? u.obicajno : 0)))
+  const korak = vrh > 40 ? 10 : 5
+  const max = Math.ceil((vrh * 1.12) / korak) * korak
+  const crte: number[] = []
+  for (let v = 0; v <= max; v += korak) crte.push(v)
+  return { max, crte }
+})
+const pct = (v: number) => (v / os.value.max) * 100
+const iMin = computed(() => ure.value.reduce((m, u, i, a) => (u.pm < a[m]!.pm ? i : m), 0))
+const iMax = computed(() => ure.value.reduce((m, u, i, a) => (u.pm > a[m]!.pm ? i : m), 0))
+// črta »običajno« (SVG, raztegne se na širino grafa)
+const crtaObicajno = computed(() => {
+  const n = ure.value.length
+  return ure.value.map((u, i) => `${((i + 0.5) / n) * 100},${100 - pct(u.obicajno)}`).join(' ')
+})
+// en stavek povzetka: boljši ali slabši od običajnega
+const primerjava = computed(() => {
+  const u = ure.value
+  if (!u.length || !jeNapoved.value) return null
+  const napoved = u.reduce((a, b) => a + b.pm, 0) / u.length
+  const obicajno = u.reduce((a, b) => a + b.obicajno, 0) / u.length
+  const r = napoved / obicajno - 1
+  if (Math.abs(r) < 0.1) return 'približno tak kot običajno v tem času'
+  return `${r < 0 ? 'boljši' : 'slabši'} kot običajno v tem času (za okoli ${Math.round(Math.abs(r) * 100)} %)`
+})
+const prviDan = computed(() => new Date(ure.value[0]?.cas ?? Date.now()).getDate())
 
 // --- inverzija in megla zdaj ---
 const megla = computed(() => {
@@ -373,67 +396,76 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
 
     <!-- graf 24 ur -->
     <article class="card graf">
-      <div class="graf-glava">
-        <div>
-          <h2>Naslednjih 24 ur</h2>
-          <p class="mali">Pokaži ali tapni stolpec za podrobnosti.</p>
-        </div>
-        <ul class="legenda">
-          <li><span class="tag ven">ven</span> najboljša ura za ven</li>
-          <li><span class="tag zrac">zrači</span> najboljša ura za zračenje</li>
-          <li><span class="l slabo" /> raje ostani notri</li>
-        </ul>
-      </div>
-      <div class="podrobno">
+      <h2>Koliko delcev bo v zraku v naslednjih 24 urah?</h2>
+      <p class="povzetek">
+        <template v-if="primerjava">Zrak bo {{ primerjava }}.</template>
+        <template v-else>Napoved trenutno ni na voljo, zato graf kaže, kakšen je zrak ob teh urah običajno.</template>
+        Višji stolpec pomeni več delcev PM2.5, barva pa, ali je zrak dober, zmeren ali slab.
+      </p>
+
+      <div class="podrobno" aria-live="polite">
         <template v-if="izbranaUra">
-          <strong>{{ hh(izbranaUra.h) }}</strong> · {{ Math.round(izbranaUra.pm) }} µg/m³ ·
-          <span :style="{ color: izbranaUra.lvl.color }">{{ izbranaUra.lvl.label }}</span>
-          <small> (običajno {{ Math.round(izbranaUra.obicajno) }})</small>
+          Ob <strong>{{ hh(izbranaUra.h) }}</strong>: {{ Math.round(izbranaUra.pm) }} µg/m³ –
+          <span class="lvl" :style="{ background: izbranaUra.lvl.color }">{{ izbranaUra.lvl.label }}</span>
+          <span v-if="jeNapoved" class="sivo"> · običajno ob tej uri {{ Math.round(izbranaUra.obicajno) }} µg/m³</span>
         </template>
-        <template v-else-if="najslabse">
-          Najslabše bo med <strong>{{ hh(najslabse.od) }} in {{ hh(najslabse.do) }}</strong> (okoli {{ najslabse.pm }} µg/m³).
-        </template>
+        <span v-else class="sivo">Pokaži ali tapni stolpec, da vidiš posamezno uro.</span>
       </div>
-      <div class="stolpci" @pointerleave="izbrana = null">
-        <div
-          v-if="najslabse"
-          class="pas"
-          :style="{ left: `${(najslabse.i / ure.length) * 100}%`, width: `${(3 / ure.length) * 100}%` }"
-          aria-hidden="true"
-        />
-        <button
-          v-for="(u, i) in ure"
-          :key="u.cas"
-          class="st"
-          :class="{ izbran: izbrana === i }"
-          :aria-label="`${hh(u.h)}: ${Math.round(u.pm)} µg/m³`"
-          @pointerenter="izbrana = i"
-          @focus="izbrana = i"
-          @click="izbrana = i"
-        >
-          <span class="oznake">
-            <span v-if="najVen && u.cas === najVen.cas" class="tag ven">ven</span>
-            <span v-if="najZrac && u.cas === najZrac.cas" class="tag zrac">zrači</span>
+
+      <div class="g">
+        <!-- os y -->
+        <div class="g-os" aria-hidden="true">
+          <span v-for="v in os.crte" :key="v" :style="{ bottom: `${pct(v)}%` }">{{ v }}</span>
+          <em>µg/m³</em>
+        </div>
+        <div class="g-plos" @pointerleave="izbrana = null">
+          <!-- mreža -->
+          <span v-for="v in os.crte" :key="v" class="mreza" :style="{ bottom: `${pct(v)}%` }" aria-hidden="true" />
+          <!-- stolpci -->
+          <button
+            v-for="(u, i) in ure"
+            :key="u.cas"
+            class="st"
+            :class="{ izbran: izbrana === i, novdan: i > 0 && u.h === 0 }"
+            :aria-label="`${hh(u.h)}: ${Math.round(u.pm)} µg/m³, ${u.lvl.label}`"
+            @pointerenter="izbrana = i"
+            @focus="izbrana = i"
+            @click="izbrana = i"
+          >
+            <span class="bar" :style="{ height: `${pct(u.pm)}%`, background: u.lvl.color, '--d': `${i * 25}ms` }">
+              <span v-if="i === iMin" class="oznaka min" :class="{ levo: i < 2, desno: i > ure.length - 3 }">najčistejše<br /><b>{{ Math.round(u.pm) }}</b></span>
+              <span v-else-if="i === iMax" class="oznaka max" :class="{ levo: i < 2, desno: i > ure.length - 3 }">najslabše<br /><b>{{ Math.round(u.pm) }}</b></span>
+            </span>
+          </button>
+          <!-- črta »običajno« -->
+          <svg v-if="jeNapoved" class="crta" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <polyline :points="crtaObicajno" />
+          </svg>
+          <span v-if="jeNapoved" class="crta-napis" :style="{ bottom: `${pct(ure[ure.length - 1]?.obicajno ?? 0)}%` }">običajno</span>
+        </div>
+        <!-- os x -->
+        <div class="g-ure" aria-hidden="true">
+          <span v-for="(u, i) in ure" :key="u.cas">
+            <template v-if="i === 0 || u.h % 3 === 0">{{ u.h }}h</template>
+            <small v-if="u.h === 0 && new Date(u.cas).getDate() !== prviDan">jutri</small>
           </span>
-          <span class="bar" :style="{ height: `${(u.pm / maxPm) * 100}%`, background: u.lvl.color, '--d': `${i * 25}ms` }" />
-          <span class="obicajno" :style="{ bottom: `${(u.obicajno / maxPm) * 100}%` }" />
-          <span class="ura">{{ u.h % 3 === 0 ? `${u.h}h` : '' }}</span>
-        </button>
+        </div>
       </div>
-      <dl class="viri">
-        <div>
-          <dt><span class="vzorec stolpec" /> Stolpci</dt>
-          <dd><span class="vrsta" :class="virNapoved.vrsta">{{ virNapoved.vrsta }}</span> {{ virNapoved.text }}</dd>
-        </div>
-        <div>
-          <dt><span class="vzorec pikica" /> Pikice</dt>
-          <dd><span class="vrsta stari">stari podatki</span> povprečje meritev ARSO na Bežigradu {{ z.pm25Od }}–{{ z.zadnjeLeto }} za isti mesec in uro (paket ARSOhack) – kakšen je zrak ob tej uri običajno</dd>
-        </div>
-        <div>
-          <dt>Zgoraj</dt>
-          <dd><span class="vrsta" :class="virZdaj.vrsta">{{ virZdaj.vrsta }}</span> {{ virZdaj.text }}</dd>
-        </div>
-      </dl>
+
+      <div class="legenda">
+        <span><i class="lg-st" /> {{ jeNapoved ? 'napoved' : 'običajna vrednost' }} za vsako uro (barva = kakovost zraka)</span>
+        <span v-if="jeNapoved"><i class="lg-crta" /> običajno ob tej uri v tem mesecu</span>
+      </div>
+      <p class="vir">
+        <template v-if="jeNapoved">
+          Stolpci so <strong>napoved</strong> modela CAMS (evropski program Copernicus, prek Open-Meteo) za Ljubljano – izračun, ne meritev.
+          Črtkana črta je <strong>povprečje starih meritev</strong> ARSO na Bežigradu {{ z.pm25Od }}–{{ z.zadnjeLeto }} za isti mesec in uro.
+        </template>
+        <template v-else>
+          Napoved trenutno ni na voljo. Stolpci zato kažejo <strong>povprečje starih meritev</strong> ARSO na Bežigradu
+          {{ z.pm25Od }}–{{ z.zadnjeLeto }} za isti mesec in uro – to ni napoved za danes.
+        </template>
+      </p>
     </article>
 
     <!-- lokacija: višina, megla, bližina -->
@@ -719,78 +751,69 @@ h1 {
   margin-left: 0;
 }
 
-/* oznake v grafu */
-.tag {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 6px;
-  font-size: 0.62rem;
-  font-weight: 800;
-  line-height: 1.3;
-  color: #fff;
-  white-space: nowrap;
-}
-.tag.ven {
-  background: var(--aq-1);
-}
-.tag.zrac {
-  background: var(--brand);
-}
-
 /* graf */
-.graf-glava {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px;
-}
 .graf h2 {
   font-size: 1.5rem;
-  margin: 0;
+  margin: 0 0 6px;
 }
-.legenda {
-  list-style: none;
+.povzetek {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
+  color: var(--ink-soft);
+}
+.podrobno {
+  min-height: 1.8em;
+  margin: 12px 0 10px;
+  font-weight: 600;
+}
+.podrobno .lvl {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 800;
   font-size: 0.85rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.sivo {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.g {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  grid-template-rows: 240px auto;
+  margin-top: 26px; /* prostor za enoto nad osjo */
+}
+.g-os {
+  position: relative;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--ink-soft);
 }
-.legenda .l.slabo {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  vertical-align: -2px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--aq-5) 18%, transparent);
-  border: 1px dashed var(--aq-5);
+.g-os span {
+  position: absolute;
+  right: 6px;
+  transform: translateY(50%);
 }
-.podrobno {
-  min-height: 1.6em;
-  margin: 12px 0 6px;
-  font-weight: 600;
+.g-os em {
+  position: absolute;
+  top: -26px;
+  left: 0;
+  font-style: normal;
+  white-space: nowrap;
 }
-.podrobno small {
-  color: var(--ink-soft);
-}
-.stolpci {
+.g-plos {
   position: relative;
   display: flex;
   align-items: flex-end;
   gap: 3px;
-  height: 220px;
-  padding-top: 30px;
+  border-left: 1px solid var(--line);
 }
-.pas {
+.mreza {
   position: absolute;
-  top: 0;
-  bottom: 22px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--aq-5) 12%, transparent);
-  border: 1px dashed color-mix(in srgb, var(--aq-5) 60%, transparent);
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line);
   pointer-events: none;
 }
 .st {
@@ -800,16 +823,27 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 0 0 22px;
+  padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
+  z-index: 1;
+}
+.st.novdan::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed var(--ink-soft);
+  opacity: 0.5;
 }
 .bar {
+  position: relative;
   display: block;
-  min-height: 4px;
+  min-height: 3px;
   border-radius: 6px 6px 2px 2px;
-  opacity: 0.8;
+  opacity: 0.85;
   transform-origin: bottom;
   animation: rast 0.6s cubic-bezier(0.3, 0.8, 0.3, 1) both;
   animation-delay: var(--d);
@@ -823,76 +857,120 @@ h1 {
 .st.izbran .bar,
 .st:hover .bar {
   opacity: 1;
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
-.obicajno {
+.oznaka {
   position: absolute;
+  bottom: calc(100% + 4px);
   left: 50%;
-  width: 6px;
-  height: 6px;
-  margin: 0 0 19px -3px;
-  border-radius: 50%;
-  background: var(--ink);
-  opacity: 0.45;
+  transform: translateX(-50%);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+.oznaka.levo {
+  left: 0;
+  transform: none;
+  text-align: left;
+}
+.oznaka.desno {
+  left: auto;
+  right: 0;
+  transform: none;
+  text-align: right;
+}
+.oznaka b {
+  font-family: var(--font-head);
+  font-size: 1rem;
+  color: var(--ink);
+}
+.crta {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+.crta polyline {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+  opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+.crta-napis {
+  position: absolute;
+  right: 0;
+  transform: translateY(-4px);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+  background: var(--card);
+  padding: 0 4px;
+  border-radius: 4px;
+  z-index: 3;
   pointer-events: none;
 }
-.oznake {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
+.g-ure {
+  grid-column: 2;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  z-index: 1;
+  gap: 3px;
+  padding-top: 6px;
 }
-.ura {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+.g-ure span {
+  flex: 1;
+  min-width: 0;
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--ink-soft);
   white-space: nowrap;
+  overflow: visible;
 }
-.viri {
-  display: grid;
-  gap: 6px;
-  margin: 14px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-  font-size: 0.8rem;
-}
-.viri div {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 8px;
-}
-.viri dt {
+.g-ure small {
+  display: block;
   font-weight: 800;
+  color: var(--ink);
 }
-.viri dd {
-  margin: 0;
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin-top: 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
   color: var(--ink-soft);
 }
-.vzorec {
+.lg-st {
   display: inline-block;
-  vertical-align: 0;
-  margin-right: 4px;
-}
-.vzorec.stolpec {
-  width: 9px;
+  width: 26px;
   height: 12px;
-  border-radius: 2px 2px 0 0;
-  background: var(--aq-2);
+  margin-right: 6px;
+  vertical-align: -1px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--aq-1) 33%, var(--aq-3) 33% 66%, var(--aq-5) 66%);
 }
-.vzorec.pikica {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--ink);
-  opacity: 0.45;
+.lg-crta {
+  display: inline-block;
+  width: 26px;
+  margin-right: 6px;
+  vertical-align: 3px;
+  border-top: 2px dashed var(--ink);
+  opacity: 0.6;
+}
+.vir {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.vir strong {
+  color: var(--ink);
 }
 
 /* spodaj */
@@ -915,25 +993,44 @@ h1 {
 }
 
 @media (max-width: 900px) {
-  .tag {
-    font-size: 0.55rem;
-    padding: 1px 3px;
-  }
   .zgoraj,
   .spodaj {
     grid-template-columns: 1fr;
   }
-  .stolpci {
-    height: 180px;
-    gap: 2px;
+  .g {
+    grid-template-rows: 190px auto;
+  }
+  .g-plos,
+  .g-ure {
+    gap: 1px;
+  }
+  .g-ure span {
+    font-size: 0.6rem;
+  }
+  .oznaka {
+    font-size: 0.55rem;
+  }
+  .crta-napis {
+    display: none; /* na ozkem zaslonu črto razloži legenda */
+  }
+  .oznaka.levo {
+  left: 0;
+  transform: none;
+  text-align: left;
+}
+.oznaka.desno {
+  left: auto;
+  right: 0;
+  transform: none;
+  text-align: right;
+}
+.oznaka b {
+    font-size: 0.8rem;
   }
   .okna li {
     flex-direction: column;
     gap: 2px;
   }
-  .viri div {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
+
 }
 </style>
