@@ -11,7 +11,8 @@ Vhod (data/ARSOhack/04_prostor/, prenese jih download_training_data.py):
 Izhod (frontend/public/assets/map/):
     teren.bin    Uint16, nadmorska višina v decimetrih, mreža 100 m (vrstice od severa proti jugu)
     teren.json   opis mreže, izhodišče, meja MOL, merilne postaje
-    stavbe.bin   Int16 zaporedje: [n, višina_dm, x0, y0, x1, y1, ...] za vsako stavbo (koordinate v 0,5 m od izhodišča)
+    stavbe.bin   Int16 zaporedje: [n, višina_dm, vrsta, x0, y0, x1, y1, ...] za vsako stavbo (koordinate v 0,5 m od izhodišča)
+                 vrsta: 0 navadna, 1 vrtec, 2 šola, 3 bolnišnica, 4 zdravstveni dom, 5 dom za starejše
     lokacije.json  občutljive lokacije z višino nad dnom kotline
 
 Vse koordinate so v D96/TM (EPSG:3794, metri), premaknjene v izhodišče = središče MOL (x proti vzhodu, y proti severu).
@@ -36,6 +37,11 @@ DNO = 278.0  # dno kotline (2. percentil DEM, glej README ARSOhack)
 UNIT = 0.5  # enota koordinat stavb v stavbe.bin (m)
 MIN_AREA = 20.0  # manjše stavbe (lope, garaže) izpustimo
 SIMPLIFY = 1.5  # poenostavitev tlorisov (m)
+VRSTE = {"vrtec": 1, "sola": 2, "bolnisnica": 3, "zdravstveni_dom": 4, "dom_za_starejse": 5}
+# raba stavbe v katastru (prevladujoca_raba_id) -> skupina in privzeta vrsta
+RABA = {43: ("izobrazevanje", "sola"), 24: ("izobrazevanje", "sola"), 44: ("zdravje", "bolnisnica"), 25: ("zdravje", "zdravstveni_dom")}
+SKUPINA = {"vrtec": "izobrazevanje", "sola": "izobrazevanje", "bolnisnica": "zdravje", "zdravstveni_dom": "zdravje",
+           "dom_za_starejse": "zdravje"}
 
 
 def main() -> None:
@@ -107,10 +113,37 @@ def main() -> None:
 
     # --- stavbe MOL ---
     st = pyogrio.read_dataframe(SRC / "kn_stavbe.gpkg", layer="stavbe_tlorisi", where="obcina_sifra='061'",
-                                columns=["stevilo_etaz", "visina_h1", "visina_h3"])
+                                columns=["stevilo_etaz", "visina_h1", "visina_h3", "prevladujoca_raba_id"])
+    st = st.reset_index(drop=True)
+    vrsta = np.zeros(len(st), dtype=int)
+
+    # katere stavbe so vrtci, šole, bolnišnice ...: točka OSM v stavbi ali najbližja stavba do 40 m
+    osm = gpd.read_file(SRC / "osm_obcutljive_lokacije.geojson").to_crs(3794)
+    tocke = osm[["kategorija", "geometry"]]
+    v = gpd.sjoin(tocke, st[["geometry"]], predicate="within", how="inner")
+    for kat, idx in zip(v.kategorija, v.index_right):
+        vrsta[idx] = VRSTE[kat]
+    ostale = tocke.drop(index=v.index.unique())
+    bl = gpd.sjoin_nearest(ostale, st[["geometry"]], max_distance=40, how="inner")
+    for kat, idx in zip(bl.kategorija, bl.index_right):
+        if vrsta[idx] == 0:
+            vrsta[idx] = VRSTE[kat]
+    # ostale stavbe z izobraževalno ali zdravstveno rabo: vrsta najbližje lokacije iste skupine (do 200 m), sicer privzeta
+    raba = st[(vrsta == 0) & st.prevladujoca_raba_id.isin(list(RABA))]
+    for skupina in ("izobrazevanje", "zdravje"):
+        sub = raba[raba.prevladujoca_raba_id.map(lambda r: RABA[int(r)][0]) == skupina]
+        pts = tocke[tocke.kategorija.map(SKUPINA) == skupina]
+        if sub.empty:
+            continue
+        nn = gpd.sjoin_nearest(sub[["prevladujoca_raba_id", "geometry"]], pts, max_distance=200, how="left")
+        nn = nn[~nn.index.duplicated()]
+        for idx, r, kat in zip(nn.index, nn.prevladujoca_raba_id, nn.kategorija):
+            vrsta[idx] = VRSTE[kat] if isinstance(kat, str) else VRSTE[RABA[int(r)][1]]
+
     out: list[int] = []
     n_st = 0
-    for geom, etaze, h1, h3 in zip(st.geometry, st.stevilo_etaz, st.visina_h1, st.visina_h3):
+    n_obc = 0
+    for geom, etaze, h1, h3, vr in zip(st.geometry, st.stevilo_etaz, st.visina_h1, st.visina_h3, vrsta):
         if geom is None or geom.is_empty:
             continue
         poly = max(geom.geoms, key=lambda g: g.area) if geom.geom_type == "MultiPolygon" else geom
@@ -130,6 +163,8 @@ def main() -> None:
             h = (etaze if etaze and 0 < etaze < 60 else 1) * 3.0 + 1.0
         out.append(len(ring))
         out.append(int(round(h * 10)))
+        out.append(int(vr))
+        n_obc += int(vr > 0)
         for x, y in ring:
             out.append(int(round((x - ox) / UNIT)))
             out.append(int(round((y - oy) / UNIT)))
@@ -137,7 +172,6 @@ def main() -> None:
     (OUT / "stavbe.bin").write_bytes(np.array(out, dtype="<i2").tobytes())
 
     # --- občutljive lokacije ---
-    osm = gpd.read_file(SRC / "osm_obcutljive_lokacije.geojson").to_crs(3794)
     lok = []
     for _, r in osm.iterrows():
         e, n = r.geometry.x, r.geometry.y
@@ -155,7 +189,7 @@ def main() -> None:
         })
     (OUT / "lokacije.json").write_text(json.dumps(lok, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
-    print(f"Teren {cols}×{rows} celic po {CELL:.0f} m, {n_st} stavb, {len(lok)} lokacij → {OUT}")
+    print(f"Teren {cols}×{rows} celic po {CELL:.0f} m, {n_st} stavb ({n_obc} občutljivih), {len(lok)} lokacij → {OUT}")
 
 
 if __name__ == "__main__":

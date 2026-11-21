@@ -2,12 +2,13 @@
 // 3D zemljevid Ljubljane: relief (Copernicus DEM), stavbe (GURS kataster), občutljive lokacije (OSM) in postaje ARSO.
 // Podatke pripravi backend/scripts/zemljevid_3d.py → public/assets/map/.
 // Drsnik »megla« dvigne plast hladnega zraka nad dnom kotline in pokaže, katere lokacije ostanejo pod njo.
+// Gumb »Zdaj v Ljubljani« nastavi meglo in njeno barvo po trenutnih podatkih (PM2.5, inverzija) in približa mesto.
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { useAirData } from '@/composables/useAirData'
-import { levelFor } from '@/lib/airQuality'
+import { levelFor, type AirLevel } from '@/lib/airQuality'
 
 interface Teren {
   vir: string
@@ -33,13 +34,15 @@ interface Lokacija {
   nadDnom: number
 }
 
-const KAT: Record<string, { ime: string; mn: string; color: string }> = {
-  vrtec: { ime: 'Vrtci', mn: 'vrtcev', color: '#ffb547' },
-  sola: { ime: 'Šole', mn: 'šol', color: '#5aa2ff' },
-  bolnisnica: { ime: 'Bolnišnice', mn: 'bolnišnic', color: '#e5484d' },
-  zdravstveni_dom: { ime: 'Zdravstveni domovi', mn: 'zdravstvenih domov', color: '#ff7eb6' },
-  dom_za_starejse: { ime: 'Domovi za starejše', mn: 'domov za starejše', color: '#b48cff' },
+// koda = vrsta stavbe v stavbe.bin (glej backend/scripts/zemljevid_3d.py)
+const KAT: Record<string, { ime: string; mn: string; color: string; koda: number }> = {
+  vrtec: { ime: 'Vrtci', mn: 'vrtcev', color: '#ffb547', koda: 1 },
+  sola: { ime: 'Šole', mn: 'šol', color: '#5aa2ff', koda: 2 },
+  bolnisnica: { ime: 'Bolnišnice', mn: 'bolnišnic', color: '#e5484d', koda: 3 },
+  zdravstveni_dom: { ime: 'Zdravstveni domovi', mn: 'zdravstvenih domov', color: '#ff7eb6', koda: 4 },
+  dom_za_starejse: { ime: 'Domovi za starejše', mn: 'domov za starejše', color: '#b48cff', koda: 5 },
 }
+const STAVBA = '#9db4c8' // barva navadnih stavb
 const KAT_IME: Record<string, string> = {
   vrtec: 'vrtec',
   sola: 'šola',
@@ -51,7 +54,7 @@ const KAT_IME: Record<string, string> = {
 const S = 1 / 100 // 1 enota = 100 m
 const VZ = 2.5 // povečanje višin, da se relief lepo vidi
 
-const { now } = useAirData()
+const { now, scene: sceneData, currentPm25 } = useAirData()
 
 const host = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
@@ -63,6 +66,19 @@ const lokacije = shallowRef<Lokacija[]>([])
 const tip = ref<{ x: number; y: number; l: Lokacija } | null>(null)
 const labels = ref<{ ime: string; pm: number | null; color: string; x: number; y: number; vis: boolean }[]>([])
 const vir = ref('')
+const live = ref(false) // način »Zdaj v Ljubljani«
+
+// trenutno stanje iz podatkov: PM2.5 in plast megle iz /api/scene (prva ura)
+const zdaj = computed(() => {
+  const u = sceneData.value?.ure[0]
+  const pm = currentPm25.value ?? u?.pm25 ?? null
+  if (pm == null) return null
+  const lvl: AirLevel = levelFor(pm)
+  const inv = u?.inverzija ?? false
+  const nadDnom = u ? Math.round(u.visina_megle_m - (dno.value ?? 278)) : 0
+  return { pm, lvl, inv, nadDnom, ura: u ? new Date(u.cas_utc).getHours() : new Date().getHours() }
+})
+const dno = ref<number | null>(null)
 
 const counts = computed(() => {
   const c: Record<string, { vse: number; pod: number }> = {}
@@ -87,8 +103,20 @@ let raf = 0
 let visible = true
 let io: IntersectionObserver | undefined
 let ro: ResizeObserver | undefined
-const pins: { mesh: THREE.InstancedMesh; items: Lokacija[]; kat: string }[] = []
-const pillars: { mesh: THREE.Mesh; id: string; ime: string; top: THREE.Vector3 }[] = []
+const pins: { mesh: THREE.InstancedMesh; items: Lokacija[]; kat: string; pos: THREE.Vector3[] }[] = []
+const buildingMats: Record<number, THREE.MeshLambertMaterial> = {}
+let pinScale = 1
+let fly: { from: THREE.Vector3; to: THREE.Vector3; tFrom: THREE.Vector3; tTo: THREE.Vector3; t0: number } | null = null
+// merilne postaje ARSO: prosojna kupola nad postajo, večja in v barvi kakovosti zraka, ko je PM2.5 višji
+interface Postaja {
+  id: string
+  ime: string
+  ground: THREE.Vector3
+  top: THREE.Vector3
+  pm: number | null
+  kupola: THREE.Mesh
+}
+const pillars: Postaja[] = []
 const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
 
@@ -116,6 +144,7 @@ async function build() {
     load<Lokacija[]>('lokacije.json', 'json'),
   ])
   vir.value = t.vir
+  dno.value = t.dno
   lokacije.value = lok
   const el = host.value
   if (!el) return
@@ -182,14 +211,17 @@ async function build() {
     scene.add(line)
   }
 
-  // --- stavbe: ena geometrija, stene + strehe ---
+  // --- stavbe: stene + strehe; ena geometrija za navadne in po ena za vsako vrsto občutljivih stavb ---
   {
     const a = new Int16Array(sb)
-    const verts: number[] = []
-    const ind: number[] = []
+    const groups: Record<number, { verts: number[]; ind: number[] }> = {}
     for (let i = 0; i < a.length; ) {
       const n = a[i++]!
       const h = a[i++]! / 10
+      const kod = a[i++]!
+      const grp = (groups[kod] ??= { verts: [], ind: [] })
+      const verts = grp.verts
+      const ind = grp.ind
       const ring: THREE.Vector2[] = []
       let cx = 0, cy = 0
       for (let j = 0; j < n; j++) {
@@ -209,11 +241,21 @@ async function build() {
       }
       for (const [p, q, r] of THREE.ShapeUtils.triangulateShape(ring, [])) ind.push(v0 + n + p!, v0 + n + q!, v0 + n + r!)
     }
-    const g = new THREE.BufferGeometry()
-    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3))
-    g.setIndex(ind)
-    const m = new THREE.MeshLambertMaterial({ color: '#9db4c8', flatShading: true, side: THREE.DoubleSide })
-    scene.add(new THREE.Mesh(g, m))
+    for (const [kod, grp] of Object.entries(groups)) {
+      const k = Number(kod)
+      const g = new THREE.BufferGeometry()
+      g.setAttribute('position', new THREE.Float32BufferAttribute(grp.verts, 3))
+      g.setIndex(grp.ind)
+      const info = Object.values(KAT).find((x) => x.koda === k)
+      const m = new THREE.MeshLambertMaterial({
+        color: info?.color ?? STAVBA,
+        emissive: info ? new THREE.Color(info.color).multiplyScalar(0.35) : new THREE.Color('#000000'),
+        flatShading: true,
+        side: THREE.DoubleSide,
+      })
+      buildingMats[k] = m
+      scene.add(new THREE.Mesh(g, m))
+    }
   }
 
   // --- megla (plast hladnega zraka nad dnom kotline) ---
@@ -239,27 +281,27 @@ async function build() {
     for (const [kat, info] of Object.entries(KAT)) {
       const items = lok.filter((l) => l.kat === kat)
       const mesh = new THREE.InstancedMesh(pinGeo, new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true }), items.length)
-      const mtx = new THREE.Matrix4()
-      items.forEach((l, i) => {
-        mtx.makeTranslation(l.x * S, Y(zAt(l.x, l.y)), -l.y * S)
-        mesh.setMatrixAt(i, mtx)
-        mesh.setColorAt(i, new THREE.Color(info.color))
-      })
+      const pos = items.map((l) => new THREE.Vector3(l.x * S, Y(zAt(l.x, l.y)), -l.y * S))
+      items.forEach((_, i) => mesh.setColorAt(i, new THREE.Color(info.color)))
       mesh.userData.kat = kat
       scene.add(mesh)
-      pins.push({ mesh, items, kat })
+      pins.push({ mesh, items, kat, pos })
     }
   }
 
-  // --- stolpci na merilnih postajah (višina = PM2.5 zdaj) ---
+  // --- merilne postaje (PM2.5 zdaj) ---
   for (const p of t.postaje) {
-    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1, 6), new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true }))
-    mesh.position.set(p.x * S, Y(zAt(p.x, p.y)), -p.y * S)
-    scene.add(mesh)
-    pillars.push({ mesh, id: p.id, ime: p.ime, top: new THREE.Vector3() })
+    const ground = new THREE.Vector3(p.x * S, Y(zAt(p.x, p.y)), -p.y * S)
+    const kupola = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshLambertMaterial({ flatShading: true, transparent: true, opacity: 0.45, depthWrite: false }),
+    )
+    scene.add(kupola)
+    pillars.push({ id: p.id, ime: p.ime, ground, top: new THREE.Vector3(), pm: null, kupola })
   }
   updatePillars()
   updateFog()
+  setPinScale(1)
 
   // --- kamera in upravljanje ---
   const target = new THREE.Vector3(-48, Y(300), 2) // središče mesta
@@ -307,6 +349,16 @@ function setActive(on: boolean) {
 function updateFog() {
   if (!fogMesh) return
   fogMesh.position.y = fog.value * VZ * S
+  // v načinu »zdaj« je megla obarvana po kakovosti zraka in gostejša, ko je zrak slabši
+  const mat = fogMesh.material as THREE.MeshBasicMaterial
+  const z = zdaj.value
+  if (live.value && z) {
+    mat.color.set('#cfd8e2').lerp(new THREE.Color(z.lvl.hex), 0.45)
+    mat.opacity = z.inv ? Math.min(0.75, 0.3 + z.pm / 120) : 0.12
+  } else {
+    mat.color.set('#cfd8e2')
+    mat.opacity = 0.42
+  }
   // lokacije nad meglo so bledejše
   for (const p of pins) {
     const c = new THREE.Color(KAT[p.kat]!.color)
@@ -318,24 +370,68 @@ function updateFog() {
 }
 watch(fog, updateFog)
 
+/** bucike so manjše, ko približaš zemljevid */
+function setPinScale(s: number) {
+  pinScale = s
+  const m = new THREE.Matrix4()
+  const sc = new THREE.Vector3(s, s, s)
+  const q = new THREE.Quaternion()
+  for (const p of pins) {
+    p.pos.forEach((v, i) => p.mesh.setMatrixAt(i, m.compose(v, q, sc)))
+    p.mesh.instanceMatrix.needsUpdate = true
+    p.mesh.computeBoundingSphere()
+  }
+}
+
+/** »Zdaj v Ljubljani«: megla po trenutnih podatkih in let kamere nad mesto */
+function toggleLive() {
+  live.value = !live.value
+  const z = zdaj.value
+  if (live.value && z) {
+    // ob inverziji je plast ujeta nizko; sicer se zrak meša in megle skoraj ni
+    fog.value = z.inv ? Math.max(0, Math.min(200, Math.round(z.nadDnom / 5) * 5)) : 0
+    flyTo(new THREE.Vector3(-90, 75, 95), new THREE.Vector3(-46, 0, 0))
+  } else {
+    fog.value = 30
+  }
+  updateFog()
+}
+function onFogInput() {
+  if (live.value) {
+    live.value = false
+    updateFog()
+  }
+}
+function flyTo(pos: THREE.Vector3, target: THREE.Vector3) {
+  if (!camera || !controls) return
+  fly = { from: camera.position.clone(), to: pos, tFrom: controls.target.clone(), tTo: target, t0: performance.now() }
+}
+
 function updatePillars() {
   const st = now.value?.postaje ?? []
   for (const p of pillars) {
     const m = st.find((s) => s.id === p.id || s.ime.includes(p.ime))
-    const pm = m?.pm25 ?? null
-    const h = Math.max(1, (pm ?? 5) * 0.45)
-    p.mesh.scale.y = h
-    p.mesh.position.y = p.mesh.userData.y0 ?? (p.mesh.userData.y0 = p.mesh.position.y)
-    p.mesh.position.y += h / 2
-    ;(p.mesh.material as THREE.MeshLambertMaterial).color.set(levelFor(pm ?? 0).hex)
-    p.top.set(p.mesh.position.x, p.mesh.position.y + h / 2 + 1, p.mesh.position.z)
-    p.mesh.userData.pm = pm
+    p.pm = m?.pm25 ?? null
+    // polmer kupole raste s PM2.5
+    const r = 1.8 + (p.pm ?? 5) * 0.14
+    p.kupola.scale.setScalar(r)
+    p.kupola.position.copy(p.ground)
+    ;(p.kupola.material as THREE.MeshLambertMaterial).color.set(levelFor(p.pm ?? 0).hex)
+    p.top.set(p.ground.x, p.ground.y + r + 1, p.ground.z)
   }
 }
 watch(now, updatePillars)
 
 watch(show, () => {
   for (const p of pins) p.mesh.visible = show[p.kat] ?? true
+  // skrite vrste: stavbe dobijo navadno barvo
+  for (const [kat, info] of Object.entries(KAT)) {
+    const m = buildingMats[info.koda]
+    if (!m) continue
+    const on = show[kat] ?? true
+    m.color.set(on ? info.color : STAVBA)
+    m.emissive.set(on ? new THREE.Color(info.color).multiplyScalar(0.35) : new THREE.Color('#000000'))
+  }
 })
 
 function onPointer(e: PointerEvent) {
@@ -355,13 +451,23 @@ function onPointer(e: PointerEvent) {
 function loop() {
   raf = requestAnimationFrame(loop)
   if (!visible || !renderer || !scene || !camera || !controls) return
+  if (fly) {
+    const k = Math.min(1, (performance.now() - fly.t0) / 1400)
+    const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2
+    camera.position.lerpVectors(fly.from, fly.to, e)
+    controls.target.lerpVectors(fly.tFrom, fly.tTo, e)
+    if (k >= 1) fly = null
+  }
   controls.update()
+  // bucike: polna velikost od daleč, manjše od blizu
+  const s = Math.min(1, Math.max(0.22, camera.position.distanceTo(controls.target) / 190))
+  if (Math.abs(s - pinScale) > 0.03) setPinScale(s)
   renderer.render(scene, camera)
   // oznake postaj
   const el = host.value!
   labels.value = pillars.map((p) => {
     const v = p.top.clone().project(camera!)
-    const pm = p.mesh.userData.pm as number | null
+    const pm = p.pm
     return {
       ime: p.ime,
       pm,
@@ -397,7 +503,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="map">
+  <div class="map" :class="{ 'is-live': live }">
     <div ref="host" class="canvas" />
 
     <div v-if="loading" class="state">Nalagam 3D model Ljubljane …</div>
@@ -430,17 +536,37 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <button class="btn explore" @click="setActive(!active)">
-        {{ active ? '✓ Končaj' : '🖐 Raziskuj zemljevid' }}
-      </button>
+      <div class="actions">
+        <button class="btn explore" :class="{ on: live }" :disabled="!zdaj" @click="toggleLive">
+          {{ live ? 'Zapri' : 'Zdaj v Ljubljani' }}
+        </button>
+        <button class="btn explore" @click="setActive(!active)">
+          {{ active ? 'Končaj' : 'Raziskuj zemljevid' }}
+        </button>
+      </div>
+
+      <!-- trenutno stanje -->
+      <div v-if="live && zdaj" class="now" :style="{ '--c': zdaj.lvl.color }">
+        <span class="k">Ljubljana zdaj · {{ String(zdaj.ura).padStart(2, '0') }}:00</span>
+        <span class="v"><strong>{{ zdaj.pm }}</strong> µg/m³ PM2.5 · {{ zdaj.lvl.label }}</span>
+        <span>
+          {{
+            zdaj.inv
+              ? `🌫️ Inverzija: hladen zrak je ujet do približno ${fog} m nad dnom kotline.`
+              : '🌬️ Zrak se meša, megle na dnu kotline ni.'
+          }}
+        </span>
+        <span class="kids">{{ zdaj.lvl.kids }}</span>
+      </div>
 
       <!-- megla -->
       <div class="fogbox">
         <label>
           <span>🌫️ Megla ob inverziji: <strong>{{ fog }} m</strong> nad dnom kotline</span>
-          <input v-model.number="fog" type="range" min="0" max="200" step="5" aria-label="Višina megle" />
+          <input v-model.number="fog" type="range" min="0" max="200" step="5" aria-label="Višina megle" @input="onFogInput" />
         </label>
-        <p>
+        <p v-if="live && zdaj && !zdaj.inv">Zdaj ni inverzije, zato se onesnažen zrak ne ujame na dnu kotline.</p>
+        <p v-else>
           Pod meglo je <strong>{{ podSkupaj }}</strong> od {{ lokacije.length }} lokacij:
           <template v-for="(info, k, i) in KAT" :key="k">
             <span v-if="counts[k]?.pod">{{ i ? ' · ' : '' }}{{ counts[k]?.pod }} {{ info.mn }}</span>
@@ -524,16 +650,65 @@ onBeforeUnmount(() => {
   transform: rotate(45deg);
   background: var(--c);
 }
-.explore {
+.actions {
   position: absolute;
   top: 14px;
   right: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.explore {
   min-height: 40px;
   padding: 8px 16px;
   font-size: 0.9rem;
   background: rgba(10, 18, 30, 0.85);
   color: #eaf2fb;
   border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.explore.on {
+  background: #eaf2fb;
+  color: #05080f;
+}
+.explore:disabled {
+  opacity: 0.5;
+}
+.now {
+  position: absolute;
+  top: 120px;
+  right: 14px;
+  display: grid;
+  gap: 2px;
+  max-width: 300px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(10, 18, 30, 0.88);
+  border: 1px solid var(--c);
+  color: #c4d3e2;
+  font-size: 0.85rem;
+  backdrop-filter: blur(8px);
+}
+.now .k {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--c);
+}
+.now .v {
+  color: #eaf2fb;
+  font-weight: 700;
+}
+.now .v strong {
+  font-family: var(--font-head);
+  font-size: 1.8rem;
+  color: var(--c);
+}
+.now .kids {
+  margin-top: 4px;
+  font-weight: 700;
+  color: #eaf2fb;
 }
 .fogbox {
   position: absolute;
@@ -623,9 +798,25 @@ onBeforeUnmount(() => {
     font-size: 0.75rem;
     padding: 4px 9px;
   }
-  .explore {
+  .actions {
     left: 14px;
-    right: auto;
+    right: 14px;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .explore {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+  }
+  .map.is-live .fogbox {
+    display: none; /* na telefonu v načinu »zdaj« pokažemo samo kartico s stanjem */
+  }
+  .now {
+    top: auto;
+    bottom: 14px;
+    left: 14px;
+    right: 14px;
+    max-width: none;
   }
   .fogbox {
     right: 14px;
