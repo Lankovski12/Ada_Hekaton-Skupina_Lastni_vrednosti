@@ -26,7 +26,7 @@ export const DEJSTVA = {
   },
   dim: {
     naslov: 'Dim iz dimnika!',
-    besedilo: 'Dim doda smog. Kurjenje z drvmi je pozimi eden glavnih virov delcev v Ljubljani.',
+    besedilo: 'Dim iz dimnikov doda smog. Pozimi veliko delcev v Ljubljani prispevajo peči na drva v hišah.',
   },
 } as const
 

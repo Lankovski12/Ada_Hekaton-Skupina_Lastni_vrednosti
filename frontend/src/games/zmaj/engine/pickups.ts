@@ -4,6 +4,7 @@
 // - dimnik: dim zgosti smog okoli (otrok vidi, od kod smog prihaja)
 // - krog z vprašajem: vprašanje, pravilen odgovor = več časa
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DEZ, DIM, SVET, VETER, VPRASANJA } from '../config'
 import type { Dragon } from './dragon'
 import type { Smog } from './smog'
@@ -151,14 +152,14 @@ class Chimney {
   z = 0
   private base = 0
   private height = 400
+  private top = 76 // višina vrha dimnika nad tlemi (svet)
 
   constructor() {
-    const brick = lambert('#9b4b36')
-    const stack = new THREE.Mesh(new THREE.BoxGeometry(22, 70, 22), brick)
+    // začasen kvader, dokler se ne naloži model (ali če ga ni)
+    const stack = new THREE.Mesh(new THREE.BoxGeometry(22, 70, 22), lambert('#9b4b36'))
     stack.position.y = 35
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(28, 8, 28), lambert('#6e3324'))
-    cap.position.y = 72
-    this.obj.add(stack, cap)
+    stack.name = 'nadomestek'
+    this.obj.add(stack)
     this.sp = new Float32Array(this.n * 3)
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(this.sp, 3))
@@ -169,10 +170,19 @@ class Chimney {
     this.smoke.frustumCulled = false
   }
 
+  /** Zamenja kvader z modelom dimnika. */
+  setModel(model: THREE.Object3D, top: number) {
+    const old = this.obj.getObjectByName('nadomestek')
+    if (old) this.obj.remove(old)
+    this.obj.add(model)
+    this.top = top
+    this.base = this.obj.position.y + top
+  }
+
   place(x: number, z: number, groundY: number, topY: number) {
     this.x = x
     this.z = z
-    this.base = groundY + 76
+    this.base = groundY + this.top
     this.height = Math.max(200, topY - groundY + 120 * V)
     this.obj.position.set(x, groundY, z)
     for (let i = 0; i < this.n; i++) this.sp.set([x, this.base + (i / this.n) * this.height, z], i * 3)
@@ -252,6 +262,28 @@ export class Pickups {
     for (const c of this.clouds) this.group.add(c.obj)
     for (const r of this.rings) this.group.add(r.obj)
     for (const c of this.chimneys) this.group.add(c.obj, c.smoke)
+    this.loadChimneyModel()
+  }
+
+  /** Model dimnika (public/assets/models/dimnik.glb): ~1,17 enote visok, središče v izhodišču. */
+  private async loadChimneyModel() {
+    try {
+      const gltf = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}assets/models/dimnik.glb`)
+      const src = gltf.scene
+      const box = new THREE.Box3().setFromObject(src)
+      const height = DIM.visina * V // svet
+      const scale = height / (box.max.y - box.min.y)
+      for (const c of this.chimneys) {
+        const m = src.clone(true)
+        m.scale.setScalar(scale)
+        m.position.y = -box.min.y * scale // dno na tleh
+        // vrh dimnika (brez kepe dima na modelu) je pri ~85 % višine
+        c.setModel(m, height * 0.85)
+        c.place(c.x, c.z, c.obj.position.y, this.smog.topY)
+      }
+    } catch {
+      // ostane preprost kvader
+    }
   }
 
   /** Nova razporeditev za novo igro (po setConditions, ker je odvisna od smoga). */

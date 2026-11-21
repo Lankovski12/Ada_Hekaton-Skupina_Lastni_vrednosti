@@ -41,6 +41,7 @@ export const DIM = {
   polmer: 700, // m
   kolicina: 0.35, // koliko smoga doda okoli dimnika
   kazen: 0.05, // - 5 % čistega neba
+  visina: 130, // m – višina modela dimnika (v igri še povečano z vex), da je od daleč viden
 }
 
 /** Vprašanja: lebdeči krogi z vprašajem. Pravilen odgovor = več časa in sunek vetra. */

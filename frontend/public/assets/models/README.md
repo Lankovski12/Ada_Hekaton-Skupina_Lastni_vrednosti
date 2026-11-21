@@ -3,6 +3,7 @@
 | Datoteka | Kaj | Vir / licenca |
 |---|---|---|
 | `zmaj.glb` | zmajček za igro (stisnjen: tekstura 1024 px WebP, ~20.000 trikotnikov) | TODO: vpiši avtorja in licenco modela |
+| `dimnik.glb` | dimnik v igri (stisnjen s 13 MB: tekstura 1024 px WebP, 7.500 trikotnikov) | TODO: vpiši avtorja in licenco modela |
 
 Model nima okostja – krila mahajo s shaderjem v `src/games/zmaj/engine/dragon.ts`.
 Stiskanje novega modela:
