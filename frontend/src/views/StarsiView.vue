@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Zavihek »Blogi«: drseča zgodba iz naših podatkov (isti slog kot Domov), na koncu podrobnosti in gumb na igre.
-//   1. Kotlina z meglo   2. 10 let meritev ARSO (ARSOhack)   3. Napoved za 48 ur   4. Podrobnosti
+//   1. Kotlina z meglo   2. 10 let meritev ARSO (ARSOhack)   3. Napoved za 48 ur   4. 3D zemljevid   5. Podrobnosti
+import { defineAsyncComponent } from 'vue'
 import { RouterLink } from 'vue-router'
 import KotlinaStory from '@/components/stories/KotlinaStory.vue'
 import ZgodovinaStory from '@/components/stories/ZgodovinaStory.vue'
@@ -10,10 +11,11 @@ import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
 
-const { now, facts, places, origin } = useAirData()
-const { profile, sensitivity } = useProfile()
+// 3D zemljevid (three.js) se naloži šele, ko odpreš Blogi
+const Zemljevid3D = defineAsyncComponent(() => import('@/scenes/Zemljevid3D.vue'))
 
-const placeIcon: Record<string, string> = { vrtec: '🧸', sola: '🏫', bolnisnica: '🏥' }
+const { now, facts, origin } = useAirData()
+const { profile, sensitivity } = useProfile()
 </script>
 
 <template>
@@ -32,6 +34,17 @@ const placeIcon: Record<string, string> = { vrtec: '🧸', sola: '🏫', bolnisn
     <KotlinaStory />
     <ZgodovinaStory />
     <NapovedStory />
+
+    <!-- 3D zemljevid občutljivih lokacij -->
+    <section class="container mapsec">
+      <span class="kicker">Zemljevid</span>
+      <h2>Kje so vrtci, šole in bolnišnice?</h2>
+      <p class="lead">
+        3D model Ljubljane iz katastra stavb in reliefa. Premakni drsnik megle in poglej, katere lokacije ostanejo pod
+        njo, ko se ob inverziji hladen zrak ujame na dnu kotline. Pokaži na buciko za podrobnosti.
+      </p>
+      <Zemljevid3D />
+    </section>
 
     <!-- podrobnosti (zemljevid pride kasneje) -->
     <section class="container details">
@@ -66,14 +79,6 @@ const placeIcon: Record<string, string> = { vrtec: '🧸', sola: '🏫', bolnisn
             </li>
           </ul>
         </div>
-
-        <div class="card span2">
-          <h3>Občutljive lokacije</h3>
-          <p class="muted">Vrtci, šole in bolnišnice (OSM). Tu pride zemljevid.</p>
-          <div class="places">
-            <span v-for="p in places" :key="p.ime" class="pill">{{ placeIcon[p.tip] ?? '📍' }} {{ p.ime }}</span>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -104,6 +109,14 @@ const placeIcon: Record<string, string> = { vrtec: '🧸', sola: '🏫', bolnisn
 .intro p {
   max-width: 560px;
 }
+.mapsec {
+  --lvl: #ffb547;
+  padding-top: 80px;
+}
+.mapsec .lead {
+  max-width: 720px;
+  margin-bottom: 20px;
+}
 .details {
   --lvl: #5aa2ff;
   padding-top: 80px;
@@ -131,9 +144,6 @@ const placeIcon: Record<string, string> = { vrtec: '🧸', sola: '🏫', bolnisn
 .card {
   background: rgba(10, 18, 30, 0.62);
   border-color: rgba(255, 255, 255, 0.08);
-}
-.span2 {
-  grid-column: span 2;
 }
 .list,
 .facts {
@@ -171,17 +181,9 @@ const placeIcon: Record<string, string> = { vrtec: '🧸', sola: '🏫', bolnisn
   color: var(--lvl);
   margin-right: 6px;
 }
-.places {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 @media (max-width: 720px) {
   .grid {
     grid-template-columns: 1fr;
-  }
-  .span2 {
-    grid-column: auto;
   }
 }
 </style>
