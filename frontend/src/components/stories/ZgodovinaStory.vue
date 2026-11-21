@@ -128,7 +128,7 @@ const max = computed(() => Math.max(...(step.value.bars ?? []).map((b) => b.valu
 // koledar: stolpec = teden, vrstica = dan v tednu (pon–ned)
 const zamik = (new Date(z.who.prviDan).getDay() + 6) % 7
 const dnevi = z.who.dnevno as (number | null)[]
-const dayColor = (v: number | null) => (v == null ? 'transparent' : v > 15 ? levelFor(v).color : 'rgba(255,255,255,0.12)')
+const dayColor = (v: number | null) => (v == null ? 'transparent' : v > 15 ? levelFor(v).color : 'var(--cal-empty)')
 </script>
 
 <template>
@@ -176,7 +176,7 @@ const dayColor = (v: number | null) => (v == null ? 'transparent' : v > 15 ? lev
   --chart-h: clamp(200px, 40vh, 340px);
 }
 figcaption {
-  color: #9fb3c8;
+  color: var(--scene-muted);
   font-weight: 700;
   font-size: 0.9rem;
   margin-bottom: 18px;
@@ -226,14 +226,14 @@ figcaption {
   font-family: var(--font-head);
   font-size: 1.1rem;
   white-space: nowrap;
-  color: #eaf2fb;
+  color: var(--scene-ink);
 }
 .lab {
   height: 24px;
   padding-top: 6px;
   text-align: center;
   font-size: 0.75rem;
-  color: #9fb3c8;
+  color: var(--scene-muted);
   white-space: nowrap;
   overflow: visible;
 }
@@ -264,16 +264,16 @@ figcaption {
 }
 .big .unit {
   font-weight: 800;
-  color: #c4d3e2;
+  color: var(--scene-text);
 }
 .big .lim {
-  color: #8197ad;
+  color: var(--scene-muted);
   font-size: 0.9rem;
 }
 .source {
   margin-top: 16px !important;
   font-size: 0.75rem !important;
-  color: #8197ad !important;
+  color: var(--scene-muted) !important;
 }
 @media (max-width: 720px) {
   .chart {

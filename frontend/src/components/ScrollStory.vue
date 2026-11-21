@@ -73,7 +73,7 @@ onBeforeUnmount(() => io?.disconnect())
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--dot-off);
   transition: transform 0.3s, background 0.3s;
 }
 .dots li.on {
@@ -97,8 +97,9 @@ onBeforeUnmount(() => io?.disconnect())
   max-width: 420px;
   padding: 24px 26px;
   border-radius: var(--radius);
-  background: rgba(10, 18, 30, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--panel-shadow);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -117,7 +118,7 @@ onBeforeUnmount(() => io?.disconnect())
     padding: 0 16px 140px;
   }
   .step-card.plain {
-    background: rgba(10, 18, 30, 0.5);
+    background: var(--panel);
   }
   .dots {
     right: 10px;

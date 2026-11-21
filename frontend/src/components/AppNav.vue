@@ -11,7 +11,6 @@ const links = [
   { to: '/igre', label: 'Igre' },
   { to: '/zemljevid', label: 'Zemljevid' },
   { to: '/grafi', label: 'Podatki' },
-  { to: '/nastavitve', label: 'Profil' },
 ]
 </script>
 
@@ -43,7 +42,7 @@ const links = [
   top: 0;
   z-index: 20;
   backdrop-filter: blur(12px);
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
   border-bottom: 1px solid var(--line);
 }
 .bar {
@@ -63,9 +62,6 @@ const links = [
   text-decoration: none;
   white-space: nowrap;
 }
-.logo-dot {
-  font-size: 1.5rem;
-}
 .desktop {
   display: flex;
   gap: 4px;
@@ -75,12 +71,20 @@ const links = [
   padding: 8px 14px;
   border-radius: 999px;
   color: var(--ink-soft);
-  font-weight: 700;
+  font-weight: 800;
   text-decoration: none;
+  transition:
+    background 0.2s,
+    transform 0.2s;
 }
-.desktop a.router-link-exact-active {
+.desktop a:hover {
   background: var(--bg-soft);
-  color: var(--ink);
+  transform: translateY(-1px);
+}
+.desktop a.router-link-active:not([href='/']),
+.desktop a.router-link-exact-active {
+  background: var(--ink);
+  color: var(--bg);
 }
 .points {
   font-weight: 800;
@@ -110,7 +114,7 @@ const links = [
     right: 0;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     background: var(--card);
     border-top: 1px solid var(--line);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));

@@ -54,7 +54,7 @@ const KAT: Record<string, { ime: string; mn: string; color: string; koda: number
   zdravstveni_dom: { ime: 'Zdravstveni domovi', mn: 'zdravstvenih domov', color: '#ff7eb6', koda: 4 },
   dom_za_starejse: { ime: 'Domovi za starejše', mn: 'domov za starejše', color: '#b48cff', koda: 5 },
 }
-const STAVBA = '#9db4c8' // barva navadnih stavb
+let STAVBA = '#9db4c8' // barva navadnih stavb (nastavi se po temi)
 const KAT_IME: Record<string, string> = {
   vrtec: 'vrtec',
   sola: 'šola',
@@ -193,12 +193,28 @@ async function load<T>(path: string, kind: 'json' | 'bin'): Promise<T> {
   return (kind === 'json' ? r.json() : r.arrayBuffer()) as Promise<T>
 }
 
+// barve teme (svetla: pastelna maketa, temna: nočna kotlina)
+const tema = () => {
+  const dark = document.documentElement.dataset.theme === 'dark'
+  const css = getComputedStyle(document.documentElement)
+  return {
+    dark,
+    bg: css.getPropertyValue('--scene-bg').trim() || (dark ? '#05080f' : '#f8f5ee'),
+    muted: css.getPropertyValue('--scene-muted').trim() || '#75809a',
+    teren: dark ? ['#34566e', '#2a4a5a', '#3d5f55'] : ['#e3ecd5', '#b9d4a8', '#86b38c'],
+    stavba: dark ? '#9db4c8' : '#fbf8f2',
+    megla: dark ? '#cfd8e2' : '#ffffff',
+    tla: dark ? '#0b1422' : '#9aa79a',
+  }
+}
+let T = { dark: false, bg: '#f8f5ee', muted: '#75809a', teren: ['#e3ecd5', '#b9d4a8', '#86b38c'], stavba: '#fbf8f2', megla: '#ffffff', tla: '#9aa79a' }
+
 function terrainColor(z: number, t: Teren): THREE.Color {
-  // dno kotline modro-sivo, hribi temnejši zeleno-modri – kot gore v sceni Kotlina
+  // dno kotline svetlo, hribi temnejši – kot gore v sceni Kotlina
   const k = Math.min(1, Math.max(0, (z - t.dno) / 350))
-  const low = new THREE.Color('#34566e')
-  const mid = new THREE.Color('#2a4a5a')
-  const high = new THREE.Color('#3d5f55')
+  const low = new THREE.Color(T.teren[0])
+  const mid = new THREE.Color(T.teren[1])
+  const high = new THREE.Color(T.teren[2])
   return k < 0.3 ? low.lerp(mid, k / 0.3) : mid.clone().lerp(high, (k - 0.3) / 0.7)
 }
 
@@ -214,6 +230,8 @@ async function build() {
   lokacije.value = lok
   const el = host.value
   if (!el) return
+  T = tema()
+  STAVBA = T.stavba
 
   const Z = new Uint16Array(tb)
   const { stolpci: C, vrstice: R, celica: cell } = t
@@ -232,9 +250,9 @@ async function build() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   el.appendChild(renderer.domElement)
   scene = new THREE.Scene()
-  scene.fog = new THREE.Fog('#05080f', 170, 380)
+  scene.fog = new THREE.Fog(T.bg, 170, 380)
   camera = new THREE.PerspectiveCamera(40, 1, 1, 1000)
-  scene.add(new THREE.HemisphereLight('#cfe3ff', '#0b1422', 1.6))
+  scene.add(new THREE.HemisphereLight('#cfe3ff', T.tla, T.dark ? 1.6 : 1.9))
   const sun = new THREE.DirectionalLight('#fff4dd', 2.2)
   sun.position.set(-80, 120, 60)
   scene.add(sun)
@@ -271,7 +289,7 @@ async function build() {
     const pts = t.meja.map(([x, y]) => new THREE.Vector3(x * S, Y(zAt(x, y)) + 0.4, -y * S))
     const line = new THREE.LineLoop(
       new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineDashedMaterial({ color: '#9fb3c8', dashSize: 1.2, gapSize: 0.8, transparent: true, opacity: 0.6 }),
+      new THREE.LineDashedMaterial({ color: T.muted, dashSize: 1.2, gapSize: 0.8, transparent: true, opacity: 0.6 }),
     )
     line.computeLineDistances()
     scene.add(line)
@@ -332,7 +350,7 @@ async function build() {
     g.translate((t.zahod * S + w / 2), 0, -(t.sever * S - d / 2))
     fogMesh = new THREE.Mesh(
       g,
-      new THREE.MeshBasicMaterial({ color: '#cfd8e2', transparent: true, opacity: 0.42, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: T.megla, transparent: true, opacity: 0.42, depthWrite: false }),
     )
     scene.add(fogMesh)
   }
@@ -419,17 +437,17 @@ function updateFog() {
   const mat = fogMesh.material as THREE.MeshBasicMaterial
   const z = stanje.value
   if (z) {
-    mat.color.set('#cfd8e2').lerp(new THREE.Color(z.lvl.hex), 0.45)
+    mat.color.set(T.megla).lerp(new THREE.Color(z.lvl.hex), 0.45)
     mat.opacity = z.inv ? Math.min(0.75, 0.3 + z.pm / 120) : 0.12
   } else {
-    mat.color.set('#cfd8e2')
-    mat.opacity = 0.42
+    mat.color.set(T.megla)
+    mat.opacity = T.dark ? 0.42 : 0.5
   }
   // lokacije nad meglo so bledejše
   for (const p of pins) {
     const c = new THREE.Color(KAT[p.kat]!.color)
     p.items.forEach((l, i) => {
-      p.mesh.setColorAt(i, l.nadDnom <= fog.value ? c : c.clone().lerp(new THREE.Color('#05080f'), 0.6))
+      p.mesh.setColorAt(i, l.nadDnom <= fog.value ? c : c.clone().lerp(new THREE.Color(T.bg), 0.6))
     })
     if (p.mesh.instanceColor) p.mesh.instanceColor.needsUpdate = true
   }
@@ -761,8 +779,9 @@ onBeforeUnmount(() => {
   min-height: 460px;
   border-radius: var(--radius);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: radial-gradient(ellipse at 50% 40%, #0d1a2a, #05080f 70%);
+  border: 1px solid var(--panel-line);
+  background: radial-gradient(ellipse at 50% 30%, var(--sky-bottom), var(--scene-bg) 75%);
+  box-shadow: var(--panel-shadow);
 }
 .canvas {
   position: absolute;
@@ -776,7 +795,7 @@ onBeforeUnmount(() => {
   inset: 0;
   display: grid;
   place-items: center;
-  color: #9fb3c8;
+  color: var(--scene-muted);
   font-weight: 700;
 }
 .legend {
@@ -794,16 +813,16 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(10, 18, 30, 0.75);
-  color: #eaf2fb;
+  border: 1px solid var(--panel-line);
+  background: var(--panel);
+  color: var(--scene-ink);
   font-size: 0.85rem;
   font-weight: 700;
   backdrop-filter: blur(6px);
   transition: opacity 0.2s;
 }
 .chip small {
-  color: #9fb3c8;
+  color: var(--scene-muted);
 }
 .chip.off {
   opacity: 0.4;
@@ -825,16 +844,17 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 .explore {
+  --btn: var(--line);
   min-height: 40px;
   padding: 8px 16px;
   font-size: 0.9rem;
-  background: rgba(10, 18, 30, 0.85);
-  color: #eaf2fb;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--panel);
+  color: var(--scene-ink);
+  border: 1px solid var(--panel-line);
 }
 .explore.on {
-  background: #eaf2fb;
-  color: #05080f;
+  background: var(--scene-ink);
+  color: var(--scene-bg);
 }
 .explore:disabled {
   opacity: 0.5;
@@ -848,9 +868,9 @@ onBeforeUnmount(() => {
   max-width: 300px;
   padding: 14px 16px;
   border-radius: var(--radius-sm);
-  background: rgba(10, 18, 30, 0.88);
+  background: var(--panel);
   border: 1px solid var(--c);
-  color: #c4d3e2;
+  color: var(--scene-text);
   font-size: 0.85rem;
   backdrop-filter: blur(8px);
 }
@@ -862,7 +882,7 @@ onBeforeUnmount(() => {
   color: var(--c);
 }
 .now .v {
-  color: #eaf2fb;
+  color: var(--scene-ink);
   font-weight: 700;
 }
 .now .v strong {
@@ -884,9 +904,9 @@ onBeforeUnmount(() => {
   height: 28px;
   flex: none;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.06);
-  color: #eaf2fb;
+  border: 1px solid var(--panel-line);
+  background: color-mix(in srgb, var(--scene-ink) 6%, transparent);
+  color: var(--scene-ink);
   font-size: 1.1rem;
   font-weight: 800;
   line-height: 1;
@@ -898,7 +918,7 @@ onBeforeUnmount(() => {
   flex: 1;
   text-align: center;
   font-weight: 700;
-  color: #c4d3e2;
+  color: var(--scene-text);
 }
 .now .mini strong {
   margin-left: 6px;
@@ -915,9 +935,9 @@ onBeforeUnmount(() => {
   min-width: 0;
   padding: 6px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.06);
-  color: #eaf2fb;
+  border: 1px solid var(--panel-line);
+  background: color-mix(in srgb, var(--scene-ink) 6%, transparent);
+  color: var(--scene-ink);
   font: inherit;
   font-weight: 700;
   color-scheme: dark;
@@ -926,9 +946,9 @@ onBeforeUnmount(() => {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.06);
-  color: #eaf2fb;
+  border: 1px solid var(--panel-line);
+  background: color-mix(in srgb, var(--scene-ink) 6%, transparent);
+  color: var(--scene-ink);
   font-size: 1.2rem;
   line-height: 1;
 }
@@ -936,7 +956,7 @@ onBeforeUnmount(() => {
   opacity: 0.35;
 }
 .now .date {
-  color: #9fb3c8;
+  color: var(--scene-muted);
   font-weight: 700;
 }
 .now .date::first-letter {
@@ -946,7 +966,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 .now .note {
-  color: #8197ad;
+  color: var(--scene-muted);
 }
 .quick {
   display: flex;
@@ -960,13 +980,13 @@ onBeforeUnmount(() => {
 }
 .station small {
   margin-left: 3px;
-  color: #9fb3c8;
+  color: var(--scene-muted);
   font-weight: 700;
 }
 .now .kids {
   margin-top: 4px;
   font-weight: 700;
-  color: #eaf2fb;
+  color: var(--scene-ink);
 }
 .fogbox {
   position: absolute;
@@ -975,8 +995,8 @@ onBeforeUnmount(() => {
   max-width: 460px;
   padding: 14px 16px;
   border-radius: var(--radius-sm);
-  background: rgba(10, 18, 30, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
   backdrop-filter: blur(8px);
 }
 .fogbox label {
@@ -986,24 +1006,24 @@ onBeforeUnmount(() => {
   font-size: 0.9rem;
 }
 .fogbox input {
-  accent-color: #cfd8e2;
+  accent-color: var(--brand);
 }
 .fogbox p {
   margin: 4px 0 0;
   font-size: 0.85rem;
-  color: #c4d3e2;
+  color: var(--scene-text);
 }
 .fogbox small {
-  color: #8197ad;
+  color: var(--scene-muted);
 }
 .station {
   position: absolute;
   transform: translate(-50%, -100%);
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(10, 18, 30, 0.85);
+  background: var(--panel);
   border: 1px solid var(--c);
-  color: #eaf2fb;
+  color: var(--scene-ink);
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
@@ -1020,15 +1040,15 @@ onBeforeUnmount(() => {
   max-width: 260px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: rgba(10, 18, 30, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #c4d3e2;
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  color: var(--scene-text);
   font-size: 0.8rem;
   pointer-events: none;
   z-index: 3;
 }
 .tip strong {
-  color: #eaf2fb;
+  color: var(--scene-ink);
   font-size: 0.95rem;
 }
 .tip .under {
@@ -1042,7 +1062,7 @@ onBeforeUnmount(() => {
 .credit {
   margin-top: 8px !important;
   font-size: 0.75rem !important;
-  color: #8197ad !important;
+  color: var(--scene-muted) !important;
 }
 @media (max-width: 720px) {
   .map {

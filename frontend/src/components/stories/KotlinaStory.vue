@@ -92,7 +92,7 @@ onBeforeUnmount(() => window.clearInterval(timer))
         <Kotlina v-model:hour="hour" :scene="scene" bare :controls="false" />
       </div>
       <div class="readout" aria-live="polite">
-        <span class="num">{{ ure[hour]?.pm25 }}</span>
+        <span class="num">{{ ure[hour] ? Math.round(ure[hour]!.pm25) : '–' }}</span>
         <span class="unit">µg/m³ PM2.5</span>
         <span class="lvl">{{ clock }} · {{ ure[hour]?.inverzija ? 'inverzija – zrak je ujet' : 'zrak se meša' }}</span>
         <span class="lvl src">{{
@@ -111,7 +111,7 @@ onBeforeUnmount(() => window.clearInterval(timer))
           {{ playing ? '⏸ Ustavi' : '▶ Predvajaj dan' }}
         </button>
         <input v-model.number="hour" type="range" min="0" :max="ure.length - 1" aria-label="Ura" />
-        <span>{{ clock }} · {{ ure[hour]?.pm25 }} µg/m³ · {{ level.kids }}</span>
+        <span>{{ clock }} · {{ ure[hour] ? Math.round(ure[hour]!.pm25) : '–' }} µg/m³ · {{ level.kids }}</span>
       </div>
     </template>
   </ScrollStory>
@@ -123,16 +123,19 @@ onBeforeUnmount(() => window.clearInterval(timer))
   inset: 0;
 }
 .kot-stage::after {
-  /* mehak prehod v temno ozadje zgoraj in spodaj */
+  /* mehak prehod v ozadje strani zgoraj (spodaj ne, da so napisi na temnem mestu čitljivi) */
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(#05080f 0, transparent 18%, transparent 85%, #05080f 100%);
+  background: linear-gradient(var(--scene-bg) 0, transparent 18%);
 }
 @media (max-width: 720px) {
   .kot-stage {
     bottom: 48%;
+  }
+  .kot-stage::after {
+    display: none; /* na telefonu je številka zgoraj – brez prehoda, da se bere */
   }
 }
 </style>

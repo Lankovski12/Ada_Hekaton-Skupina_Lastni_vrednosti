@@ -43,17 +43,13 @@ withDefaults(
   font-size: 1.25rem;
   padding: 18px 34px;
   min-height: 60px;
-  background: var(--lvl);
-  color: #05080f;
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--lvl) 60%, transparent);
-  animation: pulse 2.4s ease-out infinite;
+  --btn: var(--lvl);
+  color: #10192e;
+  animation: bob 2.6s ease-in-out infinite;
 }
-.go:hover {
-  box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--lvl) 70%, transparent);
-}
-@keyframes pulse {
-  70% {
-    box-shadow: 0 0 0 16px transparent;
+@keyframes bob {
+  50% {
+    transform: translateY(-4px) rotate(-1.5deg);
   }
 }
 </style>

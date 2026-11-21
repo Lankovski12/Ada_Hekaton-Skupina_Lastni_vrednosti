@@ -172,8 +172,8 @@ function frame(ms: number) {
   rgb = rgb.map((v, i) => v + (target[i]! - v) * 0.05) as V3
 
   const bad = Math.min(1, pm / 80)
-  // čist zrak: en globok vdih na ~5 s; umazan: hitro in plitvo
-  const period = 5 - bad * 2.8
+  // čist zrak: en globok vdih na ~3,6 s; umazan: hitro in plitvo (do ~1,8 s)
+  const period = 3.6 - bad * 1.8
   breathPhase += (dt / period) * Math.PI * 2 * (reduced ? 0.4 : 1)
   const inhale = (1 - Math.cos(breathPhase)) / 2 // 0..1
   const depth = 0.11 - bad * 0.055
@@ -199,11 +199,17 @@ function frame(ms: number) {
   const oy = wide ? h * 0.6 : h * 0.43
   const fov = 3.6
 
-  // ozadje s sledjo (kot pri krogli delcev)
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.fillStyle = 'rgba(5, 8, 15, 0.45)'
-  ctx.fillRect(0, 0, w, h)
-  ctx.globalCompositeOperation = 'lighter'
+  // temna tema: temno ozadje s sledjo in svetleče pike; svetla: prosojno platno (vidi se igrivo ozadje strani)
+  const dark = document.documentElement.dataset.theme === 'dark'
+  if (dark) {
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.fillStyle = 'rgba(5, 8, 15, 0.45)'
+    ctx.fillRect(0, 0, w, h)
+    ctx.globalCompositeOperation = 'lighter'
+  } else {
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.clearRect(0, 0, w, h)
+  }
 
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
   const draw = (x: number, y: number, z: number, size: number, alpha: number, col: V3, track = false) => {
@@ -226,7 +232,9 @@ function frame(ms: number) {
     }
   }
 
-  const tubeCol: V3 = [rgb[0] * 0.55 + 100, rgb[1] * 0.55 + 100, rgb[2] * 0.55 + 110]
+  // na svetli podlagi so pike malo temnejše, da se lepo vidijo
+  const base: V3 = dark ? rgb : [rgb[0] * 0.68 + 10, rgb[1] * 0.68 + 14, rgb[2] * 0.68 + 26]
+  const tubeCol: V3 = dark ? [rgb[0] * 0.55 + 100, rgb[1] * 0.55 + 100, rgb[2] * 0.55 + 110] : [rgb[0] * 0.35 + 40, rgb[1] * 0.35 + 55, rgb[2] * 0.35 + 90]
   for (let i = 0; i < pts.length; i++) {
     const { p, lung, r, a, ph, low } = pts[i]!
     let [x, y, z] = p
@@ -250,13 +258,13 @@ function frame(ms: number) {
       y += Math.cos(t * 11 + i) * shake
     }
     const migljaj = 0.72 + 0.28 * Math.sin(t * 1.6 + ph * 3)
-    draw(x, y, z, r, a * migljaj, lung ? rgb : tubeCol, a > 0.5)
+    draw(x, y, z, dark ? r : r * 1.15, Math.min(1, a * migljaj * (dark ? 1 : 1.5)), lung ? base : tubeCol, a > 0.5)
   }
   box = { x0, y0, x1, y1 }
 
   // zbegani delci – več jih je, bolj ko je zrak umazan; ob vdihu se približajo pljučem
   const nStray = Math.round(Math.min(strays.length, pm * 7))
-  const grey: V3 = [rgb[0] * 0.5 + 90, rgb[1] * 0.5 + 80, rgb[2] * 0.5 + 70]
+  const grey: V3 = dark ? [rgb[0] * 0.5 + 90, rgb[1] * 0.5 + 80, rgb[2] * 0.5 + 70] : [rgb[0] * 0.3 + 70, rgb[1] * 0.3 + 75, rgb[2] * 0.3 + 95]
   for (let i = 0; i < nStray; i++) {
     const s = strays[i]!
     const a = t * s.speed * speed + s.phase

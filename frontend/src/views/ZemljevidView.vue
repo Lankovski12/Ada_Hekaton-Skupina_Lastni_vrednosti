@@ -103,8 +103,8 @@ const { profile, sensitivity } = useProfile()
   gap: 18px;
 }
 .card {
-  background: rgba(10, 18, 30, 0.62);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--panel);
+  border-color: var(--panel-line);
 }
 .list,
 .facts {
@@ -130,7 +130,7 @@ const { profile, sensitivity } = useProfile()
 .facts li {
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
-  color: #c4d3e2;
+  color: var(--scene-text);
 }
 .facts small {
   display: block;

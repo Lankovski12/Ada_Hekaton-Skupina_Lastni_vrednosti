@@ -41,6 +41,19 @@ function toggleInteres(i: string) {
         </span>
       </label>
 
+      <label class="switch">
+        <input
+          type="checkbox"
+          :checked="profile.tema === 'temna'"
+          @change="profile.tema = ($event.target as HTMLInputElement).checked ? 'temna' : 'svetla'"
+        />
+        <span class="track" aria-hidden="true"><span class="knob" /></span>
+        <span>
+          <strong>Temna tema</strong><br />
+          <small>Za večerno branje. Privzeta je svetla.</small>
+        </span>
+      </label>
+
       <div class="field">
         <span>Kaj rad počneš zunaj?</span>
         <div class="chips">
