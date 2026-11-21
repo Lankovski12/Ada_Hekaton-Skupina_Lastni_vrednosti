@@ -178,7 +178,7 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Odlično, pravi vede
                 <p>{{ rezultat.razlaga }}</p>
               </div>
               <div class="row">
-                <button class="k-btn purple" @click="vaja">{{ nacin === 'vaja' ? 'Še en star dan' : 'Vaja s preteklimi dnevi' }}</button>
+                <button class="k-btn purple" @click="vaja">{{ nacin === 'vaja' ? 'Dodatna vaja' : 'Vaja s preteklimi dnevi' }}</button>
               </div>
               <p v-if="nacin === 'dnevno'" class="next">Novo vprašanje dneva čez <strong class="count">{{ doJutri }}</strong></p>
             </div>
