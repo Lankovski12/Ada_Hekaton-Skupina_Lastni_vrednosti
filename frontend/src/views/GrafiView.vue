@@ -14,10 +14,9 @@ import StoryNext from '@/components/StoryNext.vue'
       <span class="kicker">Podatki · zgodbe iz naših meritev</span>
       <h1>Kaj nam povedo meritve?</h1>
       <p>
-        Megla v kotlini, deset let meritev ARSO in napoved za naslednja dva dni. Drsi navzdol in poglej, kdaj in zakaj
-        je zrak v Ljubljani slab.
+        Drsi navzdol in poglej, kdaj in zakaj je zrak v Ljubljani slab.
       </p>
-      <span class="scroll-hint" aria-hidden="true">↓ drsi</span>
+      <span class="scroll-hint" aria-hidden="true">↓</span>
     </header>
 
     <KotlinaStory />
@@ -29,7 +28,7 @@ import StoryNext from '@/components/StoryNext.vue'
       label="Igre"
       kicker="Zdaj pa ti"
       title="Preizkusi, kaj že veš"
-      text="Igre uporabljajo prave podatke o zraku v Ljubljani. Pomagaj zmajčku očistiti nebo in ugani jutrišnji zrak."
+      text="Igre uporabljajo prave podatke o zraku v Ljubljani. Pomagaj zmajčku očistiti nebo preizkusi svoje znanje."
       color="var(--aq-1)"
     />
     <div class="story-end" aria-hidden="true" />

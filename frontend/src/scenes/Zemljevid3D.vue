@@ -690,8 +690,8 @@ onBeforeUnmount(() => {
         <span>
           {{
             zdaj.inv
-              ? `🌫️ Inverzija: hladen zrak je ujet do približno ${fog} m nad dnom kotline.`
-              : '🌬️ Zrak se meša, megle na dnu kotline ni.'
+              ? `Inverzija: hladen zrak je ujet do približno ${fog} m nad dnom kotline.`
+              : 'Zrak se meša, megle na dnu kotline ni.'
           }}
         </span>
         <span class="kids">{{ zdaj.lvl.kids }}</span>
@@ -744,7 +744,7 @@ onBeforeUnmount(() => {
       <!-- megla -->
       <div class="fogbox">
         <label>
-          <span>🌫️ Megla ob inverziji: <strong>{{ fog }} m</strong> nad dnom kotline</span>
+          <span>Megla ob inverziji: <strong>{{ fog }} m</strong> nad dnom kotline</span>
           <input v-model.number="fog" type="range" min="0" max="200" step="5" aria-label="Višina megle" @input="onFogInput" />
         </label>
         <p v-if="live && zdaj && !zdaj.inv">Zdaj ni inverzije, zato se onesnažen zrak ne ujame na dnu kotline.</p>

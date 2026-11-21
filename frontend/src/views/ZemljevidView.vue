@@ -20,7 +20,7 @@ const { sensitivity } = useProfile()
       <h1>Ljubljana v realnem času</h1>
       <p class="lead">
         Na zemljevidu so poudarjeni vrtci, šole, bolnišnice, zdravstveni domovi in domovi za starejše, ker so tam ljudje,
-        ki jim onesnažen zrak najbolj škodi: otroci, ki dihajo hitreje in imajo pljuča še v razvoju, starejši in bolniki.
+        ki jim onesnažen zrak najbolj škodi. Otroci, ki dihajo hitreje in imajo pljuča še v razvoju, starejši in bolniki.
         Tam preživijo večji del dneva in si kraja ne morejo izbrati. Večina teh ustanov leži na dnu kotline, kjer se
         pozimi ob inverziji ujame hladen, onesnažen zrak. Premakni drsnik megle in poglej, koliko jih ostane pod njo.
       </p>

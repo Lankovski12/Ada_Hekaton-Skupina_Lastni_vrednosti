@@ -13,12 +13,12 @@ export interface AirLevel {
 }
 
 export const LEVELS: AirLevel[] = [
-  { key: 'odlicno', label: 'Odlično', kids: 'Zrak je čist kot gorski potok!', color: 'var(--aq-1)', hex: '#2bb673', mood: 0, max: 10 },
+  { key: 'odlicno', label: 'Odlično', kids: 'Zrak je čist, čas za igro zunaj!', color: 'var(--aq-1)', hex: '#2bb673', mood: 0, max: 10 },
   { key: 'dobro', label: 'Dobro', kids: 'Super dan za igro zunaj.', color: 'var(--aq-2)', hex: '#8ccf3f', mood: 0.15, max: 20 },
-  { key: 'zmerno', label: 'Zmerno', kids: 'V redu, a ne divjaj predolgo.', color: 'var(--aq-3)', hex: '#f2c335', mood: 0.4, max: 25 },
-  { key: 'slabo', label: 'Slabo', kids: 'Danes raje mirnejša igra.', color: 'var(--aq-4)', hex: '#f28c28', mood: 0.65, max: 50 },
+  { key: 'zmerno', label: 'Zmerno', kids: 'Ne ostani zunaj predolgo.', color: 'var(--aq-3)', hex: '#f2c335', mood: 0.4, max: 25 },
+  { key: 'slabo', label: 'Slabo', kids: 'Primeren čas za mirnejšo igro.', color: 'var(--aq-4)', hex: '#f28c28', mood: 0.65, max: 50 },
   { key: 'zeloSlabo', label: 'Zelo slabo', kids: 'Ostani notri in zapri okno.', color: 'var(--aq-5)', hex: '#e5484d', mood: 0.85, max: 75 },
-  { key: 'izjemnoSlabo', label: 'Izjemno slabo', kids: 'Danes je zrak res umazan – igre v hiši!', color: 'var(--aq-6)', hex: '#8e4ec6', mood: 1, max: Infinity },
+  { key: 'izjemnoSlabo', label: 'Izjemno slabo', kids: 'Danes je zrak res umazan, raje ostani noter', color: 'var(--aq-6)', hex: '#8e4ec6', mood: 1, max: Infinity },
 ]
 
 /** sensitivity < 1 pomeni strožje meje (npr. astma 0.7) */
