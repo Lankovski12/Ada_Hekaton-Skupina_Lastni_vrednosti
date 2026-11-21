@@ -35,7 +35,7 @@ const rezerva = computed(() => {
   return stolpec + Math.max(24, w * 0.04) + 28
 })
 
-// okenca: dve na levi, eno na desni (besedila bomo še spreminjali)
+// okenca: dve na levi, dve na desni (besedila bomo še spreminjali)
 const okna = [
   {
     to: '/igre',
@@ -63,6 +63,15 @@ const okna = [
     color: 'var(--brand)',
     ikona: 'podatki',
     pos: 'r1',
+  },
+  {
+    to: '/moj-zrak',
+    kicker: 'Zame',
+    title: 'Moj zrak',
+    text: 'Zrak tam, kjer si: ali je zdaj pametno iti ven ali prezračiti?',
+    color: 'var(--coral)',
+    ikona: 'moj',
+    pos: 'r2',
   },
 ]
 </script>
@@ -104,7 +113,11 @@ const okna = [
               <path d="M4 9l7-3 10 3 7-3v17l-7 3-10-3-7 3z" />
               <path d="M11 6v17M21 9v17" />
             </svg>
-            <svg v-else viewBox="0 0 32 32">
+            <svg v-else-if="o.ikona === 'moj'" viewBox="0 0 32 32">
+            <path d="M16 28s9-8.2 9-15a9 9 0 0 0-18 0c0 6.8 9 15 9 15z" />
+            <circle cx="16" cy="13" r="3.2" />
+          </svg>
+          <svg v-else viewBox="0 0 32 32">
               <path d="M5 26h22" />
               <rect x="7" y="15" width="4" height="9" rx="1.5" />
               <rect x="14" y="9" width="4" height="15" rx="1.5" />
@@ -139,7 +152,11 @@ const okna = [
               <path d="M4 9l7-3 10 3 7-3v17l-7 3-10-3-7 3z" />
               <path d="M11 6v17M21 9v17" />
             </svg>
-            <svg v-else viewBox="0 0 32 32">
+            <svg v-else-if="o.ikona === 'moj'" viewBox="0 0 32 32">
+            <path d="M16 28s9-8.2 9-15a9 9 0 0 0-18 0c0 6.8 9 15 9 15z" />
+            <circle cx="16" cy="13" r="3.2" />
+          </svg>
+          <svg v-else viewBox="0 0 32 32">
               <path d="M5 26h22" />
               <rect x="7" y="15" width="4" height="9" rx="1.5" />
               <rect x="14" y="9" width="4" height="15" rx="1.5" />

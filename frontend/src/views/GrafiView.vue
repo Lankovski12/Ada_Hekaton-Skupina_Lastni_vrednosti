@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// Zavihek »Podatki« (grafi): drseče zgodbe iz naših podatkov – kotlina, 10 let meritev ARSO in napoved.
-// Kasneje jih bomo spreminjali in delali bolj interaktivne.
+// Zavihek »Podatki«: kartice dejstev iz 10 let meritev ARSO (ugani, obrni, zberi),
+// nato drseči zgodbi o megli v kotlini in napovedi za 48 ur.
+import DejstvaKartice from '@/components/DejstvaKartice.vue'
 import KotlinaStory from '@/components/stories/KotlinaStory.vue'
-import ZgodovinaStory from '@/components/stories/ZgodovinaStory.vue'
 import NapovedStory from '@/components/stories/NapovedStory.vue'
 import StoryNext from '@/components/StoryNext.vue'
 </script>
@@ -16,11 +16,10 @@ import StoryNext from '@/components/StoryNext.vue'
       <p>
         Drsi navzdol in poglej, kdaj in zakaj je zrak v Ljubljani slab.
       </p>
-      <span class="scroll-hint" aria-hidden="true">↓</span>
     </header>
 
+    <DejstvaKartice />
     <KotlinaStory />
-    <ZgodovinaStory />
     <NapovedStory />
 
     <StoryNext
@@ -38,16 +37,21 @@ import StoryNext from '@/components/StoryNext.vue'
 <style scoped>
 .intro {
   --lvl: #5aa2ff;
-  min-height: calc(100svh - 64px);
+  /* kratek uvod, da se kartice dejstev vidijo takoj */
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  text-align: center;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 40px max(24px, 5vw);
+  padding: 28px max(24px, 5vw) 4px;
   background: radial-gradient(ellipse at 80% 40%, rgba(90, 162, 255, 0.14), transparent 60%);
+}
+.intro h1 {
+  font-size: clamp(2rem, 5vw, 3.2rem);
 }
 .intro p {
   max-width: 560px;
+  margin-bottom: 10px;
 }
 </style>
