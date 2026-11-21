@@ -60,3 +60,11 @@ def test_yesterday_from_measurements(monkeypatch):
     best = max(d["postaje"], key=lambda p: p["pm25"])
     assert best["id"] == "E407"
     assert d["prejsnji"]["pm25"] == 21.5
+
+
+def test_pokrovka_rule():
+    from app.pokrovka import visina_pokrovke
+
+    assert visina_pokrovke(-3, 2) < 80  # močna inverzija: pokrovka zelo nizko
+    assert 120 < visina_pokrovke(0, -2) < 220
+    assert visina_pokrovke(5, -1) > visina_pokrovke(0, 0) > visina_pokrovke(-3, 5)

@@ -8,6 +8,7 @@ const progress = useProgressStore()
 const games = [
   { to: '/igre/zmaj', id: 'zmaj', emoji: '🐉', title: 'Zmajček čisti nebo', desc: 'Leti nad 3D Ljubljano z današnjim smogom in ga odpihni.', color: 'var(--aq-1)', ready: true },
   { to: '/igre/daily', id: 'daily', emoji: '🔮', title: 'Vremenski vedeževalec', desc: 'Vsak dan novo vprašanje o včerajšnjem zraku. Zemljevid, drsnik, ura in še več.', color: 'var(--brand)', ready: true },
+  { to: '/igre/pokrovka', id: 'pokrovka', emoji: '', title: 'Naredi pokrovko', desc: 'Spreminjaj temperaturo v dolini in na hribu in ujemi včerajšnjo pokrovko nad Ljubljano.', color: '#ff8a3d', ready: true },
   { to: '/igre/ujemanje', id: 'ujemanje', emoji: '🧩', title: 'Poišči par', desc: 'Kaj onesnažuje in kaj pomaga? Najdi pare.', color: 'var(--accent)', ready: false },
 ]
 </script>

@@ -68,6 +68,23 @@ src/games/skupno/     zvoki, ikone in konfeti (skupni obema igrama)
 Arhiv pripravi `backend/scripts/build_daily_archive.py`, obris Slovenije je iz Natural Earth.
 Za predstavitev: `/igre/daily?vrsta=zemljevid&datum=2026-11-20`.
 
+## Igra Naredi pokrovko
+
+Z dvema drsnikoma (temperatura v Ljubljani in na Pasji ravni) otrok ujame včerajšnjo pokrovko. Prej (neobvezno)
+zgodba v petih korakih razloži, kako nastane inverzija. Tri stopnje: dolina dana, obe temperaturi, brez cilja z namigi.
+
+```
+src/games/pokrovka/
+  PokrovkaGame.vue    meni, zgodba, tri stopnje, povzetek
+  Zgodba.vue          razlaga inverzije (dan, noč, pokrovka, ujet dim, kako se odpre) z dvema vprašanjema
+  Scena.vue           prerez kotline: ozadje obarvano po temperaturi, dim se ustavi pod pokrovko
+  fizika.ts           višina pokrovke iz dveh temperatur (enako kot backend/app/pokrovka.py)
+  podatki.ts          /api/pokrovka (včeraj, model) ali arhiv meritev ARSO (public/assets/pokrovka/arhiv.json)
+```
+
+Pravilo za višino pokrovke je preverjeno na 1.127 zimskih dneh: korelacija z radiosondažo ARSO 0,82.
+Arhiv pripravi `backend/scripts/build_pokrovka_archive.py`. Za predstavitev: `/igre/pokrovka?datum=2024-01-12`.
+
 ## Nova igra
 
 1. Ustvari `src/games/<ime>/<Ime>Game.vue` (+ `logic.ts`).

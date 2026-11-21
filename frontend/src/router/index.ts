@@ -13,6 +13,7 @@ const router = createRouter({
     { path: '/igre/zmaj', name: 'igra-zmaj', component: () => import('@/games/zmaj/ZmajGame.vue') },
     { path: '/igre/ujemanje', name: 'igra-ujemanje', component: () => import('@/games/ujemanje/UjemanjeGame.vue') },
     { path: '/igre/daily', name: 'igra-daily', component: () => import('@/games/daily/DailyGame.vue') },
+    { path: '/igre/pokrovka', name: 'igra-pokrovka', component: () => import('@/games/pokrovka/PokrovkaGame.vue') },
   ],
 })
 

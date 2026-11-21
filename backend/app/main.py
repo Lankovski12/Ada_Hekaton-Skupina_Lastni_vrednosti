@@ -169,6 +169,19 @@ def vceraj():
     return d
 
 
+@app.get("/api/pokrovka")
+def pokrovka():
+    """Včerajšnji jutranji temperaturi v dolini in na Pasji ravni za igro Naredi pokrovko (404 = igra vzame arhiv)."""
+    from fastapi import HTTPException
+
+    from .pokrovka import vceraj as pokrovka_vceraj
+
+    d = pokrovka_vceraj()
+    if d is None:
+        raise HTTPException(404, "Podatkov za včeraj ni.")
+    return d
+
+
 @app.get("/api/facts", response_model=list[FactOut])
 def facts():
     return [
