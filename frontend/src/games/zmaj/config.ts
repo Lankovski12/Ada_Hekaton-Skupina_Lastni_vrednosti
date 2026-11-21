@@ -22,7 +22,8 @@ export const DEZ = {
   oblackov: 3, // koliko jih je hkrati na nebu
   trajanje: 6, // s dežja
   polmer: 1100, // m – območje dežja
-  moc: 0.13, // delež smoga na sekundo, ki ga dež spere (v 6 s ~ polovica, ne vse)
+  moc: 0.13, // delež smoga na sekundo, ki ga dež spere na območju (v 6 s ~ polovica, ne vse)
+  bonus: 0.08, // + 8 % čistega neba (najbližji smog nad mestom, razdeljeno čez čas dežja)
   ponovno: 8, // s, preden se oblaček pojavi drugje
 }
 
@@ -38,7 +39,8 @@ export const VETER = {
 export const DIM = {
   dimnikov: 5,
   polmer: 700, // m
-  kolicina: 0.35, // koliko smoga doda
+  kolicina: 0.35, // koliko smoga doda okoli dimnika
+  kazen: 0.05, // - 5 % čistega neba
 }
 
 /** Vprašanja: lebdeči krogi z vprašajem. Pravilen odgovor = več časa in sunek vetra. */
@@ -48,8 +50,16 @@ export const VPRASANJA = {
   bonusCas: 5, // s za pravilen odgovor
 }
 
+/** 3D stavbe iz katastra GURS (pripravi backend/scripts/build_game_assets.py). */
+export const STAVBE = {
+  vklopljene: true,
+  najvec: 45000, // na računalniku (od centra navzven)
+  najvecTelefon: 12000,
+  visinaKrat: 0.75, // višina stavb glede na teren (1 = enako povečano kot hribi)
+}
+
 export const SVET = {
-  vex: 1.8, // navpična povečava terena, da se hribi lepše vidijo
+  vex: 2.4, // navpična povečava terena, da se hribi lepše vidijo
   h0: 250, // m n. v., ki je y = 0
   dnoKotline: 290, // m n. v.
 }

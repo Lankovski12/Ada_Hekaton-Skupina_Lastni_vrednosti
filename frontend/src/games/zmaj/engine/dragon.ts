@@ -2,7 +2,7 @@
 // let: sam leti naprej, miška določa zavijanje in vzpon.
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { GAME } from '../config'
+import { GAME, SVET } from '../config'
 import { Terrain } from './terrain'
 
 const URL = `${import.meta.env.BASE_URL}assets/models/zmaj.glb`
@@ -105,7 +105,7 @@ export class Dragon {
     p.z = THREE.MathUtils.clamp(p.z, -t.H / 2 + 100, t.H / 2 - 100)
 
     // ne v hrib in ne v vesolje
-    const minY = t.groundY(p.x, p.z) + GAME.minNadTerenom * 1.8
+    const minY = t.groundY(p.x, p.z) + GAME.minNadTerenom * SVET.vex
     if (p.y < minY) {
       p.y += (minY - p.y) * Math.min(1, dt * 6)
       this.pitch = Math.max(this.pitch, 0.1)

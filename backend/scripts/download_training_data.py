@@ -28,6 +28,8 @@ FILES = [
     "04_prostor/dem_lj_kotlina_30m.tif",
     # izpusti po mreži 250 m (za smog v igri)
     "04_prostor/emisije/emisije_mreza_250m_skupaj.csv",
+    # obrisi stavb (za 3D stavbe v igri, ~95 MB)
+    "04_prostor/kn_stavbe.gpkg",
 ]
 
 

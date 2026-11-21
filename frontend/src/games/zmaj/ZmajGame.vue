@@ -6,7 +6,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import { useAirData } from '@/composables/useAirData'
 import { useProgressStore } from '@/stores/progress'
 import { levelFor } from '@/lib/airQuality'
-import { GAME, LEP_DAN_PM25, VETER, VPRASANJA, vrhZaIgro } from './config'
+import { DEZ, DIM, GAME, LEP_DAN_PM25, VETER, VPRASANJA, vrhZaIgro } from './config'
 import { type Conditions, type HudState, type PickupKind, ZmajEngine } from './engine/Game'
 import { DEJSTVA, sestaviVprasanja, type Vprasanje } from './vprasanja'
 
@@ -84,7 +84,8 @@ const naucil = ref(new Set<string>()) // kaj je otrok srečal – pokažemo na k
 
 function onPickup(kind: Exclude<PickupKind, 'vprasanje'>) {
   const d = DEJSTVA[kind]
-  toast.value = { ...d, vrsta: kind }
+  const pct = kind === 'dez' ? ` +${Math.round(DEZ.bonus * 100)} %` : kind === 'dim' ? ` −${Math.round(DIM.kazen * 100)} %` : ''
+  toast.value = { naslov: d.naslov + pct, besedilo: d.besedilo, vrsta: kind }
   naucil.value.add(d.besedilo)
   window.clearTimeout(toastTimer)
   toastTimer = window.setTimeout(() => (toast.value = null), 4000)
@@ -287,11 +288,15 @@ const sporocilo = computed(() => {
           <div class="tile">
             <span class="label">Inverzija</span>
             <strong>{{ kartica.inverzija ? 'Da' : 'Ne' }}</strong>
-            <span v-if="kartica.plast" class="sub">zrak se je mešal le do ~{{ kartica.plast }} m</span>
+            <span v-if="kartica.plast" class="sub">zrak se je mešal le do ~{{ kartica.plast }} m nad tlemi (Nebotičnik je visok 70 m)</span>
             <span v-else-if="kartica.megla" class="sub">in megla</span>
           </div>
         </div>
 
+        <p v-if="kartica.inverzija" class="note">
+          Inverzija: pozimi se hladen zrak ujame na dnu kotline, nad njim pa leži toplejši zrak kot pokrovka.
+          Ob vetru ali soncu se zrak premeša več sto metrov visoko in smog se razredči. Pod pokrovko pa ostane ves dim mesta v tanki plasti pri tleh.
+        </p>
         <div v-if="zgodovina" class="row small">
           <button class="btn ghost" @click="zamenjaj(false)">Drug slab dan</button>
           <button class="btn ghost" @click="zamenjaj(true)">Igraj z današnjim zrakom</button>
@@ -302,9 +307,9 @@ const sporocilo = computed(() => {
 
         <ul class="legend">
           <li><i class="dot smog" /><span>Sive kepe so smog. Zleti vanj in <strong>drži levi gumb</strong>, da ga odpihneš.</span></li>
-          <li><i class="dot rain" /><span><strong>Oblaček Kapljica</strong>: zleti skozenj in začne deževati.</span></li>
+          <li><i class="dot rain" /><span><strong>Oblaček Kapljica</strong>: zleti skozenj, začne deževati in dobiš +{{ Math.round(DEZ.bonus * 100) }} %.</span></li>
           <li><i class="dot wind" /><span><strong>Obroč vetra</strong>: zleti skozi in za {{ VETER.trajanje }} s pospešiš.</span></li>
-          <li><i class="dot smoke" /><span><strong>Dimnik</strong>: njegov dim doda smog, izogni se mu.</span></li>
+          <li><i class="dot smoke" /><span><strong>Dimnik</strong>: njegov dim doda smog, izgubiš {{ Math.round(DIM.kazen * 100) }} %. Izogni se mu.</span></li>
           <li><i class="dot gold" /><span><strong>Zlati vprašaj</strong>: ujemi ga in odgovori, pravilno = +{{ VPRASANJA.bonusCas }} s.</span></li>
         </ul>
         <button class="btn big" @click="play">Poleti</button>

@@ -69,9 +69,10 @@ export class ZmajEngine {
     this.pickups = new Pickups(terrain, this.smog)
 
     this.scene.add(buildWorld(terrain), this.smog.group, this.pickups.group, this.dragon.group, this.breath.points)
-    this.scene.add(new THREE.HemisphereLight('#dfefff', '#56663f', 1.6))
-    const sun = new THREE.DirectionalLight('#fff0d8', 2.2)
-    sun.position.set(-4000, 3000, 3000) // nizko zimsko sonce z jugozahoda
+    // manj razpršene in več usmerjene svetlobe: pobočja dobijo sence, teren je bolj 3D
+    this.scene.add(new THREE.HemisphereLight('#dfefff', '#4a5536', 0.9))
+    const sun = new THREE.DirectionalLight('#fff0d8', 3)
+    sun.position.set(-6000, 2600, 2500) // nizko zimsko sonce z jugozahoda
     this.scene.add(sun)
     this.scene.fog = new THREE.Fog(this.skyClear, 3000, 22000)
 

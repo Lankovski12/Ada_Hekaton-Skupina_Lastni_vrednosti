@@ -33,7 +33,7 @@ src/games/zmaj/
   vprasanja.ts        vprašanja in kratka dejstva (iz podatkov ARSO in priporočil WHO)
   engine/Game.ts      zanka, kamera, vnos (miška, presledek)
   engine/terrain.ts   teren iz public/assets/terrain (višine, mesto, izpusti)
-  engine/world.ts     barve terena (mesto, travniki, gozd), reki
+  engine/world.ts     teren (satelitska slika ali barve), 3D stavbe iz katastra GURS
   engine/smog.ts      mreža gostote smoga, kepe smoga, pihanje, vračanje, točke
   engine/dragon.ts    model, mahanje kril (shader), let
   engine/breath.ts    delci pihanja

@@ -329,7 +329,9 @@ export class Pickups {
         if (c.timer <= 0) this.placeCloud(c)
       }
     }
-    if (this.rain.active > 0 && this.rainAt) this.smog.rain(this.rainAt.x, this.rainAt.z, DEZ.polmer, DEZ.moc, dt)
+    if (this.rain.active > 0 && this.rainAt) {
+      this.smog.shiftScore(this.rainAt.x, this.rainAt.z, (DEZ.bonus * Math.min(dt, this.rain.active)) / DEZ.trajanje)
+    }
     this.rain.update(dt)
 
     for (const r of this.rings) {
@@ -350,6 +352,7 @@ export class Pickups {
       if (active && c.cooldown <= 0 && horiz < 170 && p.y < this.smog.topY + 150 * V) {
         c.cooldown = 6
         this.smog.thicken(c.x, c.z, DIM.polmer, DIM.kolicina)
+        this.smog.shiftScore(c.x, c.z, -DIM.kazen)
         caught.push('dim')
       }
     }

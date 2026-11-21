@@ -25,7 +25,7 @@ export const DEJSTVA = {
     besedilo: 'Veter premeša zrak in razbije inverzijo. Smog odnese iz kotline.',
   },
   dim: {
-    naslov: 'Dim iz dimnika',
+    naslov: 'Dim iz dimnika!',
     besedilo: 'Dim doda smog. Kurjenje z drvmi je pozimi eden glavnih virov delcev v Ljubljani.',
   },
 } as const

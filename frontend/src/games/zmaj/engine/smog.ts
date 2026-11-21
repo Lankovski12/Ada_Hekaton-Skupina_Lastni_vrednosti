@@ -250,6 +250,33 @@ export class Smog {
     }
   }
 
+  /**
+   * Spremeni delež čistega neba za točno `delta` (0.08 = +8 %, -0.05 = -5 %).
+   * Smog doda ali odvzame v celicah, najbližjih (x, z), dokler ni sprememba dosežena – zato je vidna tam, kjer se zgodi.
+   */
+  shiftScore(x: number, z: number, delta: number, maxRadius = 6000) {
+    let need = Math.abs(delta) * this.sumBase
+    const order = Array.from(this.d.keys())
+      .map((j) => [j, Math.hypot(this.cx[j]! - x, this.cz[j]! - z)] as const)
+      .filter(([, r]) => r < maxRadius)
+      .sort((a, b) => a[1] - b[1])
+    for (const [j] of order) {
+      if (need <= 0) break
+      const w = this.weight[j]!
+      if (delta > 0) {
+        // dež: odstrani smog (tudi zunaj mesta, a šteje le tisto nad mestom)
+        const take = w > 0 ? Math.min(this.d[j]!, need / w) : this.d[j]! * 0.5
+        this.d[j]! -= take
+        need -= take * w
+      } else {
+        // dim: doda smog do največ 1
+        const add = w > 0 ? Math.min(1 - this.d[j]!, 0.7, need / w) : 0
+        this.d[j]! += add
+        need -= add * w
+      }
+    }
+  }
+
   /** Celice z največ izpusti iz kurišč (za dimnike) in naključne celice s smogom (za oblačke, obroče). */
   hotspots(n: number, minDist: number): [number, number][] {
     const idx = Array.from(this.base.keys()).sort((a, b) => this.t.smog[b]! - this.t.smog[a]!)
@@ -264,7 +291,12 @@ export class Smog {
     return out
   }
 
+  /** Naključna celica s smogom nad mestom (tam, kjer šteje za točke). */
   randomSmogCell(): [number, number] {
+    for (let tries = 0; tries < 400; tries++) {
+      const j = Math.floor(Math.random() * this.base.length)
+      if (this.base[j]! > 0.25 && this.weight[j]! > 0.05) return [this.cx[j]!, this.cz[j]!]
+    }
     for (let tries = 0; tries < 200; tries++) {
       const j = Math.floor(Math.random() * this.base.length)
       if (this.base[j]! > 0.25) return [this.cx[j]!, this.cz[j]!]

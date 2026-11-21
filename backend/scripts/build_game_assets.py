@@ -10,6 +10,7 @@ Izhod v frontend/public/assets/terrain/:
     mesto.bin    gostota stavb (Uint8 0–255), mreža SX × SZ  -> barva mesta na terenu
     smog.bin     izpusti PM10 kurišča + promet (Uint8 0–255), mreža SX × SZ -> kje je smog gostejši
     slabi_dnevi.json  resnični dnevi z veliko PM2.5 in inverzijo (igra jih uporabi, ko je danes zrak čist)
+    stavbe.bin   3D stavbe iz katastra GURS (Int16 × 7 na stavbo, glej buildings()), razvrščene od centra navzven
 
 Viri: Copernicus DEM GLO-30, ARSO inventar emisij (mreža 250 m), GURS KN (število stavb). Glej ARSOhack/04_prostor.
 """
@@ -29,12 +30,13 @@ DEM = TRAINING_DATA_DIR / "04_prostor" / "dem_lj_kotlina_30m.tif"
 EMISIJE = TRAINING_DATA_DIR / "04_prostor" / "emisije" / "emisije_mreza_250m_skupaj.csv"
 MERITVE = TRAINING_DATA_DIR / "01_meritve" / "arso_lj_pm_urno_2016_2026.csv.gz"
 SONDAZA = TRAINING_DATA_DIR / "03_vreme_inverzija" / "igra2_lj_inverzija_dnevno.csv"
+STAVBE = TRAINING_DATA_DIR / "04_prostor" / "kn_stavbe.gpkg"
 OUT = REPO_DIR / "frontend" / "public" / "assets" / "terrain"
 
 # Območje igre: Ljubljana s Šmarno goro, Rožnikom, Golovcem in Barjem
 LON_MIN, LON_MAX = 14.38, 14.66
 LAT_MIN, LAT_MAX = 45.975, 46.135
-NX, NZ = 288, 240  # teren (~75 m)
+NX, NZ = 576, 480  # teren (~37 m; DEM ima 30 m)
 SX, SZ = 96, 80  # smog in mesto (~225 m)
 
 LAT0 = (LAT_MIN + LAT_MAX) / 2
@@ -137,6 +139,63 @@ def bad_days(n: int = 12) -> list[dict]:
     return out
 
 
+def buildings(radius_m: float = 9000, min_area: float = 25) -> np.ndarray:
+    """Stavbe iz katastra GURS kot zasukani kvadri (najmanjši obrobni pravokotnik tlorisa).
+
+    Na stavbo 7 × Int16: x (m), z (m), širina (dm), dolžina (dm), višina (dm), kot (stotinke stopinje),
+    tla (dm n. v., H1 iz katastra). x = vzhod, z = jug, izhodišče v središču karte (kot v igri).
+    """
+    import pyogrio
+    import shapely
+    from pyproj import Transformer
+
+    meta, _, wkb, fields = pyogrio.raw.read(
+        STAVBE, layer="stavbe_tlorisi", columns=["visina_h1", "visina_h3", "stevilo_etaz"]
+    )
+    col = {name: np.asarray(fields[i], dtype="float64") for i, name in enumerate(meta["fields"])}
+    geom = shapely.from_wkb(wkb)
+    h1, h3, etaze = col["visina_h1"], col["visina_h3"], col["stevilo_etaz"]
+
+    area = shapely.area(geom)
+    keep = area >= min_area
+    geom, h1, h3, etaze = geom[keep], h1[keep], h3[keep], etaze[keep]
+
+    rect = shapely.oriented_envelope(geom)
+    ok = (shapely.get_type_id(rect) == 3) & (shapely.get_num_coordinates(rect) == 5)  # pravi pravokotniki
+    rect, h1, h3, etaze = rect[ok], h1[ok], h3[ok], etaze[ok]
+    coords = shapely.get_coordinates(shapely.get_exterior_ring(rect)).reshape(-1, 5, 2)[:, :4, :]
+    e1 = coords[:, 1] - coords[:, 0]
+    e2 = coords[:, 2] - coords[:, 1]
+    w = np.hypot(e1[:, 0], e1[:, 1])
+    ln = np.hypot(e2[:, 0], e2[:, 1])
+    ang = np.degrees(np.arctan2(e1[:, 1], e1[:, 0]))  # kot stranice w v D96 (vzhod, sever)
+    cen = coords.mean(axis=1)
+
+    lon, lat = Transformer.from_crs(3794, 4326, always_xy=True).transform(cen[:, 0], cen[:, 1])
+    lon_c, lat_c = (LON_MIN + LON_MAX) / 2, (LAT_MIN + LAT_MAX) / 2
+    x = (np.asarray(lon) - lon_c) * M_PER_DEG_LON
+    z = -(np.asarray(lat) - lat_c) * M_PER_DEG_LAT
+
+    height = h3 - h1
+    bad = ~np.isfinite(height) | (height < 2.5) | (height > 160)
+    height[bad] = np.where(np.isfinite(etaze[bad]) & (etaze[bad] > 0), etaze[bad] * 3.0, 6.0)
+    h1 = np.where(np.isfinite(h1), h1, 0)
+
+    # središče mesta (Prešernov trg) in razvrstitev od centra navzven, da igra lahko vzame prvih N
+    cx = (14.5061 - lon_c) * M_PER_DEG_LON
+    cz = -(46.0514 - lat_c) * M_PER_DEG_LAT
+    d = np.hypot(x - cx, z - cz)
+    inside = (d < radius_m) & (np.abs(x) < (LON_MAX - LON_MIN) * M_PER_DEG_LON / 2) & (
+        np.abs(z) < (LAT_MAX - LAT_MIN) * M_PER_DEG_LAT / 2
+    )
+    order = np.argsort(d[inside])
+    out = np.stack([
+        x[inside], z[inside], np.clip(w[inside] * 10, 10, 30000), np.clip(ln[inside] * 10, 10, 30000),
+        height[inside] * 10, ang[inside] * 100, h1[inside] * 10,
+    ], axis=1)[order]
+    return np.round(out).astype("<i2")
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     h = sample_dem()
@@ -152,9 +211,15 @@ def main() -> None:
         "visina_m": (LAT_MAX - LAT_MIN) * M_PER_DEG_LAT,
         "teren": {"nx": NX, "nz": NZ, "enota": "dm", "min_m": float(h.min()), "max_m": float(h.max())},
         "mreza": {"nx": SX, "nz": SZ},
-        "viri": "Copernicus DEM GLO-30; ARSO inventar emisij PM10 (kurišča, promet); GURS KN",
+        "viri": "Copernicus DEM GLO-30; ARSO inventar emisij PM10 (kurišča, promet); GURS KN (stavbe)",
     }
     (OUT / "teren.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    if STAVBE.exists():
+        st = buildings()
+        (OUT / "stavbe.bin").write_bytes(st.tobytes())
+        meta["stavbe"] = {"stevilo": int(len(st)), "polje": ["x", "z", "sirina_dm", "dolzina_dm", "visina_dm", "kot_cdeg", "tla_dm"]}
+        (OUT / "teren.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        print(f"{len(st)} stavb")
     dnevi = bad_days()
     (OUT / "slabi_dnevi.json").write_text(json.dumps(dnevi, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"{len(dnevi)} slabih dni, npr. {dnevi[0] if dnevi else '-'}")

@@ -1,5 +1,6 @@
-// Ljubljana: teren z barvami (mesto, travniki, gozd) in reki. Znamenitosti dodamo kasneje.
+// Ljubljana: teren (satelitska slika ali barve iz podatkov) in 3D stavbe iz katastra GURS.
 import * as THREE from 'three'
+import { STAVBE, SVET } from '../config'
 import { Terrain } from './terrain'
 
 // --- teren ---------------------------------------------------------------
@@ -63,7 +64,7 @@ function loadSatellite(mat: THREE.MeshLambertMaterial) {
       tex.anisotropy = 4
       mat.map = tex
       mat.vertexColors = false
-      mat.color.set('#ffffff')
+      mat.color.setScalar(1.35) // satelitska slika je temna; posvetlimo
       mat.needsUpdate = true
     },
     undefined,
@@ -71,55 +72,50 @@ function loadSatellite(mat: THREE.MeshLambertMaterial) {
   )
 }
 
-// --- reki (približni strugi) -------------------------------------------
+// --- 3D stavbe iz katastra GURS ----------------------------------------------
 
-const LJUBLJANICA: [number, number][] = [
-  [45.992, 14.38], [46.005, 14.42], [46.018, 14.46], [46.028, 14.488], [46.036, 14.501], [46.042, 14.508],
-  [46.0475, 14.5066], [46.0512, 14.5063], [46.0525, 14.5103], [46.0538, 14.517], [46.0555, 14.529],
-  [46.0548, 14.545], [46.0556, 14.563], [46.0615, 14.592], [46.0695, 14.62], [46.073, 14.632],
-]
-const SAVA: [number, number][] = [
-  [46.135, 14.418], [46.127, 14.44], [46.118, 14.458], [46.108, 14.478], [46.1005, 14.5], [46.0985, 14.52],
-  [46.097, 14.54], [46.089, 14.568], [46.081, 14.598], [46.0745, 14.625], [46.0705, 14.66],
-]
-
-function river(t: Terrain, pts: [number, number][], width: number): THREE.Mesh {
-  const curve = new THREE.CatmullRomCurve3(pts.map(([la, lo]) => {
-    const [x, z] = t.toXZ(la, lo)
-    return new THREE.Vector3(x, 0, z)
-  }))
-  const n = Math.ceil(curve.getLength() / 40)
-  const verts: number[] = []
-  const idx: number[] = []
-  const p = new THREE.Vector3()
-  const tan = new THREE.Vector3()
-  for (let i = 0; i <= n; i++) {
-    curve.getPointAt(i / n, p)
-    curve.getTangentAt(i / n, tan)
-    const sx = -tan.z * width * 0.5
-    const sz = tan.x * width * 0.5
-    for (const s of [-1, 1]) {
-      const x = p.x + sx * s
-      const z = p.z + sz * s
-      verts.push(x, t.groundY(x, z) + 5, z)
-    }
-    if (i < n) {
-      const a = i * 2
-      idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2)
-    }
+/** Stavbe kot zasukani kvadri (public/assets/terrain/stavbe.bin), od centra navzven. */
+async function buildBuildings(t: Terrain): Promise<THREE.InstancedMesh | null> {
+  const res = await fetch(`${import.meta.env.BASE_URL}assets/terrain/stavbe.bin`).catch(() => null)
+  if (!res || !res.ok || res.headers.get('content-type')?.includes('html')) return null
+  const a = new Int16Array(await res.arrayBuffer())
+  const telefon = window.matchMedia?.('(pointer: coarse)').matches
+  const n = Math.min(a.length / 7, telefon ? STAVBE.najvecTelefon : STAVBE.najvec)
+  const geo = new THREE.BoxGeometry(1, 1, 1)
+  geo.translate(0, 0.5, 0)
+  const mat = new THREE.MeshLambertMaterial({ color: '#ffffff' })
+  const mesh = new THREE.InstancedMesh(geo, mat, n)
+  const m = new THREE.Matrix4()
+  const q = new THREE.Quaternion()
+  const up = new THREE.Vector3(0, 1, 0)
+  const pos = new THREE.Vector3()
+  const scl = new THREE.Vector3()
+  const col = new THREE.Color()
+  for (let i = 0; i < n; i++) {
+    const o = i * 7
+    const x = a[o]!
+    const z = a[o + 1]!
+    const h = (a[o + 4]! / 10) * SVET.vex * STAVBE.visinaKrat
+    q.setFromAxisAngle(up, ((a[o + 5]! / 100) * Math.PI) / 180)
+    pos.set(x, t.groundY(x, z) - 3 * SVET.vex, z)
+    scl.set(a[o + 2]! / 10, h + 3 * SVET.vex, a[o + 3]! / 10)
+    m.compose(pos, q, scl)
+    mesh.setMatrixAt(i, m)
+    // svetle fasade z rahlimi razlikami; visoke stavbe malo bolj modrikaste (steklo)
+    col.setHSL(0.08 + Math.random() * 0.04, 0.14, 0.62 + Math.random() * 0.12)
+    if (h > 40 * SVET.vex) col.lerp(new THREE.Color('#9fb8cc'), 0.4)
+    mesh.setColorAt(i, col)
   }
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3))
-  geo.setIndex(idx)
-  geo.computeVertexNormals()
-  const mat = new THREE.MeshLambertMaterial({ color: '#4c9bd6', side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 })
-  return new THREE.Mesh(geo, mat)
+  mesh.instanceMatrix.needsUpdate = true
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+  mesh.computeBoundingSphere()
+  return mesh
 }
 
 export function buildWorld(t: Terrain): THREE.Group {
   const world = new THREE.Group()
   world.add(buildTerrain(t))
-  world.add(river(t, LJUBLJANICA, 70), river(t, SAVA, 130))
+  if (STAVBE.vklopljene) buildBuildings(t).then((b) => b && world.add(b))
   return world
 }
 
