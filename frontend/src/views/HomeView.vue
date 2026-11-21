@@ -205,6 +205,8 @@ const fcLevel = computed(() => levelFor(fcUre.value[fcSelected.value]?.pm25 ?? l
 </script>
 
 <template>
+  <!-- en korenski element, da animacija prehoda med stranmi (App.vue) deluje -->
+  <div class="home">
   <div class="story">
     <!-- 1. POGLAVJE: oblak delcev -->
     <ScrollStory v-model:active="active" :count="steps.length" :color="level.color" plain-first>
@@ -294,6 +296,7 @@ const fcLevel = computed(() => levelFor(fcUre.value[fcSelected.value]?.pm25 ?? l
       <span class="btn">Poglej →</span>
     </RouterLink>
   </section>
+  </div>
 </template>
 
 <style scoped>
