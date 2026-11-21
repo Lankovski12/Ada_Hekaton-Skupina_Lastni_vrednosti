@@ -157,7 +157,7 @@
 @media (max-width: 720px) {
   .story .readout {
     left: 16px;
-    top: 14px;
+    top: 62px; /* pod naslovom koraka */
     bottom: auto;
   }
   .story .readout .num {

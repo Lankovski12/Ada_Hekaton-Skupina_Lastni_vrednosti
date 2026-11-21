@@ -39,6 +39,8 @@ onBeforeUnmount(() => io?.disconnect())
 
     <div class="steps">
       <article v-for="i in count" :key="i" ref="stepEls" :data-i="i - 1" class="step">
+        <!-- naslov koraka: na vrhu zaslona, drsi skupaj s kartico -->
+        <h2 v-if="$slots.naslov" class="step-naslov"><slot name="naslov" :i="i - 1" /></h2>
         <div class="step-card" :class="{ plain: plainFirst && i === 1 }">
           <slot name="step" :i="i - 1" :active="active" />
         </div>
@@ -86,11 +88,43 @@ onBeforeUnmount(() => io?.disconnect())
   pointer-events: none; /* da lahko sceno uporabljaš skozi besedilo */
 }
 .step {
+  position: relative;
   min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding: 0 max(56px, 6vw) 0 24px;
+}
+.step-naslov {
+  position: absolute;
+  top: calc(64px + 24px); /* pod zgornjo navigacijo */
+  left: max(24px, 5vw);
+  max-width: calc(100% - max(24px, 5vw) - max(56px, 6vw));
+  margin: 0;
+  padding: 10px 22px 12px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  box-shadow: 0 10px 30px -18px rgba(31, 45, 77, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+  font-family: var(--font-head);
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  line-height: 1.1;
+  color: var(--scene-ink);
+}
+/* barvna pikica pred naslovom v barvi trenutne kakovosti zraka */
+.step-naslov::before {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.35em;
+  vertical-align: 0.12em;
+  border-radius: 50%;
+  background: var(--lvl);
+  transition: background 0.6s;
 }
 .step-card {
   pointer-events: auto;
@@ -119,6 +153,14 @@ onBeforeUnmount(() => io?.disconnect())
   }
   .step-card.plain {
     background: var(--panel);
+  }
+  .step-naslov {
+    top: calc(64px + 10px);
+    left: 12px;
+    max-width: calc(100% - 40px);
+    padding: 6px 14px 8px;
+    border-radius: 16px;
+    font-size: 1.15rem;
   }
   .dots {
     right: 10px;

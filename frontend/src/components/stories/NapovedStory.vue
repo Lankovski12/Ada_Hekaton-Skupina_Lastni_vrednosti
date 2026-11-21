@@ -67,8 +67,8 @@ const level = computed(() => levelFor(ure.value[selected.value]?.pm25 ?? current
         </div>
       </div>
     </template>
+    <template #naslov="{ i }">{{ steps[i]!.kicker }}</template>
     <template #step="{ i }">
-      <span class="kicker">{{ steps[i]!.kicker }}</span>
       <h2>{{ steps[i]!.title }}</h2>
       <p>{{ steps[i]!.text }}</p>
       <p v-if="i === 0" class="src">

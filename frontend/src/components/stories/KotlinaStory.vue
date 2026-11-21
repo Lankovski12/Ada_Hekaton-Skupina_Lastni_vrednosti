@@ -102,8 +102,8 @@ onBeforeUnmount(() => window.clearInterval(timer))
         }}</span>
       </div>
     </template>
+    <template #naslov="{ i }">{{ steps[i]!.kicker }}</template>
     <template #step="{ i }">
-      <span class="kicker">{{ steps[i]!.kicker }}</span>
       <h2>{{ steps[i]!.title }}</h2>
       <p>{{ steps[i]!.text }}</p>
       <div v-if="steps[i]!.hour < 0" class="slider">

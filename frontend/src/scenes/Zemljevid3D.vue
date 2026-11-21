@@ -97,6 +97,45 @@ const DAY = 86_400_000
 const dnevi = shallowRef<Dnevi | null>(null)
 const dan = ref<string | null>(null) // YYYY-MM-DD; null = način »dan« ni vklopljen
 const danMin = ref(false) // pomanjšano okno »Ljubljana na izbrani dan«
+
+// polje za datum: vedno dan.mesec.leto
+const fmtDatum = (iso: string) => {
+  const [y, m, d] = iso.split('-')
+  return `${d}.${m}.${y}`
+}
+const datumTxt = ref('')
+const datumNapaka = ref(false)
+const koledar = ref<HTMLInputElement | null>(null)
+watch(dan, (v) => {
+  if (v) {
+    datumTxt.value = fmtDatum(v)
+    datumNapaka.value = false
+  }
+})
+function potrdiDatum() {
+  const m = datumTxt.value.trim().match(/^(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{4})$/)
+  const d = dnevi.value
+  if (m && d) {
+    const iso = `${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}`
+    const ok = !Number.isNaN(Date.parse(iso)) && new Date(iso).toISOString().slice(0, 10) === iso
+    if (ok && iso >= d.od && iso <= d.do) {
+      dan.value = iso
+      datumNapaka.value = false
+      return
+    }
+  }
+  datumNapaka.value = true // napačen ali prezgoden/prepozen datum: polje se obarva, dan ostane
+}
+function odpriKoledar() {
+  const el = koledar.value
+  if (!el) return
+  try {
+    el.showPicker()
+  } catch {
+    el.focus()
+    el.click()
+  }
+}
 const isoOf = (i: number) => new Date(Date.parse(dnevi.value!.od) + i * DAY).toISOString().slice(0, 10)
 // PM10 ima po evropskem indeksu ravno dvakrat višje meje kot PM2.5 → za barvo in velikost delimo z 2
 const eqOf = (pm25: number | null, pm10: number | null) => (pm25 ?? (pm10 != null ? pm10 / 2 : null))
@@ -717,7 +756,35 @@ onBeforeUnmount(() => {
         <template v-else>
           <div class="daypick">
             <button class="arrow" aria-label="Prejšnji dan" :disabled="dan <= dnevi.od" @click="korak(-1)">‹</button>
-            <input v-model="dan" type="date" :min="dnevi.od" :max="dnevi.do" aria-label="Datum" required />
+            <!-- datum vedno kot dan.mesec.leto (polje brskalnika bi ga pokazalo v obliki jezika brskalnika) -->
+            <label class="datum">
+              <input
+                v-model="datumTxt"
+                type="text"
+                inputmode="numeric"
+                placeholder="dd.mm.llll"
+                aria-label="Datum (dan.mesec.leto)"
+                :class="{ napaka: datumNapaka }"
+                @change="potrdiDatum"
+                @keydown.enter="potrdiDatum"
+              />
+              <button type="button" class="kol" aria-label="Odpri koledar" @click="odpriKoledar">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+                  <path d="M3.5 10h17M8 3v4M16 3v4" />
+                </svg>
+              </button>
+              <input
+                ref="koledar"
+                v-model="dan"
+                class="skrit"
+                type="date"
+                tabindex="-1"
+                aria-hidden="true"
+                :min="dnevi.od"
+                :max="dnevi.do"
+              />
+            </label>
             <button class="arrow" aria-label="Naslednji dan" :disabled="dan >= dnevi.do" @click="korak(1)">›</button>
           </div>
           <span class="date">{{ izbranDatum }}</span>
@@ -930,17 +997,64 @@ onBeforeUnmount(() => {
   gap: 6px;
   margin: 6px 0 2px;
 }
-.daypick input {
+.datum {
+  position: relative;
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+}
+.datum input[type='text'] {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 38px 6px 10px;
   border-radius: 8px;
   border: 1px solid var(--panel-line);
   background: color-mix(in srgb, var(--scene-ink) 6%, transparent);
   color: var(--scene-ink);
   font: inherit;
   font-weight: 700;
-  color-scheme: dark;
+  letter-spacing: 0.03em;
+}
+.datum input.napaka {
+  border-color: var(--aq-5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--aq-5) 25%, transparent);
+}
+.datum .kol {
+  position: absolute;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--scene-ink);
+}
+.datum .kol:hover {
+  background: color-mix(in srgb, var(--scene-ink) 10%, transparent);
+}
+.datum .kol svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+/* pravo polje za datum je skrito – rabimo ga samo za koledar brskalnika */
+.datum .skrit {
+  position: absolute;
+  right: 4px;
+  bottom: 0;
+  width: 28px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
 }
 .daypick .arrow {
   width: 34px;
