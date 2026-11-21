@@ -93,6 +93,50 @@ def fetch_arso() -> int:
     return n
 
 
+ZAJEM_HISTORY = "https://ada-hack-zrak.live-event-recap-spike.workers.dev/arso/history.csv"
+
+
+def backfill_zajem() -> int:
+    """Dopolni zadnje dni iz zajema ARSO XML, ki ga med hekatonom vodijo organizatorji (vse ure od 13. 11. 2026).
+    Tako ima igra Vremenski vedeževalec podatke za včeraj že ob prvem zagonu."""
+    import csv
+    import io
+
+    try:
+        r = httpx.get(ZAJEM_HISTORY, timeout=60)
+        r.raise_for_status()
+    except httpx.HTTPError as e:
+        log.info("Zajem organizatorjev ni dosegljiv (%s) – preskočim", e)
+        return 0
+    rows = {}
+    for row in csv.DictReader(io.StringIO(r.text)):
+        rows[(row["station_code"], row["time_from_local"])] = row  # zadnji zapis iste ure zmaga
+    n = 0
+    with SessionLocal() as db:
+        have = {(m.station_id, m.time_utc, m.onesnazevalo) for m in db.scalars(
+            select(Measurement).where(Measurement.vir == "arso")).all()}
+        stations = {s.id for s in db.scalars(select(Station)).all()}
+        for (code, t_local), row in rows.items():
+            try:
+                t_utc = dt.datetime.fromisoformat(t_local) - ARSO_OFFSET
+                lat, lon = float(row["lat"]), float(row["lon"])
+            except (ValueError, KeyError):
+                continue
+            if code not in stations:
+                db.add(Station(id=code, ime=row["station_name"], lat=lat, lon=lon, vir="arso"))
+                stations.add(code)
+            for pol, col in (("pm25", "pm25"), ("pm10", "pm10")):
+                v = _num(row.get(col))
+                if v is None or (code, t_utc, pol) in have:
+                    continue
+                db.add(Measurement(station_id=code, time_utc=t_utc, onesnazevalo=pol, vrednost=v, vir="arso", vrsta="meritev"))
+                have.add((code, t_utc, pol))
+                n += 1
+        db.commit()
+    log.info("Zajem organizatorjev: %d novih meritev", n)
+    return n
+
+
 def fetch_sensor_community() -> None:
     """Občanski senzorji; vrednosti je treba umeriti (senzorji_umerjanje_koeficienti.csv), senzor 21901 je pokvarjen."""
     # TODO: httpx.get(SENSOR_COMMUNITY_URL) -> filtriraj 21901 -> umerjanje -> Measurement(vrsta='ocena')

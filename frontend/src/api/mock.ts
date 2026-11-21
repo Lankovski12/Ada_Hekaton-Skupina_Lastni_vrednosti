@@ -1,6 +1,6 @@
 // Lažni podatki, ki jih aplikacija uporabi, dokler Python zaledje ne teče.
 // Oblika je ista kot pri pravem API-ju, zato jih kasneje samo izklopimo.
-import type { DailyGame, Fact, ForecastResponse, NowResponse, Place, SceneResponse } from '@/lib/types'
+import type { Fact, ForecastResponse, NowResponse, Place, SceneResponse } from '@/lib/types'
 
 const HOUR = 3600_000
 
@@ -74,15 +74,6 @@ export function mockScene(): SceneResponse {
         visina_megle_m: inverzija ? 330 + pm25 : 600 + (24 - pm25) * 8,
       }
     }),
-  }
-}
-
-export function mockDailyGame(): DailyGame {
-  return {
-    datum: new Date().toISOString().slice(0, 10),
-    vprasanje: 'Bo jutri ob 8h zrak v Ljubljani boljši ali slabši kot danes?',
-    moznosti: ['Boljši', 'Enak', 'Slabši'],
-    vceraj: { vprasanje: 'Bo danes popoldne megla?', pravilen_odgovor: 'Da' },
   }
 }
 

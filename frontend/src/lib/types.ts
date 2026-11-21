@@ -44,13 +44,6 @@ export interface SceneResponse {
   ure: SceneHour[]
 }
 
-export interface DailyGame {
-  datum: string
-  vprasanje: string
-  moznosti: string[]
-  vceraj?: { vprasanje: string; pravilen_odgovor: string }
-}
-
 export interface Fact {
   besedilo: string
   stevilka?: string

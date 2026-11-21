@@ -50,6 +50,24 @@ Za teste: `/igre/zmaj?debug=1` izpostavi igro kot `window.__zmaj`.
 Če je danes zrak čist (PM2.5 < 30), igra vzame resničen slab dan iz zgodovine ARSO (`public/assets/terrain/slabi_dnevi.json`).
 Za predstavitev lahko stanje zraka nastaviš v naslovu: `/igre/zmaj?pm=70&megla=1&vrh=500`.
 
+## Igra Vremenski vedeževalec
+
+Vsak dan eno vprašanje o **včerajšnjem** zraku, odgovor takoj. Sedem vrst nalog (kroži po dnevih):
+zemljevid, drsnik, ura, pobarvaj dan, razvrsti, pokrovka, detektiv.
+
+```
+src/games/daily/
+  DailyGame.vue       glava (niz dni, zvezdice), naloga, rezultat, odštevanje, vaja
+  dan.ts              nalaganje dneva: /api/vceraj ali arhiv (public/assets/daily/arhiv.json)
+  vrste.ts            katere naloge so možne za dan in katera je na vrsti
+  napredek.ts         zvezdice in niz dni (samo na napravi)
+  naloge/*.vue        sedem nalog; vsaka pošlje 'konec' z 0–3 zvezdicami in razlago
+src/games/skupno/     zvoki, ikone in konfeti (skupni obema igrama)
+```
+
+Arhiv pripravi `backend/scripts/build_daily_archive.py`, obris Slovenije je iz Natural Earth.
+Za predstavitev: `/igre/daily?vrsta=zemljevid&datum=2026-11-20`.
+
 ## Nova igra
 
 1. Ustvari `src/games/<ime>/<Ime>Game.vue` (+ `logic.ts`).

@@ -46,18 +46,6 @@ class SceneResponse(BaseModel):
     ure: list[SceneHour]
 
 
-class Yesterday(BaseModel):
-    vprasanje: str
-    pravilen_odgovor: str
-
-
-class DailyGameResponse(BaseModel):
-    datum: str
-    vprasanje: str
-    moznosti: list[str]
-    vceraj: Yesterday | None = None
-
-
 class FactOut(BaseModel):
     besedilo: str
     stevilka: str | None = None

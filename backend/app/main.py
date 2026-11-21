@@ -7,7 +7,7 @@ import csv
 import logging
 import threading
 from contextlib import asynccontextmanager
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime
 from functools import lru_cache
 
 from fastapi import FastAPI, Query
@@ -27,16 +27,14 @@ from .config import (
     STATIC_DATA_DIR,
 )
 from .db import Measurement, SessionLocal, Station, init_db
-from .ingest import run_hourly
+from .ingest import backfill_zajem, run_hourly
 from .schemas import (
-    DailyGameResponse,
     FactOut,
     ForecastResponse,
     NowResponse,
     PlaceOut,
     SceneResponse,
     StationNow,
-    Yesterday,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -47,8 +45,12 @@ log = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     init_db()
     if INGEST_ON_STARTUP:
-        # v ozadju, da strežnik takoj odgovarja
-        threading.Thread(target=run_hourly, daemon=True).start()
+        # v ozadju, da strežnik takoj odgovarja; najprej dopolni zadnje dni iz zajema organizatorjev
+        def first_run():
+            backfill_zajem()
+            run_hourly()
+
+        threading.Thread(target=first_run, daemon=True).start()
     scheduler = None
     if SCHEDULER_ENABLED:
         from apscheduler.schedulers.background import BackgroundScheduler
@@ -153,14 +155,18 @@ def scene():
     return SceneResponse(ure=out)
 
 
-@app.get("/api/daily-game", response_model=DailyGameResponse)
-def daily_game():
-    return DailyGameResponse(
-        datum=date.today().isoformat(),
-        vprasanje="Bo jutri ob 8h zrak v Ljubljani boljši ali slabši kot danes?",
-        moznosti=["Boljši", "Enak", "Slabši"],
-        vceraj=Yesterday(vprasanje="Bo danes popoldne megla?", pravilen_odgovor="Da"),
-    )
+@app.get("/api/vceraj")
+def vceraj():
+    """Včerajšnji dan za igro Vremenski vedeževalec (meritve ARSO + vreme Open-Meteo).
+    404, če meritev za včeraj še ni dovolj – igra takrat vzame dan iz arhiva."""
+    from fastapi import HTTPException
+
+    from .daily import yesterday
+
+    d = yesterday()
+    if d is None:
+        raise HTTPException(404, "Za včeraj še ni dovolj meritev.")
+    return d
 
 
 @app.get("/api/facts", response_model=list[FactOut])

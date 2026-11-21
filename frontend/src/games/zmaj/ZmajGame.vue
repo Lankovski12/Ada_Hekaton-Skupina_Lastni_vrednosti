@@ -9,9 +9,9 @@ import { useProgressStore } from '@/stores/progress'
 import { levelFor } from '@/lib/airQuality'
 import { DEZ, DIM, GAME, LEP_DAN_PM25, VETER, VPRASANJA, vrhZaIgro } from './config'
 import { type Conditions, type HudState, type PickupKind, ZmajEngine } from './engine/Game'
-import { sound } from './engine/sound'
-import Confetti from './ui/Confetti.vue'
-import GameIcon from './ui/GameIcon.vue'
+import { sound } from '../skupno/sound'
+import Confetti from '../skupno/Confetti.vue'
+import GameIcon from '../skupno/GameIcon.vue'
 import { DEJSTVA, sestaviVprasanja, type Vprasanje } from './vprasanja'
 
 const { currentPm25, scene, now, origin } = useAirData()

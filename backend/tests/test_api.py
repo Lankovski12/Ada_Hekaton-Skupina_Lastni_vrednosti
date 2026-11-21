@@ -28,8 +28,35 @@ def test_parse_arso_xml():
 
 def test_endpoints_respond():
     with TestClient(app) as c:
-        for path in ["/api/health", "/api/now", "/api/forecast?h=48", "/api/scene", "/api/daily-game",
+        for path in ["/api/health", "/api/now", "/api/forecast?h=48", "/api/scene",
                      "/api/facts", "/api/places?tip=vrtec"]:
             assert c.get(path).status_code == 200, path
         assert len(c.get("/api/forecast?h=48").json()["ure"]) == 48
         assert c.get("/api/places?tip=vrtec").json()[0]["tip"] == "vrtec"
+        assert c.get("/api/vceraj").status_code == 404  # prazna baza: igra vzame arhiv
+
+
+def test_yesterday_from_measurements(monkeypatch):
+    import datetime as dt
+
+    from app import daily
+    from app.db import Measurement, SessionLocal, Station, init_db
+
+    init_db()
+    monkeypatch.setattr(daily, "_weather", lambda day: None)  # brez interneta
+    today = dt.date(2026, 11, 21)
+    start = dt.datetime(2026, 11, 20) - dt.timedelta(hours=1)  # lokalna polnoč v UTC
+    with SessionLocal() as db:
+        for i, sid in enumerate(["E403", "E404", "E405", "E407"]):
+            db.merge(Station(id=sid, ime=f"Postaja {sid}", lat=46 + i * 0.1, lon=14.5, vir="arso"))
+            for h in range(48):  # predvčerajšnjim in včeraj
+                t = start - dt.timedelta(hours=24) + dt.timedelta(hours=h)
+                db.add(Measurement(station_id=sid, time_utc=t, onesnazevalo="pm25", vrednost=10 + i * 10 + (h % 24), vir="arso"))
+        db.commit()
+    d = daily.yesterday(today)
+    assert d["datum"] == "2026-11-20"
+    assert len(d["postaje"]) == 4
+    assert d["ure"][0] == 10 and d["ure"][23] == 33  # Bežigrad, lokalne ure 0 in 23
+    best = max(d["postaje"], key=lambda p: p["pm25"])
+    assert best["id"] == "E407"
+    assert d["prejsnji"]["pm25"] == 21.5
