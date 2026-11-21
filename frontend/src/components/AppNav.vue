@@ -6,9 +6,9 @@ const progress = useProgressStore()
 
 const links = [
   { to: '/', label: 'Domov', icon: '🏠' },
-  { to: '/otroci', label: 'Otroci', icon: '🎮' },
-  { to: '/starsi', label: 'Starši', icon: '📈' },
-  { to: '/nastavitve', label: 'Profil', icon: '⚙️' },
+  { to: '/otroci', label: 'Naloge' },
+  { to: '/starsi', label: 'Blogi' },
+  { to: '/nastavitve', label: 'Profil' },
 ]
 </script>
 
@@ -16,7 +16,6 @@ const links = [
   <header class="top">
     <div class="container bar">
       <RouterLink to="/" class="logo">
-        <span class="logo-dot" aria-hidden="true">☁️</span>
         <span>Zrak, ki ga dihamo</span>
       </RouterLink>
       <nav class="desktop">

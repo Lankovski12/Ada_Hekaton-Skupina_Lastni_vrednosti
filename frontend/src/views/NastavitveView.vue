@@ -15,7 +15,7 @@ function toggleInteres(i: string) {
 <template>
   <section class="container page">
     <h1>Profil</h1>
-    <p class="sub">🔒 Vse nastavitve ostanejo samo na tej napravi. Strežnik ne ve, kdo si.</p>
+    <p class="sub">Vse nastavitve ostanejo samo na tej napravi. Strežnik ne ve, kdo si.</p>
 
     <div class="card form">
       <label class="field">

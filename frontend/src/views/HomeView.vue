@@ -283,13 +283,13 @@ const fcLevel = computed(() => levelFor(fcUre.value[fcSelected.value]?.pm25 ?? l
   <section class="container section doors">
     <RouterLink to="/otroci" class="door kids">
       <AirBuddy :mood="levelFor(live).mood" :color="levelFor(live).color" :size="140" />
-      <h3>Za otroke</h3>
+      <h3>Poučne naloge</h3>
       <p>Igre na pravih podatkih: pomagaj zmajčku očistiti nebo in ugani jutrišnji zrak.</p>
       <span class="btn">Igraj →</span>
     </RouterLink>
     <RouterLink to="/starsi" class="door parents">
       <span class="emoji">👨‍👩‍👧</span>
-      <h3>Za starše</h3>
+      <h3>Blogi</h3>
       <p>Napoved, nasveti in opozorila – z upoštevanjem astme, ki ostane samo na tvojem telefonu.</p>
       <span class="btn">Poglej →</span>
     </RouterLink>
