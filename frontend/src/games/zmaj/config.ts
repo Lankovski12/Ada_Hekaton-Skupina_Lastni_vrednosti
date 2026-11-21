@@ -2,7 +2,7 @@
 
 export const GAME = {
   trajanje: 90, // sekund
-  hitrost: 190, // m/s (zmaj leti sam naprej)
+  hitrost: 250, // m/s (zmaj leti sam naprej)
   zavijanje: 1.25, // rad/s pri miški ob robu zaslona
   vzpon: 0.55, // največji nagib gor/dol (rad)
   minNadTerenom: 20, // m – zmaj lahko zleti nizko v smog

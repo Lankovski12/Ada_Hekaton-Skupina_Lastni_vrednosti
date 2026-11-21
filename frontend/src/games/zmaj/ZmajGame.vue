@@ -102,9 +102,9 @@ function play() {
 
 const sporocilo = computed(() => {
   const r = rezultat.value
-  if (r >= 55) return 'Wow! Ljubljana diha s polnimi pljuči. 🎉'
+  if (r >= 55) return 'Ljubljana diha s polnimi pljuči. Bravo!'
   if (r >= 30) return 'Super! Nebo nad mestom je veliko bolj čisto.'
-  return 'Smog je trdovraten – poskusi leteti nižje in pihati dlje.'
+  return 'Smog je trdovraten, poskusi leteti nižje in pihati dlje.'
 })
 </script>
 
@@ -123,21 +123,21 @@ const sporocilo = computed(() => {
         </div>
       </div>
       <div class="hud top-right">
-        <span v-if="zgodovina" class="chip">📅 {{ datumSl(izbran!.datum) }}</span>
+        <span v-if="zgodovina" class="chip"> {{ datumSl(izbran!.datum) }}</span>
         <span class="chip" :style="{ background: level.color }">{{ Math.round(conditions.pm25) }} µg/m³</span>
-        <span v-if="conditions.megla" class="chip">🌫️ megla</span>
-        <span v-if="conditions.inverzija" class="chip">⤵ inverzija</span>
+        <span v-if="conditions.megla" class="chip"> megla</span>
+        <span v-if="conditions.inverzija" class="chip"> inverzija</span>
       </div>
       <div v-if="hud.rob" class="warn">Obračam nazaj nad Ljubljano …</div>
-      <div v-else-if="hud.vMegli && !hud.piha" class="warn soft">Si v smogu – pihaj! 💨</div>
-      <div class="hint">🖱️ Miška usmerja · <strong>drži levi gumb</strong> (ali presledek) za pihanje</div>
+      <div v-else-if="hud.vMegli && !hud.piha" class="warn soft">Si v smogu! </div>
+      <div class="hint"> Miška usmerja · <strong>drži levi gumb</strong> (ali presledek) za pihanje</div>
     </template>
 
     <!-- Nalaganje -->
     <div v-if="state === 'nalagam'" class="overlay">
       <p v-if="napaka">{{ napaka }}</p>
       <template v-else>
-        <div class="spinner" aria-hidden="true">🐉</div>
+        <div class="spinner" aria-hidden="true"></div>
         <p>Nalagam Ljubljano … {{ nalozeno }} %</p>
       </template>
     </div>
@@ -150,7 +150,7 @@ const sporocilo = computed(() => {
         <template v-if="zgodovina">
           <p class="today">
             Danes je zrak v Ljubljani čist:
-            <strong :style="{ color: levelDanes.color }">{{ Math.round(danes.pm25) }} µg/m³</strong> 🎉
+            <strong :style="{ color: levelDanes.color }">{{ Math.round(danes.pm25) }} µg/m³</strong> 
           </p>
           <p class="today">
             Zato letiš nad resničnim slabim dnem:
@@ -158,11 +158,11 @@ const sporocilo = computed(() => {
             z inverzijo.
           </p>
           <p class="note">
-            Takrat je bil smog ujet v plasti, debeli le ~{{ izbran!.visina_mesanja_m }} m (radiosondaža ARSO). V igri je plast debelejša, da jo zmajček lahko preleti.
+            Takrat je bil smog ujet v plasti, debeli ~{{ izbran!.visina_mesanja_m }} m (radiosondaža ARSO).
           </p>
           <div class="row small">
-            <button class="btn ghost" @click="zamenjaj(false)">🎲 Drug slab dan</button>
-            <button class="btn ghost" @click="zamenjaj(true)">☀️ Igraj z današnjim zrakom</button>
+            <button class="btn ghost" @click="zamenjaj(false)">Drug slab dan</button>
+            <button class="btn ghost" @click="zamenjaj(true)">Igraj z današnjim zrakom</button>
           </div>
         </template>
         <template v-else>
@@ -172,17 +172,17 @@ const sporocilo = computed(() => {
             <span v-if="conditions.inverzija"> · inverzija</span>
             <span v-if="conditions.megla"> · megla</span>
           </p>
-          <button v-if="lepDan" class="btn ghost" @click="zamenjaj(false)">🌫️ Raje slab dan iz zgodovine</button>
+          <button v-if="lepDan" class="btn ghost" @click="zamenjaj(false)"> Raje slab dan iz zgodovine</button>
         </template>
         <p v-if="povozeno" class="demo">Stanje je nastavljeno ročno v naslovu strani (?pm=…).</p>
         <p v-else-if="!pravi" class="demo">Demo podatki – zaledje ali ARSO trenutno ni dosegljiv.</p>
         <ul class="how">
-          <li>🐉 Zmajček sam leti naprej, <strong>z miško ga usmerjaš</strong> levo, desno, gor in dol.</li>
-          <li>💨 <strong>Drži levi gumb</strong> (ali presledek) in odpihni smog nad mestom.</li>
-          <li>🌫️ Sive kepe nad mestom so smog. Zleti nizko vanj – ko pihaš, izginejo.</li>
-          <li>⏱ Imaš {{ GAME.trajanje }} sekund. Smog se vrača – več ko ga je, hitreje.</li>
+          <li> Zmajček sam leti naprej, <strong>z miško ga usmerjaš</strong> levo, desno, gor in dol.</li>
+          <li> <strong>Drži levi gumb</strong> (ali presledek) in odpihni smog nad mestom.</li>
+          <li> Sive kepe nad mestom so smog. Zleti nizko vanj in pihaj, da izgine.</li>
+          <li> Imaš {{ GAME.trajanje }} sekund. Smog se vrača – več ko ga je, hitreje.</li>
         </ul>
-        <button class="btn big" @click="play">Poleti! 🚀</button>
+        <button class="btn big" @click="play">Poleti! </button>
         <p class="credits">Teren: Copernicus DEM · Smog: ARSO inventar izpustov · Meritve: ARSO</p>
       </div>
     </div>
@@ -193,7 +193,7 @@ const sporocilo = computed(() => {
         <h1>{{ rezultat }} % čistega neba</h1>
         <p>{{ sporocilo }}</p>
         <p class="tip">
-          💡 V resnici smog iz kotline odpihne <strong>veter</strong> ali spere <strong>dež</strong>, ko se inverzija prekine.
+          V resnici smog iz kotline odpihne <strong>veter</strong> ali spere <strong>dež</strong>, ko se inverzija prekine.
           Mi lahko pomagamo tako, da manj kurimo z lesom in se pozimi več vozimo z avtobusom ali kolesom.
         </p>
         <div class="row">
