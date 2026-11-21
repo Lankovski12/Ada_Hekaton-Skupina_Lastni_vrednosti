@@ -19,6 +19,7 @@ FILES = [
     "01_meritve/arso_lj_pm_urno_2026_11_dopolnitev.csv",
     # vreme in inverzija (značilke)
     "03_vreme_inverzija/inverzija_urno_2016_2026.csv",
+    "03_vreme_inverzija/igra2_lj_inverzija_dnevno.csv",  # radiosondaža (scripts/zemljevid_dnevi.py)
     "03_vreme_inverzija/era5_openmeteo_urno_2016_2020.csv.gz",
     "03_vreme_inverzija/era5_openmeteo_urno_2021_2026.csv.gz",
     # CAMS (značilka + primerjava)

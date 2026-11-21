@@ -3,6 +3,8 @@
 // Podatke pripravi backend/scripts/zemljevid_3d.py → public/assets/map/.
 // Drsnik »megla« dvigne plast hladnega zraka nad dnom kotline in pokaže, katere lokacije ostanejo pod njo.
 // Gumb »Zdaj v Ljubljani« nastavi meglo in njeno barvo po trenutnih podatkih (PM2.5, inverzija) in približa mesto.
+// Gumb »Izberi dan« pokaže katerikoli dan od 2016: dnevno povprečje na postajah in meglo iz jutranje radiosondaže
+// (podatke pripravi backend/scripts/zemljevid_dnevi.py → public/assets/map/dnevi.json).
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -23,6 +25,16 @@ interface Teren {
   dno: number
   meja: [number, number][]
   postaje: { id: string; ime: string; x: number; y: number }[]
+}
+interface Dnevi {
+  vir: string
+  od: string
+  do: string
+  postaje: { id: string; ime: string }[]
+  pm25: (number | null)[][]
+  pm10: (number | null)[][]
+  invUr: (number | null)[]
+  megla: (number | null)[]
 }
 interface Lokacija {
   ime: string | null
@@ -64,7 +76,7 @@ const fog = ref(30) // višina megle nad dnom kotline (m)
 const show = reactive<Record<string, boolean>>(Object.fromEntries(Object.keys(KAT).map((k) => [k, true])))
 const lokacije = shallowRef<Lokacija[]>([])
 const tip = ref<{ x: number; y: number; l: Lokacija } | null>(null)
-const labels = ref<{ ime: string; pm: number | null; color: string; x: number; y: number; vis: boolean }[]>([])
+const labels = ref<{ ime: string; pm: number | null; unit: string; color: string; x: number; y: number; vis: boolean }[]>([])
 const vir = ref('')
 const live = ref(false) // način »Zdaj v Ljubljani«
 
@@ -79,6 +91,59 @@ const zdaj = computed(() => {
   return { pm, lvl, inv, nadDnom, ura: u ? new Date(u.cas_utc).getHours() : new Date().getHours() }
 })
 const dno = ref<number | null>(null)
+
+// --- izbran dan (časovni stroj) ---
+const DAY = 86_400_000
+const dnevi = shallowRef<Dnevi | null>(null)
+const dan = ref<string | null>(null) // YYYY-MM-DD; null = način »dan« ni vklopljen
+const danMin = ref(false) // pomanjšano okno »Ljubljana na izbrani dan«
+const isoOf = (i: number) => new Date(Date.parse(dnevi.value!.od) + i * DAY).toISOString().slice(0, 10)
+// PM10 ima po evropskem indeksu ravno dvakrat višje meje kot PM2.5 → za barvo in velikost delimo z 2
+const eqOf = (pm25: number | null, pm10: number | null) => (pm25 ?? (pm10 != null ? pm10 / 2 : null))
+const meanOf = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null)
+
+const izbran = computed(() => {
+  const d = dnevi.value
+  if (!d || !dan.value) return null
+  const i = Math.round((Date.parse(dan.value) - Date.parse(d.od)) / DAY)
+  if (i < 0 || i >= d.invUr.length) return null
+  const postaje = d.postaje.map((p, k) => {
+    const pm25 = d.pm25[k]![i] ?? null
+    const pm10 = d.pm10[k]![i] ?? null
+    return { id: p.id, pm: pm25 ?? pm10, unit: pm25 != null ? 'PM2.5' : pm10 != null ? 'PM10' : '', eq: eqOf(pm25, pm10) }
+  })
+  const z25 = postaje.filter((p) => p.unit === 'PM2.5').map((p) => p.pm!)
+  const z10 = d.pm10.map((s) => s[i]).filter((v): v is number => v != null)
+  const val = z25.length ? Math.round(meanOf(z25)!) : z10.length ? Math.round(meanOf(z10)!) : null
+  const unit = z25.length ? 'PM2.5' : 'PM10'
+  const eq = meanOf(postaje.map((p) => p.eq).filter((v): v is number => v != null))
+  return { i, postaje, val, unit, eq, lvl: levelFor(eq ?? 0), invUr: d.invUr[i] ?? null, megla: d.megla[i] ?? null }
+})
+const izbranDatum = computed(() =>
+  dan.value ? new Date(dan.value).toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '',
+)
+// bližnjice: najslabši in najčistejši dan v vseh podatkih
+const posebni = computed(() => {
+  const d = dnevi.value
+  if (!d) return null
+  let max = -1, min = -1, vMax = -Infinity, vMin = Infinity
+  for (let i = 0; i < d.invUr.length; i++) {
+    const vals = d.postaje.map((_, k) => eqOf(d.pm25[k]![i] ?? null, d.pm10[k]![i] ?? null)).filter((v): v is number => v != null)
+    if (vals.length < 1) continue
+    const m = meanOf(vals)!
+    if (m > vMax) (vMax = m), (max = i)
+    if (m < vMin) (vMin = m), (min = i)
+  }
+  return { najslabsi: isoOf(max), najcistejsi: isoOf(min), zadnji: d.do }
+})
+
+// stanje, po katerem se obarva megla: »zdaj« ali izbran dan
+const stanje = computed(() => {
+  if (live.value && zdaj.value) return { lvl: zdaj.value.lvl, pm: zdaj.value.pm, inv: zdaj.value.inv }
+  const z = izbran.value
+  if (z && z.eq != null) return { lvl: z.lvl, pm: z.eq, inv: (z.megla ?? 0) > 0 }
+  return null
+})
 
 const counts = computed(() => {
   const c: Record<string, { vse: number; pod: number }> = {}
@@ -114,6 +179,7 @@ interface Postaja {
   ground: THREE.Vector3
   top: THREE.Vector3
   pm: number | null
+  unit: string
   kupola: THREE.Mesh
 }
 const pillars: Postaja[] = []
@@ -297,7 +363,7 @@ async function build() {
       new THREE.MeshLambertMaterial({ flatShading: true, transparent: true, opacity: 0.45, depthWrite: false }),
     )
     scene.add(kupola)
-    pillars.push({ id: p.id, ime: p.ime, ground, top: new THREE.Vector3(), pm: null, kupola })
+    pillars.push({ id: p.id, ime: p.ime, ground, top: new THREE.Vector3(), pm: null, unit: '', kupola })
   }
   updatePillars()
   updateFog()
@@ -349,10 +415,10 @@ function setActive(on: boolean) {
 function updateFog() {
   if (!fogMesh) return
   fogMesh.position.y = fog.value * VZ * S
-  // v načinu »zdaj« je megla obarvana po kakovosti zraka in gostejša, ko je zrak slabši
+  // v načinu »zdaj« ali »dan« je megla obarvana po kakovosti zraka in gostejša, ko je zrak slabši
   const mat = fogMesh.material as THREE.MeshBasicMaterial
-  const z = zdaj.value
-  if (live.value && z) {
+  const z = stanje.value
+  if (z) {
     mat.color.set('#cfd8e2').lerp(new THREE.Color(z.lvl.hex), 0.45)
     mat.opacity = z.inv ? Math.min(0.75, 0.3 + z.pm / 120) : 0.12
   } else {
@@ -386,6 +452,7 @@ function setPinScale(s: number) {
 /** »Zdaj v Ljubljani«: megla po trenutnih podatkih in let kamere nad mesto */
 function toggleLive() {
   live.value = !live.value
+  dan.value = null
   const z = zdaj.value
   if (live.value && z) {
     // ob inverziji je plast ujeta nizko; sicer se zrak meša in megle skoraj ni
@@ -402,6 +469,37 @@ function onFogInput() {
     updateFog()
   }
 }
+
+/** »Izberi dan«: naloži dnevne podatke (enkrat) in pokaže zadnji dan */
+async function toggleDan() {
+  if (dan.value) {
+    dan.value = null
+    fog.value = 30
+    return
+  }
+  live.value = false
+  if (!dnevi.value) {
+    try {
+      dnevi.value = await load<Dnevi>('dnevi.json', 'json')
+    } catch {
+      return
+    }
+  }
+  dan.value = dnevi.value.do
+  flyTo(new THREE.Vector3(-90, 75, 95), new THREE.Vector3(-46, 0, 0))
+}
+function korak(n: number) {
+  const d = dnevi.value
+  if (!d || !dan.value) return
+  const t = new Date(Date.parse(dan.value) + n * DAY).toISOString().slice(0, 10)
+  if (t >= d.od && t <= d.do) dan.value = t
+}
+watch(izbran, (z) => {
+  // megla izbranega dne: višina iz jutranje radiosondaže (0 = brez inverzije)
+  if (z) fog.value = Math.max(0, Math.min(200, Math.round((z.megla ?? 0) / 5) * 5))
+  updatePillars()
+  updateFog()
+})
 function flyTo(pos: THREE.Vector3, target: THREE.Vector3) {
   if (!camera || !controls) return
   fly = { from: camera.position.clone(), to: pos, tFrom: controls.target.clone(), tTo: target, t0: performance.now() }
@@ -409,14 +507,31 @@ function flyTo(pos: THREE.Vector3, target: THREE.Vector3) {
 
 function updatePillars() {
   const st = now.value?.postaje ?? []
+  const z = izbran.value
   for (const p of pillars) {
-    const m = st.find((s) => s.id === p.id || s.ime.includes(p.ime))
-    p.pm = m?.pm25 ?? null
+    let eq: number | null
+    if (z) {
+      // izbran dan: dnevno povprečje (PM2.5, za starejše dni PM10)
+      const v = z.postaje.find((x) => x.id === p.id)
+      p.pm = v?.pm ?? null
+      p.unit = v?.unit ?? ''
+      eq = v?.eq ?? null
+    } else {
+      const m = st.find((s) => s.vir !== 'ocena' && (s.id === p.id || s.ime.includes(p.ime)))
+      // brez živih meritev zaledje vrne eno oceno »običajno ob tej uri« (povprečje meritev na Bežigradu)
+      const ocena = !m && p.id === 'E403' ? st.find((s) => s.vir === 'ocena') : undefined
+      const v = (m ?? ocena)?.pm25
+      p.pm = v == null ? null : Math.round(v)
+      p.unit = ocena ? 'običajno' : ''
+      eq = p.pm
+    }
     // polmer kupole raste s PM2.5
-    const r = 1.8 + (p.pm ?? 5) * 0.14
+    const r = 1.8 + (eq ?? 5) * 0.14
     p.kupola.scale.setScalar(r)
     p.kupola.position.copy(p.ground)
-    ;(p.kupola.material as THREE.MeshLambertMaterial).color.set(levelFor(p.pm ?? 0).hex)
+    p.kupola.visible = !z || eq != null
+    p.kupola.userData.eq = eq
+    ;(p.kupola.material as THREE.MeshLambertMaterial).color.set(levelFor(eq ?? 0).hex)
     p.top.set(p.ground.x, p.ground.y + r + 1, p.ground.z)
   }
 }
@@ -467,11 +582,11 @@ function loop() {
   const el = host.value!
   labels.value = pillars.map((p) => {
     const v = p.top.clone().project(camera!)
-    const pm = p.pm
     return {
       ime: p.ime,
-      pm,
-      color: levelFor(pm ?? 0).color,
+      pm: p.pm,
+      unit: p.unit === 'PM10' || p.unit === 'običajno' ? p.unit : '',
+      color: levelFor((p.kupola.userData.eq as number | null) ?? 0).color,
       x: ((v.x + 1) / 2) * el.clientWidth,
       y: ((1 - v.y) / 2) * el.clientHeight,
       vis: v.z < 1,
@@ -503,7 +618,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="map" :class="{ 'is-live': live }">
+  <div class="map" :class="{ 'is-live': live || !!dan }">
     <div ref="host" class="canvas" />
 
     <div v-if="loading" class="state">Nalagam 3D model Ljubljane …</div>
@@ -518,7 +633,7 @@ onBeforeUnmount(() => {
         class="station"
         :style="{ left: `${l.x}px`, top: `${l.y}px`, '--c': l.color }"
       >
-        {{ l.ime }} <strong>{{ l.pm ?? '–' }}</strong>
+        {{ l.ime }} <strong>{{ l.pm ?? '–' }}</strong><small v-if="l.unit"> {{ l.unit }}</small>
       </div>
 
       <!-- legenda / filter -->
@@ -538,10 +653,15 @@ onBeforeUnmount(() => {
 
       <div class="actions">
         <button class="btn explore" :class="{ on: live }" :disabled="!zdaj" @click="toggleLive">
-          {{ live ? 'Zapri' : 'Zdaj v Ljubljani' }}
+          <template v-if="live">Zapri</template>
+          <template v-else><span class="long">Zdaj v Ljubljani</span><span class="short">Zdaj</span></template>
+        </button>
+        <button class="btn explore" :class="{ on: !!dan }" @click="toggleDan">
+          {{ dan ? 'Zapri' : 'Izberi dan' }}
         </button>
         <button class="btn explore" @click="setActive(!active)">
-          {{ active ? 'Končaj' : 'Raziskuj zemljevid' }}
+          <template v-if="active">Končaj</template>
+          <template v-else><span class="long">Raziskuj zemljevid</span><span class="short">Raziskuj</span></template>
         </button>
       </div>
 
@@ -559,6 +679,50 @@ onBeforeUnmount(() => {
         <span class="kids">{{ zdaj.lvl.kids }}</span>
       </div>
 
+      <!-- izbran dan -->
+      <div v-if="dan && dnevi" class="now day" :class="{ min: danMin }" :style="{ '--c': izbran?.lvl.color ?? '#9fb3c8' }">
+        <div class="head">
+          <span class="k">Ljubljana na izbrani dan</span>
+          <button class="minbtn" :aria-label="danMin ? 'Razširi okno' : 'Pomanjšaj okno'" :aria-expanded="!danMin" @click="danMin = !danMin">
+            {{ danMin ? '+' : '–' }}
+          </button>
+        </div>
+        <!-- pomanjšano: samo datum, vrednost in puščici -->
+        <div v-if="danMin" class="daypick">
+          <button class="arrow" aria-label="Prejšnji dan" :disabled="dan <= dnevi.od" @click="korak(-1)">‹</button>
+          <span class="mini">
+            {{ new Date(dan).toLocaleDateString('sl-SI', { day: 'numeric', month: 'numeric', year: 'numeric' }) }}
+            <strong v-if="izbran && izbran.val != null">{{ izbran.val }} µg/m³</strong>
+          </span>
+          <button class="arrow" aria-label="Naslednji dan" :disabled="dan >= dnevi.do" @click="korak(1)">›</button>
+        </div>
+        <template v-else>
+          <div class="daypick">
+            <button class="arrow" aria-label="Prejšnji dan" :disabled="dan <= dnevi.od" @click="korak(-1)">‹</button>
+            <input v-model="dan" type="date" :min="dnevi.od" :max="dnevi.do" aria-label="Datum" required />
+            <button class="arrow" aria-label="Naslednji dan" :disabled="dan >= dnevi.do" @click="korak(1)">›</button>
+          </div>
+          <span class="date">{{ izbranDatum }}</span>
+          <template v-if="izbran && izbran.val != null">
+            <span class="v"><strong>{{ izbran.val }}</strong> µg/m³ {{ izbran.unit }} · {{ izbran.lvl.label }}</span>
+            <span v-if="izbran.megla && izbran.megla > 0">
+              Zjutraj je bil hladen zrak ujet do približno {{ izbran.megla }} m nad dnom kotline<template v-if="izbran.invUr != null">, inverzija je trajala {{ izbran.invUr }} od 24 ur</template>.
+            </span>
+            <span v-else-if="izbran.megla === 0">
+              Zjutraj ni bilo prizemne inverzije, zrak se je mešal<template v-if="izbran.invUr">, inverzija čez dan {{ izbran.invUr }} ur</template>.
+            </span>
+            <span v-else>Za ta dan ni podatka o inverziji.</span>
+            <small v-if="izbran.unit === 'PM10'" class="note">PM2.5 se je takrat še ni merilo, prikazan je PM10.</small>
+          </template>
+          <span v-else>Za ta dan ni celodnevnih meritev.</span>
+          <div v-if="posebni" class="quick">
+            <button class="chip" @click="dan = posebni.najslabsi">Najslabši dan</button>
+            <button class="chip" @click="dan = posebni.najcistejsi">Najčistejši dan</button>
+            <button class="chip" @click="dan = posebni.zadnji">Zadnji dan</button>
+          </div>
+        </template>
+      </div>
+
       <!-- megla -->
       <div class="fogbox">
         <label>
@@ -566,6 +730,7 @@ onBeforeUnmount(() => {
           <input v-model.number="fog" type="range" min="0" max="200" step="5" aria-label="Višina megle" @input="onFogInput" />
         </label>
         <p v-if="live && zdaj && !zdaj.inv">Zdaj ni inverzije, zato se onesnažen zrak ne ujame na dnu kotline.</p>
+        <p v-else-if="izbran && fog === 0">Ta dan zjutraj ni bilo inverzije, zato se onesnažen zrak ni ujel na dnu kotline.</p>
         <p v-else>
           Pod meglo je <strong>{{ podSkupaj }}</strong> od {{ lokacije.length }} lokacij:
           <template v-for="(info, k, i) in KAT" :key="k">
@@ -676,7 +841,7 @@ onBeforeUnmount(() => {
 }
 .now {
   position: absolute;
-  top: 120px;
+  top: 172px;
   right: 14px;
   display: grid;
   gap: 2px;
@@ -704,6 +869,98 @@ onBeforeUnmount(() => {
   font-family: var(--font-head);
   font-size: 1.8rem;
   color: var(--c);
+}
+.now.day {
+  max-width: 330px;
+}
+.now .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.minbtn {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #eaf2fb;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.now.min {
+  padding: 10px 12px;
+}
+.now .mini {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  color: #c4d3e2;
+}
+.now .mini strong {
+  margin-left: 6px;
+  color: var(--c);
+}
+.daypick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.daypick input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #eaf2fb;
+  font: inherit;
+  font-weight: 700;
+  color-scheme: dark;
+}
+.daypick .arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #eaf2fb;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.daypick .arrow:disabled {
+  opacity: 0.35;
+}
+.now .date {
+  color: #9fb3c8;
+  font-weight: 700;
+}
+.now .date::first-letter {
+  text-transform: uppercase;
+}
+.explore .short {
+  display: none;
+}
+.now .note {
+  color: #8197ad;
+}
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.quick .chip {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+.station small {
+  color: #9fb3c8;
+  font-weight: 700;
 }
 .now .kids {
   margin-top: 4px;
@@ -802,11 +1059,18 @@ onBeforeUnmount(() => {
     left: 14px;
     right: 14px;
     flex-direction: row;
+    flex-wrap: wrap;
     justify-content: space-between;
   }
   .explore {
     font-size: 0.8rem;
     padding: 6px 12px;
+  }
+  .explore .long {
+    display: none;
+  }
+  .explore .short {
+    display: inline;
   }
   .map.is-live .fogbox {
     display: none; /* na telefonu v načinu »zdaj« pokažemo samo kartico s stanjem */
