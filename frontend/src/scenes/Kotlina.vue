@@ -6,9 +6,17 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import type { SceneResponse } from '@/lib/types'
 import { levelFor } from '@/lib/airQuality'
 
-const props = defineProps<{ scene: SceneResponse }>()
+const props = withDefaults(
+  defineProps<{
+    scene: SceneResponse
+    bare?: boolean // brez okvirja, zapolni starša (za drsečo zgodbo na domači strani)
+    controls?: boolean // pokaži gumb in drsnik pod sceno
+  }>(),
+  { bare: false, controls: true },
+)
 
-const idx = ref(0)
+// ura (indeks v scene.ure); starš jo lahko nastavlja z v-model:hour
+const idx = defineModel<number>('hour', { default: 0 })
 const playing = ref(false)
 let timer: number | undefined
 
@@ -58,7 +66,7 @@ const chimneys = [3, 9, 15, 22, 28].map((i) => buildings[i]!)
 </script>
 
 <template>
-  <div class="kotlina">
+  <div class="kotlina" :class="{ bare }">
     <svg viewBox="0 0 800 360" preserveAspectRatio="xMidYMax slice" role="img" :aria-label="`Kotlina ob ${clock}h, ${level.label}`">
       <defs>
         <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -102,14 +110,14 @@ const chimneys = [3, 9, 15, 22, 28].map((i) => buildings[i]!)
       <path d="M0 300 L60 270 L120 300 L0 360Z M800 290 L730 260 L660 300 L800 360Z" fill="var(--mountain-near)" />
     </svg>
 
-    <div class="hud">
+    <div v-if="!bare" class="hud">
       <span class="pill">{{ String(clock).padStart(2, '0') }}:00</span>
       <span class="pill" v-if="hour.inverzija">🌫️ inverzija – zrak je ujet</span>
       <span class="pill" v-else>🌬️ zrak se meša</span>
       <span class="pill" :style="{ background: level.color, color: '#fff' }">{{ hour.pm25 }} µg/m³</span>
     </div>
 
-    <div class="controls">
+    <div v-if="controls" class="controls">
       <button class="btn" @click="toggle" :aria-pressed="playing">{{ playing ? '⏸ Ustavi' : '▶ Predvajaj dan' }}</button>
       <input v-model.number="idx" type="range" min="0" :max="scene.ure.length - 1" aria-label="Ura" />
     </div>
@@ -129,6 +137,16 @@ svg {
   display: block;
   width: 100%;
   height: clamp(240px, 45vw, 420px);
+}
+.kotlina.bare {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.kotlina.bare svg {
+  height: 100%;
 }
 .fog {
   transition: y 0.7s ease, height 0.7s ease;

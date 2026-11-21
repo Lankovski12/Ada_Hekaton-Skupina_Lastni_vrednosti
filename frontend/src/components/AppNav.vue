@@ -1,28 +1,26 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { useProgressStore } from '@/stores/progress'
 
-const progress = useProgressStore()
+// na domači strani (celozaslonska pljuča) zgornje vrstice ne prikažemo
+defineProps<{ brezGlave?: boolean }>()
 
 const links = [
   { to: '/', label: 'Domov', icon: '🏠' },
-  { to: '/otroci', label: 'Otroci', icon: '🎮' },
-  { to: '/starsi', label: 'Starši', icon: '📈' },
-  { to: '/nastavitve', label: 'Profil', icon: '⚙️' },
+  { to: '/igre', label: 'Igre' },
+  { to: '/zemljevid', label: 'Zemljevid' },
+  { to: '/grafi', label: 'Podatki' },
 ]
 </script>
 
 <template>
-  <header class="top">
+  <header v-if="!brezGlave" class="top">
     <div class="container bar">
       <RouterLink to="/" class="logo">
-        <span class="logo-dot" aria-hidden="true">☁️</span>
         <span>Zrak, ki ga dihamo</span>
       </RouterLink>
       <nav class="desktop">
         <RouterLink v-for="l in links" :key="l.to" :to="l.to">{{ l.label }}</RouterLink>
       </nav>
-      <span class="points" title="Tvoje točke iz iger">⭐ {{ progress.tocke }}</span>
     </div>
   </header>
 
@@ -41,7 +39,7 @@ const links = [
   top: 0;
   z-index: 20;
   backdrop-filter: blur(12px);
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
   border-bottom: 1px solid var(--line);
 }
 .bar {
@@ -61,9 +59,6 @@ const links = [
   text-decoration: none;
   white-space: nowrap;
 }
-.logo-dot {
-  font-size: 1.5rem;
-}
 .desktop {
   display: flex;
   gap: 4px;
@@ -73,19 +68,20 @@ const links = [
   padding: 8px 14px;
   border-radius: 999px;
   color: var(--ink-soft);
-  font-weight: 700;
-  text-decoration: none;
-}
-.desktop a.router-link-exact-active {
-  background: var(--bg-soft);
-  color: var(--ink);
-}
-.points {
   font-weight: 800;
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.desktop a:hover {
   background: var(--bg-soft);
-  border-radius: 999px;
-  padding: 6px 12px;
-  white-space: nowrap;
+  transform: translateY(-1px);
+}
+.desktop a.router-link-active:not([href='/']),
+.desktop a.router-link-exact-active {
+  background: var(--ink);
+  color: var(--bg);
 }
 .mobile {
   display: none;
@@ -94,9 +90,6 @@ const links = [
 @media (max-width: 720px) {
   .desktop {
     display: none;
-  }
-  .points {
-    margin-left: auto;
   }
   .logo span:last-child {
     font-size: 1.05rem;

@@ -32,6 +32,7 @@ class ForecastResponse(BaseModel):
     lon: float
     ure: list[ForecastHour]
     najboljsa_ura: str
+    model: Literal["cams", "klima", "model"] = "cams"  # klima = povprečje meritev ARSO za ta mesec in uro
 
 
 class SceneHour(BaseModel):
@@ -44,6 +45,7 @@ class SceneHour(BaseModel):
 
 class SceneResponse(BaseModel):
     ure: list[SceneHour]
+    vir: Literal["open-meteo", "klima"] = "open-meteo"  # klima = običajne razmere iz ARSOhack (ni povezave)
 
 
 class FactOut(BaseModel):

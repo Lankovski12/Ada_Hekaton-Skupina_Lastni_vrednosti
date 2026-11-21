@@ -10,7 +10,7 @@ const forecast = ref<ForecastResponse | null>(null)
 const scene = ref<SceneResponse | null>(null)
 const facts = ref<Fact[]>([])
 const places = ref<Place[]>([])
-const origin = ref<DataOrigin>('demo')
+const origin = ref<DataOrigin>('arhiv ARSO')
 const loading = ref(false)
 let loadedAt = 0
 

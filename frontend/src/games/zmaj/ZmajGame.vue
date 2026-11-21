@@ -7,6 +7,7 @@ import AirBuddy from '@/components/AirBuddy.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProgressStore } from '@/stores/progress'
 import { levelFor } from '@/lib/airQuality'
+import { typicalPm25 } from '@/lib/klima'
 import { DEZ, DIM, GAME, LEP_DAN_PM25, VETER, VPRASANJA, vrhZaIgro } from './config'
 import { type Conditions, type HudState, type PickupKind, ZmajEngine } from './engine/Game'
 import { sound } from '../skupno/sound'
@@ -33,7 +34,7 @@ const route = useRoute()
 const q = (k: string) => (typeof route.query[k] === 'string' ? (route.query[k] as string) : undefined)
 const danes = computed<Conditions>(() => {
   const h = scene.value?.ure[0]
-  const pm = q('pm') ? Number(q('pm')) : (currentPm25.value ?? h?.pm25 ?? 20)
+  const pm = q('pm') ? Number(q('pm')) : (currentPm25.value ?? h?.pm25 ?? typicalPm25())
   return {
     pm25: pm,
     vrhPlastiM: q('vrh') ? Number(q('vrh')) : (h?.visina_megle_m ?? 360),
@@ -331,8 +332,9 @@ function play() {
     <!-- Začetek -->
     <div v-else-if="state === 'start'" class="overlay">
       <div class="card menu">
-        <RouterLink to="/otroci" class="back">Nazaj na igre</RouterLink>
-        <h1 class="title">Zmajček<br /><span>čisti nebo</span></h1>
+        <RouterLink to="/igre" class="back">Nazaj na igre</RouterLink>
+        <span class="kicker">Igra · 3D Ljubljana</span>
+        <h1 class="title">Zmajček <span>čisti nebo</span></h1>
 
         <p v-if="zgodovina" class="intro">
           Danes je zrak čist! Zato letiš nad <strong>resničnim smogom</strong> iz preteklosti.
@@ -413,7 +415,7 @@ function play() {
         </p>
         <div class="row">
           <button class="big-btn green" @click="play">Še enkrat</button>
-          <RouterLink to="/otroci" class="big-btn blue">Druge igre</RouterLink>
+          <RouterLink to="/igre" class="big-btn blue">Druge igre</RouterLink>
         </div>
       </div>
     </div>
@@ -776,22 +778,28 @@ function play() {
 }
 .back {
   display: inline-block;
-  color: var(--k-blue);
+  color: var(--brand);
   font-weight: 800;
   text-decoration: none;
   margin-bottom: 4px;
 }
+.kicker {
+  display: block;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--mint) 70%, var(--ink));
+}
 .title {
   margin: 0 0 8px;
-  font-size: clamp(2.4rem, 7vw, 3.6rem);
-  line-height: 0.95;
-  color: var(--k-blue);
-  -webkit-text-stroke: 2px #1d6fb0;
-  text-shadow: 0 5px 0 #c7e6ff;
+  font-size: clamp(2.2rem, 6vw, 3.2rem);
+  line-height: 1;
+  color: var(--ink);
 }
 .title span {
-  color: var(--k-green);
-  -webkit-text-stroke-color: #22914b;
+  color: color-mix(in srgb, var(--mint) 80%, var(--ink));
 }
 .title.small {
   font-size: clamp(1.8rem, 5vw, 2.6rem);

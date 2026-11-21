@@ -165,9 +165,12 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Natančno!']
   <div class="pokr" @pointerdown.once="sound.unlock()">
     <Confetti v-if="konfeti" :key="konfeti" />
     <div class="wrap">
-      <RouterLink to="/otroci" class="back">Nazaj na igre</RouterLink>
+      <RouterLink to="/igre" class="back">Nazaj na igre</RouterLink>
       <header class="head">
-        <h1>Naredi pokrovko</h1>
+        <div>
+          <span class="kicker">Igra · inverzija</span>
+          <h1>Naredi pokrovko</h1>
+        </div>
         <span class="chip"><GameIcon name="zvezda" :size="18" /> {{ shranjeno.zvezdice + (stanje === 'igra' ? skupaj : 0) }}</span>
         <button class="sound" :aria-label="zvok ? 'Izklopi zvok' : 'Vklopi zvok'" @click="preklopiZvok">
           <GameIcon :name="zvok ? 'zvok' : 'tiho'" :size="22" />
@@ -326,7 +329,6 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Natančno!']
   position: relative;
   min-height: calc(100svh - 64px);
   padding: 16px 0 40px;
-  background: linear-gradient(180deg, #ffe0b8 0%, #e8f5ff 45%, #f4fbff 100%);
   overflow: hidden;
 }
 .wrap {
@@ -337,7 +339,7 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Natančno!']
 .back {
   display: inline-block;
   margin-bottom: 4px;
-  color: #2479bd;
+  color: var(--brand);
   font-family: var(--font-head);
   font-weight: 800;
   text-decoration: none;
@@ -348,12 +350,20 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Natančno!']
   gap: 10px;
   margin-bottom: 10px;
 }
+.kicker {
+  display: block;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+}
 .head h1 {
   margin: 0;
-  font-size: clamp(2rem, 6vw, 3rem);
-  color: #ff8a3d;
-  -webkit-text-stroke: 1.5px #c85a12;
-  text-shadow: 0 4px 0 #ffe3c7;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1;
+  color: var(--ink);
 }
 .chip {
   display: inline-flex;
@@ -384,9 +394,10 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Natančno!']
 }
 .card {
   padding: 16px;
-  border-radius: 30px;
-  background: #fff;
-  box-shadow: 0 8px 0 rgba(29, 53, 87, 0.12);
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--shadow);
   margin-bottom: 16px;
 }
 .center {

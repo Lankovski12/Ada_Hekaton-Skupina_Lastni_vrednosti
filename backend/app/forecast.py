@@ -3,13 +3,13 @@
 Vrstni red:
 1. naš model (models/model.joblib iz training/train.py) – TODO
 2. CAMS napoved iz Open-Meteo (ingest.LATEST["cams"])
-3. tipičen dnevni hod (demo), da API vedno nekaj vrne
+3. povprečje meritev ARSO za ta mesec in uro (klima.py, iz ARSOhack), da API vedno nekaj vrne
 """
 import logging
-import math
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 
+from . import klima
 from .config import MODEL_PATH
 
 log = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 @lru_cache(maxsize=1)
 def load_model():
     if not MODEL_PATH.exists():
-        log.info("Model %s ne obstaja – uporabljam CAMS ali demo napoved", MODEL_PATH)
+        log.info("Model %s ne obstaja – uporabljam CAMS ali povprečje meritev ARSO", MODEL_PATH)
         return None
     import joblib
 
@@ -30,13 +30,9 @@ def start_of_hour(now: datetime | None = None) -> datetime:
     return now.replace(minute=0, second=0, microsecond=0)
 
 
-def typical_pm25(t: datetime) -> float:
-    """Tipičen zimski dnevni hod (lokalni čas ≈ UTC+1). Samo za demo / rezervo."""
-    h = (t.hour + 1) % 24
-    evening = math.exp(-((h - 20) ** 2) / 8) * 30
-    morning = math.exp(-((h - 8) ** 2) / 4) * 18
-    factor = 0.7 + 0.5 * abs(math.sin(t.toordinal() * 1.7))
-    return round((10 + evening + morning) * factor, 1)
+def typical(t: datetime) -> tuple[float, float]:
+    """(PM2.5, PM10): povprečje meritev na Bežigradu za ta mesec in uro (ARSOhack)."""
+    return klima.typical(t, "pm25"), klima.typical(t, "pm10")
 
 
 def _cams_lookup() -> dict[datetime, tuple[float | None, float | None]]:
@@ -52,19 +48,21 @@ def _cams_lookup() -> dict[datetime, tuple[float | None, float | None]]:
 
 
 def predict(lat: float, lon: float, hours: int = 48) -> tuple[list[dict], str]:
-    """Vrne (ure, ime_modela)."""
+    """Vrne (ure, ime_modela). ime_modela: 'cams' ali 'klima' (povprečje meritev ARSO)."""
     start = start_of_hour()
     cams = _cams_lookup()
     # TODO: ko bo model naučen: sestavi značilke (lag 1/3/24 h, ura, dan, vreme, CAMS) in pokliči model.predict
-    model_name = "cams" if cams else "demo"
+    model_name = "cams" if cams else "klima"
     out = []
     for i in range(1, hours + 1):
         t = start + timedelta(hours=i)
         pm25, pm10 = cams.get(t, (None, None))
+        t25, t10 = typical(t)
         if pm25 is None:
-            pm25 = typical_pm25(t)
-            pm10 = None
-        out.append({"cas_utc": t.isoformat(), "pm25": round(pm25, 1), "pm10": round(pm10 or pm25 * 1.3, 1)})
+            pm25, pm10 = t25, t10
+        elif pm10 is None:
+            pm10 = t10
+        out.append({"cas_utc": t.isoformat(), "pm25": round(pm25, 1), "pm10": round(pm10, 1)})
     return out, model_name
 
 

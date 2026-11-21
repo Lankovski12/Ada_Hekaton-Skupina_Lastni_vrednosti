@@ -1,6 +1,9 @@
 <script setup lang="ts">
 // Preproste ikone za igro (SVG), da ne potrebujemo emojijev ali slik.
-defineProps<{ name: 'oblak' | 'obroc' | 'dimnik' | 'vprasaj' | 'zvezda' | 'ura' | 'zvok' | 'tiho' | 'smog' | 'veter'; size?: number }>()
+defineProps<{
+  name: 'oblak' | 'obroc' | 'dimnik' | 'vprasaj' | 'zvezda' | 'ura' | 'zvok' | 'tiho' | 'smog' | 'veter' | 'zmaj' | 'pokrovka'
+  size?: number
+}>()
 </script>
 
 <template>
@@ -32,6 +35,22 @@ defineProps<{ name: 'oblak' | 'obroc' | 'dimnik' | 'vprasaj' | 'zvezda' | 'ura' 
       <circle cx="16" cy="17" r="12" fill="#fff" stroke="currentColor" stroke-width="3" />
       <path d="M16 10v7l5 3" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" />
       <rect x="13" y="1.5" width="6" height="4" rx="1.5" fill="currentColor" />
+    </template>
+    <template v-else-if="name === 'zmaj'">
+      <path d="M9 9l-2-5 5 3M23 9l2-5-5 3" fill="#ff9f43" />
+      <circle cx="16" cy="16" r="10" fill="#2ec4a0" />
+      <ellipse cx="16" cy="21" rx="6" ry="4" fill="#bff3e4" />
+      <circle cx="12" cy="14" r="2.2" fill="#fff" /><circle cx="20" cy="14" r="2.2" fill="#fff" />
+      <circle cx="12.4" cy="14.4" r="1.1" fill="#1d2b3a" /><circle cx="20.4" cy="14.4" r="1.1" fill="#1d2b3a" />
+      <path d="M13 22q3 2 6 0" stroke="#1d2b3a" stroke-width="1.4" fill="none" stroke-linecap="round" />
+      <path d="M27 18c2 0 3 1 4 2M27 21c2 .5 3 1.5 3.5 3" stroke="#9fe3ff" stroke-width="2" fill="none" stroke-linecap="round" />
+    </template>
+    <template v-else-if="name === 'pokrovka'">
+      <rect x="2" y="4" width="28" height="12" rx="2" fill="#ffd9a8" />
+      <rect x="2" y="16" width="28" height="12" rx="2" fill="#a9cdf5" />
+      <path d="M2 28l8-14 6 8 5-5 9 11z" fill="#5e9150" />
+      <path d="M2 16h28" stroke="#fff" stroke-width="2.4" stroke-dasharray="4 3" />
+      <circle cx="24" cy="21" r="2.5" fill="#8f877c" /><circle cx="20" cy="20" r="2" fill="#a39a90" />
     </template>
     <template v-else-if="name === 'smog'">
       <circle cx="11" cy="18" r="7" fill="#cfc8bd" /><circle cx="20" cy="15" r="8" fill="#bdb5a9" /><circle cx="24" cy="21" r="5" fill="#cfc8bd" />

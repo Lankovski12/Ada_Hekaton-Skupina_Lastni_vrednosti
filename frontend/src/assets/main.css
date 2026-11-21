@@ -1,20 +1,38 @@
-/* Barvni žetoni – svetla in temna tema */
+/* Barvni žetoni. Privzeta je svetla tema; temno vklopiš v Profilu (data-theme="dark" na <html>).
+   Barve spreminjaš tukaj – veljajo za celo stran, tudi za zgodbe, zemljevid in pljuča. */
 :root {
-  --bg: #f4f8fb;
-  --bg-soft: #e8f1f7;
+  /* osnova: topla, svetla, igriva */
+  --bg: #f8f5ee;
+  --bg-soft: #efe8da;
   --card: #ffffff;
-  --ink: #17324d;
-  --ink-soft: #4b6580;
-  --line: #d5e3ee;
-  --brand: #2f80ed;
+  --ink: #1f2d4d;
+  --ink-soft: #55627d;
+  --line: #e7dfcf;
+  --brand: #3a86ff;
   --brand-ink: #ffffff;
-  --accent: #ffb547;
+  --accent: #ffbe3d;
+  --coral: #ff6b6b;
+  --mint: #2ec4a0;
+  --lilac: #9b7bff;
+
+  /* scena Kotlina */
   --sky-top: #8fd3ff;
   --sky-bottom: #e7f6ff;
-  --mountain-far: #9bb7c9;
-  --mountain-mid: #6f97ad;
-  --mountain-near: #4c7a8f;
-  --city: #2e4d61;
+  --mountain-far: #a9c8b8;
+  --mountain-mid: #7fab95;
+  --mountain-near: #5d8e78;
+  --city: #34506a;
+
+  /* drseče zgodbe (Podatki, Zemljevid) in domača stran */
+  --scene-bg: #f8f5ee; /* polna barva ozadja scen */
+  --scene-ink: #1f2d4d; /* naslovi */
+  --scene-text: #3e4c69; /* besedilo */
+  --scene-muted: #75809a; /* drobni napisi */
+  --panel: rgba(255, 255, 255, 0.9); /* kartice v zgodbah */
+  --panel-line: rgba(31, 45, 77, 0.1);
+  --panel-shadow: 0 6px 0 -2px rgba(31, 45, 77, 0.07), 0 22px 40px -26px rgba(31, 45, 77, 0.45);
+  --dot-off: rgba(31, 45, 77, 0.18);
+  --cal-empty: rgba(31, 45, 77, 0.08);
 
   /* kakovost zraka */
   --aq-1: #2bb673;
@@ -24,30 +42,12 @@
   --aq-5: #e5484d;
   --aq-6: #8e4ec6;
 
-  --radius: 20px;
-  --radius-sm: 12px;
-  --shadow: 0 10px 30px -12px rgba(23, 50, 77, 0.25);
+  --radius: 24px;
+  --radius-sm: 14px;
+  --shadow: 0 6px 0 -2px rgba(31, 45, 77, 0.06), 0 18px 34px -20px rgba(31, 45, 77, 0.35);
   --font-head: 'Baloo 2', 'Nunito', system-ui, sans-serif;
   --font-body: 'Nunito', system-ui, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #0e1a26;
-    --bg-soft: #142636;
-    --card: #182c3e;
-    --ink: #e6f0f8;
-    --ink-soft: #9db4c8;
-    --line: #26425a;
-    --brand: #5aa2ff;
-    --sky-top: #1b3554;
-    --sky-bottom: #335a7a;
-    --mountain-far: #2d4a60;
-    --mountain-mid: #23394b;
-    --mountain-near: #1a2c3b;
-    --city: #0f1d29;
-    --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
-  }
+  color-scheme: light;
 }
 
 :root[data-theme='dark'] {
@@ -61,10 +61,20 @@
   --sky-top: #1b3554;
   --sky-bottom: #335a7a;
   --mountain-far: #2d4a60;
-  --mountain-mid: #23394b;
-  --mountain-near: #1a2c3b;
-  --city: #0f1d29;
+  --mountain-mid: #20364a;
+  --mountain-near: #142433;
+  --city: #0b1621;
+  --scene-bg: #05080f;
+  --scene-ink: #eaf2fb;
+  --scene-text: #c4d3e2;
+  --scene-muted: #8fa3b8;
+  --panel: rgba(10, 18, 30, 0.7);
+  --panel-line: rgba(255, 255, 255, 0.08);
+  --panel-shadow: none;
+  --dot-off: rgba(255, 255, 255, 0.25);
+  --cal-empty: rgba(255, 255, 255, 0.12);
   --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
 }
 
 *,
@@ -92,6 +102,23 @@ h3 {
   margin: 0 0 0.4em;
 }
 
+/* valovita črta pod glavnim naslovom (dodaj razred .squiggle) */
+.squiggle {
+  position: relative;
+  display: inline-block;
+}
+.squiggle::after {
+  content: '';
+  display: block;
+  height: 12px;
+  margin-top: 4px;
+  background: var(--squiggle, var(--accent));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='12' viewBox='0 0 40 12'%3E%3Cpath d='M2 6c4.5-5 9.5-5 14 0s9.5 5 14 0 7-4 8-3' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E")
+    repeat-x left center / 40px 12px;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='12' viewBox='0 0 40 12'%3E%3Cpath d='M2 6c4.5-5 9.5-5 14 0s9.5 5 14 0 7-4 8-3' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E")
+    repeat-x left center / 40px 12px;
+}
+
 a {
   color: var(--brand);
 }
@@ -116,7 +143,9 @@ button {
   padding: 20px;
 }
 
+/* gumbi: okrogli in »otipljivi« – ob kliku se pogreznejo */
 .btn {
+  --btn: var(--brand);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -124,24 +153,29 @@ button {
   border-radius: 999px;
   padding: 14px 22px;
   min-height: 48px; /* veliki gumbi za otroke */
-  background: var(--brand);
+  background: var(--btn);
   color: var(--brand-ink);
   font-weight: 800;
   text-decoration: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--btn) 62%, #0b1530);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
   touch-action: manipulation;
 }
 .btn:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--btn) 62%, #0b1530);
 }
 .btn:active {
-  transform: scale(0.97);
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--btn) 62%, #0b1530);
 }
 .btn.ghost {
   background: transparent;
   color: var(--ink);
   border: 2px solid var(--line);
+  box-shadow: none;
 }
 
 .pill {
