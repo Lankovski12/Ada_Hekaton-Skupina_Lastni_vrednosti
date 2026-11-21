@@ -14,6 +14,8 @@ const { currentPm25, now } = useAirData()
 const { sensitivity } = useProfile()
 
 const pm = computed(() => currentPm25.value ?? typicalPm25())
+// pljuča so vedno zelena (med prvotno in neon zeleno); kakovost zraka pokaže hitrost dihanja in število delcev okoli
+const NEON = '#5adc32'
 const level = computed(() => levelFor(pm.value, sensitivity.value))
 const izmerjeno = computed(() => now.value?.postaje.some((p) => p.vir === 'meritev') ?? false)
 
@@ -69,7 +71,7 @@ const okna = [
 
 <template>
   <div class="landing" :class="{ odprto }" :style="{ '--lvl': level.color }">
-    <PljucaPike class="scena" :pm25="pm" :color="level.hex" @klik="odprto = !odprto" />
+    <PljucaPike class="scena" :pm25="pm" :color="NEON" @klik="odprto = !odprto" />
 
     <header class="naslov">
       <span class="badge">

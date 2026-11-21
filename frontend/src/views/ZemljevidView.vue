@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // Zavihek »Zemljevid«: 3D zemljevid občutljivih lokacij in stanje v Ljubljani ta trenutek.
 import { defineAsyncComponent } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
@@ -9,8 +8,8 @@ import { levelFor } from '@/lib/airQuality'
 // 3D zemljevid (three.js) se naloži šele, ko odpreš ta zavihek
 const Zemljevid3D = defineAsyncComponent(() => import('@/scenes/Zemljevid3D.vue'))
 
-const { now, facts, origin } = useAirData()
-const { profile, sensitivity } = useProfile()
+const { now, facts } = useAirData()
+const { sensitivity } = useProfile()
 </script>
 
 <template>
@@ -18,10 +17,12 @@ const { profile, sensitivity } = useProfile()
     <!-- 3D zemljevid občutljivih lokacij -->
     <section class="container mapsec">
       <span class="kicker">Zemljevid</span>
-      <h1>Kje so vrtci, šole in bolnišnice?</h1>
+      <h1>Ljubljana v realnem času</h1>
       <p class="lead">
-        3D model Ljubljane iz katastra stavb in reliefa. Premakni drsnik megle in poglej, katere lokacije ostanejo pod
-        njo, ko se ob inverziji hladen zrak ujame na dnu kotline. Pokaži na buciko za podrobnosti.
+        Na zemljevidu so poudarjeni vrtci, šole, bolnišnice, zdravstveni domovi in domovi za starejše, ker so tam ljudje,
+        ki jim onesnažen zrak najbolj škodi: otroci, ki dihajo hitreje in imajo pljuča še v razvoju, starejši in bolniki.
+        Tam preživijo večji del dneva in si kraja ne morejo izbrati. Večina teh ustanov leži na dnu kotline, kjer se
+        pozimi ob inverziji ujame hladen, onesnažen zrak. Premakni drsnik megle in poglej, koliko jih ostane pod njo.
       </p>
       <Zemljevid3D />
     </section>
@@ -30,11 +31,6 @@ const { profile, sensitivity } = useProfile()
     <section class="container details">
       <span class="kicker">Podrobnosti</span>
       <h2>Ta trenutek v Ljubljani</h2>
-      <p class="sub">
-        Vir: <span class="pill">{{ origin }}</span>
-        <template v-if="profile.astma"> · Upoštevam <strong>strožje meje za astmo</strong> (nastavitev ostane na napravi).</template>
-        <template v-else> · <RouterLink to="/nastavitve">Ima vaš otrok astmo? Nastavite profil.</RouterLink></template>
-      </p>
 
       <div class="grid">
         <div class="card">
@@ -43,7 +39,7 @@ const { profile, sensitivity } = useProfile()
             <li v-for="s in now?.postaje ?? []" :key="s.id">
               <span class="dot" :style="{ background: levelFor(s.pm25 ?? 0, sensitivity).color }" />
               <span class="name">{{ s.ime }}</span>
-              <strong>{{ s.pm25 ?? '–' }}</strong>
+              <strong>{{ s.pm25 != null ? Math.round(s.pm25) : '–' }}</strong>
               <span class="pill">{{ s.vir }}</span>
             </li>
           </ul>
@@ -86,10 +82,9 @@ const { profile, sensitivity } = useProfile()
 .details h3 {
   font-size: 1.4rem;
 }
-.sub {
-  margin-bottom: 20px !important;
+.details h2 {
+  margin-bottom: 20px;
 }
-.sub a,
 .muted {
   color: var(--ink-soft);
 }

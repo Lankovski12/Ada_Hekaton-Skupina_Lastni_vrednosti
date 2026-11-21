@@ -67,12 +67,12 @@ function lungShape([x, y, z]: V3, side: number, f: number): V3 {
 const pts: Pt[] = []
 for (const side of [-1, 1]) {
   // površje
-  for (let i = 0; i < 1250; i++) {
+  for (let i = 0; i < 2100; i++) {
     const d = randUnit()
     pts.push({ p: lungShape(d, side, 1), lung: side, r: 1.6 + rnd() * 1.3, a: 0.85, ph: rnd() * 6.28, low: (1 - d[1]) / 2 })
   }
   // notranjost: redkejši, prosojnejši oblak
-  for (let i = 0; i < 420; i++) {
+  for (let i = 0; i < 700; i++) {
     const d = randUnit()
     const f = 0.35 + Math.pow(rnd(), 0.6) * 0.55
     pts.push({ p: lungShape(d, side, f), lung: side, r: 1.4 + rnd(), a: 0.35, ph: rnd() * 6.28, low: (1 - d[1]) / 2 })
@@ -232,8 +232,8 @@ function frame(ms: number) {
     }
   }
 
-  // na svetli podlagi so pike malo temnejše, da se lepo vidijo
-  const base: V3 = dark ? rgb : [rgb[0] * 0.68 + 10, rgb[1] * 0.68 + 14, rgb[2] * 0.68 + 26]
+  // na svetli podlagi so pike le malo temnejše, da ostanejo žive (neon) in se še vidijo
+  const base: V3 = dark ? rgb : [rgb[0] * 0.86, rgb[1] * 0.86, rgb[2] * 0.86]
   const tubeCol: V3 = dark ? [rgb[0] * 0.55 + 100, rgb[1] * 0.55 + 100, rgb[2] * 0.55 + 110] : [rgb[0] * 0.35 + 40, rgb[1] * 0.35 + 55, rgb[2] * 0.35 + 90]
   for (let i = 0; i < pts.length; i++) {
     const { p, lung, r, a, ph, low } = pts[i]!

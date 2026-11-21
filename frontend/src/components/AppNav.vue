@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { useProgressStore } from '@/stores/progress'
 
-const progress = useProgressStore()
 // na domači strani (celozaslonska pljuča) zgornje vrstice ne prikažemo
 defineProps<{ brezGlave?: boolean }>()
 
@@ -23,7 +21,6 @@ const links = [
       <nav class="desktop">
         <RouterLink v-for="l in links" :key="l.to" :to="l.to">{{ l.label }}</RouterLink>
       </nav>
-      <span class="points" title="Tvoje točke iz iger">⭐ {{ progress.tocke }}</span>
     </div>
   </header>
 
@@ -86,13 +83,6 @@ const links = [
   background: var(--ink);
   color: var(--bg);
 }
-.points {
-  font-weight: 800;
-  background: var(--bg-soft);
-  border-radius: 999px;
-  padding: 6px 12px;
-  white-space: nowrap;
-}
 .mobile {
   display: none;
 }
@@ -100,9 +90,6 @@ const links = [
 @media (max-width: 720px) {
   .desktop {
     display: none;
-  }
-  .points {
-    margin-left: auto;
   }
   .logo span:last-child {
     font-size: 1.05rem;
