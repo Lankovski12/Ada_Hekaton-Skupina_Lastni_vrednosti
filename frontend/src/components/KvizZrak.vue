@@ -1,11 +1,12 @@
 <script setup lang="ts">
-// Kartice dejstev: kup kartic z zanimivostmi iz 10 let meritev ARSO (paket ARSOhack).
-// Vsaka kartica se začne z vprašanjem (ugani!), nato se obrne in pokaže odgovor z animiranim grafom,
-// veliko številko in enim stavkom; daljša razlaga je pod »Zakaj?«. Kartice listaš s puščicami,
-// potegom levo/desno ali tipkami ← →. Odkrite kartice se zbirajo (shranjeno na napravi);
-// ko zbereš vse, dobiš značko »Strokovnjak za zrak«.
+// Kviz o zraku: kartice z vprašanji iz 10 let meritev ARSO (paket ARSOhack).
+// Vprašanja so zastavljena drugače kot dejstva na strani Podatki, da preverijo, kaj si si zapomnil.
+// Klikni odgovor – kartica se obrne in pokaže pravilen odgovor z animiranim grafom.
+// Listaš s puščicami, potegom levo/desno ali tipkami ← →. Na koncu: rezultat in sporočilo.
 // Številke izračuna backend/scripts/blog_statistika.py → src/data/zgodovina.json.
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+
+const emit = defineEmits<{ zapri: [] }>()
 import { levelFor } from '@/lib/airQuality'
 import z from '@/data/zgodovina.json'
 
@@ -17,7 +18,6 @@ interface Bar {
 }
 interface Kartica {
   id: string
-  ikona: string
   kicker: string
   vprasanje: string
   nacin: 'izbira' | 'stolpec' // izbira med odgovori ali tapni stolpec v grafu
@@ -57,91 +57,85 @@ const who = z.who
 const postaje = z.postaje.seznam
 const razponPostaj = Math.max(...postaje.map((p) => p.pm25)) - Math.min(...postaje.map((p) => p.pm25))
 const rekordDatum = new Date(z.rekord.datum)
-const rekordLeto = rekordDatum.getFullYear()
 const novoLeto = z.rekord.datum.endsWith('-01-01')
 const datumTxt = (d: Date) => d.toLocaleDateString('sl-SI', { day: 'numeric', month: 'long', year: 'numeric' })
 
-// številski odgovori: pravilna vrednost in dve napačni, urejeno od najmanjše
-function stevilske(prava: number, krat: number[]): { moznosti: string[]; pravilno: number } {
-  const vse = [prava, ...krat.map((k) => Math.round(prava * k))].sort((a, b) => a - b)
-  return { moznosti: vse.map((v) => `${v} dni`), pravilno: vse.indexOf(prava) }
-}
-const dniOdg = stevilske(zadnje.dniNad50, [2.6, 4.8])
+const MESEC_POLNO = (kratko: string) => POLNO[kratko] ?? kratko
+const dobriDni = who.izmed - who.dni
+const kratNadMejo = z.rekord.pm10 / 50
+const zjutraj = (h: number) => h >= 5 && h <= 11
+const popoldne = (h: number) => h >= 12 && h <= 17
 
 const kartice: Kartica[] = [
   {
-    id: 'trend',
-    ikona: '📉',
-    kicker: `${leta.length} let meritev`,
-    vprasanje: `Je zrak v Ljubljani danes boljši ali slabši kot leta ${prvo.leto}?`,
+    id: 'pm10-2016',
+    kicker: 'Pred desetimi leti',
+    vprasanje: `Koliko delcev PM10 je bilo povprečno v zraku na Bežigradu leta ${prvo.leto}?`,
     nacin: 'izbira',
-    moznosti: ['Boljši', 'Približno enak', 'Slabši'],
-    pravilno: padec > 5 ? 0 : padec < -5 ? 2 : 1,
-    stevilka: `−${padec} %`,
-    stavek: `Toliko manj delcev PM10 je v zraku kot leta ${prvo.leto}.`,
-    zakaj: `Povprečje delcev PM10 na Bežigradu je padlo s ${fmt(prvo.pm10)} µg/m³ (${prvo.leto}) na ${fmt(zadnje.pm10)} µg/m³ (${zadnje.leto}). K temu so pripomogle čistejše peči, priključki na daljinsko ogrevanje in plin ter novejši avtomobili.`,
+    moznosti: [`${fmt(Math.round(prvo.pm10 * 0.45))} µg/m³`, `${fmt(Math.round(prvo.pm10 * 0.7))} µg/m³`, `${fmt(Math.round(prvo.pm10))} µg/m³`],
+    pravilno: 2,
+    stevilka: `${fmt(prvo.pm10)} µg/m³`,
+    stavek: `Leta ${zadnje.leto} le še ${fmt(zadnje.pm10)} – za ${padec} % manj.`,
+    zakaj: `Zrak se je v desetih letih opazno izboljšal: čistejše peči, več priključkov na daljinsko ogrevanje in plin ter novejši avtomobili.`,
     color: 'var(--aq-2)',
     unit: 'PM10 na Bežigradu · letno povprečje (µg/m³)',
     kind: 'bars',
     bars: leta.map((l, i) => ({ label: `'${String(l.leto).slice(2)}`, value: l.pm10, hi: i === 0 || i === leta.length - 1 })),
   },
   {
-    id: 'dni',
-    ikona: '📅',
-    kicker: 'Dnevi nad mejo',
-    vprasanje: `Koliko dni je bil leta ${zadnje.leto} zrak nad dnevno mejo EU?`,
-    nacin: 'izbira',
-    ...dniOdg,
-    stevilka: `${zadnje.dniNad50} dni`,
-    stavek: `Leta ${najvecDni.leto} jih je bilo še ${najvecDni.dniNad50}.`,
-    zakaj: `Dnevna meja EU za delce PM10 je 50 µg/m³. Leta ${najvecDni.leto} je bil zrak nad njo kar ${najvecDni.dniNad50} dni, leta ${zadnje.leto} le še ${zadnje.dniNad50}. Največ takih dni je pozimi.`,
+    id: 'najvec-dni',
+    kicker: 'Najslabše leto',
+    vprasanje: 'V katerem letu je bilo največ dni s preveč delci v zraku? Tapni stolpec.',
+    nacin: 'stolpec',
+    pravilno: leta.indexOf(najvecDni),
+    stevilka: `${najvecDni.dniNad50} dni`,
+    stavek: `Leta ${najvecDni.leto} je bil zrak toliko dni nad dnevno mejo EU (50 µg/m³ PM10).`,
+    zakaj: `Leta ${zadnje.leto} je bilo takih dni le še ${zadnje.dniNad50}. Največ jih je pozimi, ko kurimo in se mrzel zrak ujame v kotlini.`,
     color: 'var(--aq-4)',
     unit: 'Dni s PM10 nad 50 µg/m³ · Bežigrad',
     kind: 'bars',
     bars: leta.map((l) => ({ label: `'${String(l.leto).slice(2)}`, value: l.dniNad50, hi: l === najvecDni || l === zadnje })),
   },
   {
-    id: 'meseci',
-    ikona: '❄️',
-    kicker: 'Po mesecih',
-    vprasanje: 'Kateri mesec je zrak najslabši? Tapni stolpec.',
-    nacin: 'stolpec',
-    pravilno: iMax,
-    stevilka: `${fmt(meseci[iMax]!.pm25 / meseci[iMin]!.pm25)}×`,
-    stavek: `Toliko več delcev je ${POLNO[meseci[iMax]!.mesec]}a kot ${POLNO[meseci[iMin]!.mesec]}a.`,
-    zakaj: `Najslabši mesec je ${POLNO[meseci[iMax]!.mesec]} s povprečno ${fmt(meseci[iMax]!.pm25)} µg/m³ PM2.5, najboljši ${POLNO[meseci[iMin]!.mesec]} s ${fmt(meseci[iMin]!.pm25)}. Pozimi kurimo, mrzel zrak pa se pogosto ujame v kotlini.`,
-    color: 'var(--aq-5)',
+    id: 'najcistejsi-mesec',
+    kicker: 'Najčistejši mesec',
+    vprasanje: 'Kateri mesec je zrak v Ljubljani v povprečju najčistejši?',
+    nacin: 'izbira',
+    moznosti: [MESEC_POLNO(meseci[iMin]!.mesec), MESEC_POLNO(meseci[iMax]!.mesec), 'oktober'],
+    pravilno: 0,
+    stevilka: MESEC_POLNO(meseci[iMin]!.mesec),
+    stavek: `Povprečno le ${fmt(meseci[iMin]!.pm25)} µg/m³ PM2.5 – ${fmt(meseci[iMax]!.pm25 / meseci[iMin]!.pm25)}-krat manj kot ${MESEC_POLNO(meseci[iMax]!.mesec)}.`,
+    zakaj: 'Spomladi in poleti ne kurimo, sonce in veter pa zrak premešata, zato se delci ne nabirajo pri tleh.',
+    color: 'var(--aq-1)',
     unit: `PM2.5 na Bežigradu · povprečje po mesecih ${z.pm25Od}–${z.zadnjeLeto} (µg/m³)`,
     kind: 'bars',
     bars: meseci.map((m, i) => ({ label: m.mesec, value: m.pm25, color: pm25Color(m.pm25), hi: i === iMax || i === iMin })),
   },
   {
-    id: 'ure',
-    ikona: '🌙',
-    kicker: 'Zimski dan',
-    vprasanje: 'Kdaj čez zimski dan je zrak najslabši?',
+    id: 'zracenje',
+    kicker: 'Zračenje pozimi',
+    vprasanje: 'Kdaj je pozimi najbolje prezračiti stanovanje?',
     nacin: 'izbira',
-    moznosti: ['Zjutraj', 'Popoldne', 'Zvečer in ponoči'],
-    pravilno: maxUra.ura >= 5 && maxUra.ura <= 11 ? 0 : maxUra.ura >= 12 && maxUra.ura <= 17 ? 1 : 2,
-    stevilka: `${maxUra.ura}:00`,
-    stavek: `Najslabša ura. Najčistejši je zrak okoli ${minUra.ura}. ure – takrat prezrači.`,
-    zakaj: `Pozimi je zrak najslabši pozno zvečer (okoli ${maxUra.ura}. ure, ${fmt(maxUra.pm25)} µg/m³), ko ljudje kurijo, zrak pa se ohladi in umiri. Popoldne ga sonce premeša, zato je okoli ${minUra.ura}. ure najčistejši.`,
-    color: 'var(--aq-4)',
+    moznosti: ['Zgodaj zjutraj', 'Popoldne', 'Pozno zvečer'],
+    pravilno: zjutraj(minUra.ura) ? 0 : popoldne(minUra.ura) ? 1 : 2,
+    stevilka: `okoli ${minUra.ura}:00`,
+    stavek: `Takrat je zrak pozimi najčistejši (${fmt(minUra.pm25)} µg/m³). Najslabši je okoli ${maxUra.ura}. ure.`,
+    zakaj: 'Popoldne sonce zrak ogreje in premeša, zvečer pa se ohladi, umiri in ujame dim iz dimnikov. Okna odpri na široko za 5–10 minut.',
+    color: 'var(--brand)',
     unit: 'PM2.5 na Bežigradu · povprečje po urah, november–februar (µg/m³)',
     kind: 'bars',
     bars: ure.map((u) => ({ label: u.ura % 6 === 0 ? `${u.ura}h` : '', value: u.pm25, color: pm25Color(u.pm25), hi: u === maxUra || u === minUra })),
   },
   {
-    id: 'inverzija',
-    ikona: '🌫️',
+    id: 'inverzija-delez',
     kicker: 'Inverzija',
-    vprasanje: 'Koliko več delcev je pozimi v zraku, ko je v kotlini inverzija?',
+    vprasanje: 'Kolikšen del zimskih ur je hladen zrak ujet na dnu kotline (inverzija)?',
     nacin: 'izbira',
-    moznosti: ['Približno enako', 'Približno 2-krat več', '10-krat več'],
-    pravilno: invX < 1.3 ? 0 : invX < 4 ? 1 : 2,
-    stevilka: `${fmt(invX)}×`,
-    stavek: `Toliko več delcev, ko je hladen zrak ujet pod »pokrovko«.`,
-    zakaj: `Ko je na Pasji ravni (1019 m) topleje kot v mestu, je pozimi v zraku povprečno ${fmt(inv.z)} µg/m³ PM2.5, brez inverzije ${fmt(inv.brez)}. Inverzija je kar v ${inv.delezUr} % zimskih ur.`,
+    moznosti: [`okoli ${inv.delezUr} %`, `okoli ${inv.delezUr * 2 + 5} %`, `okoli ${inv.delezUr * 3 + 10} %`],
+    pravilno: 0,
+    stevilka: `${inv.delezUr} %`,
+    stavek: `Skoraj vsaka ${Math.round(100 / inv.delezUr)}. zimska ura – takrat je delcev ${fmt(invX)}-krat več.`,
+    zakaj: `Ob inverziji je na Pasji ravni (1019 m) topleje kot v mestu. Pozimi je takrat v zraku povprečno ${fmt(inv.z)} µg/m³ PM2.5, sicer ${fmt(inv.brez)}.`,
     color: 'var(--aq-5)',
     unit: 'PM2.5 na Bežigradu pozimi (µg/m³)',
     kind: 'bars',
@@ -151,77 +145,59 @@ const kartice: Kartica[] = [
     ],
   },
   {
-    id: 'who',
-    ikona: '🩺',
-    kicker: 'Smernica WHO',
-    vprasanje: `Koliko dni leta ${who.leto} je bil zrak slabši od priporočila Svetovne zdravstvene organizacije?`,
+    id: 'cisti-dnevi',
+    kicker: 'Čisti dnevi',
+    vprasanje: `Koliko dni leta ${who.leto} je bil zrak dovolj čist po priporočilu Svetovne zdravstvene organizacije?`,
     nacin: 'izbira',
-    moznosti: ['Približno en teden', 'Približno tri mesece', 'Več kot pol leta'],
-    pravilno: who.dni < 20 ? 0 : who.dni < 180 ? 1 : 2,
-    stevilka: `${who.dni} dni`,
-    stavek: `To je skoraj vsak ${Math.round(who.izmed / who.dni)}. dan.`,
-    zakaj: `WHO priporoča, naj dnevno povprečje PM2.5 ne preseže 15 µg/m³. Leta ${who.leto} je bilo nad to mejo ${who.dni} dni od ${who.izmed}. Vsak kvadratek je en dan, obarvani so dnevi nad mejo – večina jih je pozimi.`,
+    moznosti: ['Približno 3 mesece', 'Približno 9 mesecev', 'Skoraj vse leto'],
+    pravilno: dobriDni < 120 ? 0 : dobriDni < 330 ? 1 : 2,
+    stevilka: `${dobriDni} dni`,
+    stavek: `Ostalih ${who.dni} dni je bil zrak nad priporočeno mejo (15 µg/m³ PM2.5).`,
+    zakaj: 'Na koledarju so obarvani dnevi nad mejo. Skoraj vsi so v hladnem delu leta.',
     color: 'var(--aq-3)',
     unit: `Vsi dnevi leta ${who.leto} · Bežigrad`,
     kind: 'calendar',
   },
   {
-    id: 'postaje',
-    ikona: '🏙️',
+    id: 'razlika-postaj',
     kicker: 'Po mestu',
-    vprasanje: 'Kje v Ljubljani je zrak v povprečju najslabši?',
+    vprasanje: 'Kako velika je razlika med najbolj in najmanj onesnaženo merilno postajo v Ljubljani?',
     nacin: 'izbira',
-    moznosti: [...postaje.map((p) => p.ime), 'Povsod podobno'],
-    pravilno: razponPostaj < 1.5 ? postaje.length : 0,
-    stevilka: `${fmt(Math.min(...postaje.map((p) => p.pm25)))}–${fmt(Math.max(...postaje.map((p) => p.pm25)))}`,
-    stavek: 'µg/m³ PM2.5 na vseh treh postajah – razlike so majhne.',
-    zakaj: `${postaje.map((p) => `${p.ime} ${fmt(p.pm25)}`).join(', ')} µg/m³ PM2.5 (${z.postaje.od}–${z.postaje.do}). Delci se razlezejo po vsej kotlini, zato šteje, kaj počnemo v celem mestu, ne le ob prometnih cestah.`,
+    moznosti: ['Manj kot 1 µg/m³', 'Približno 5 µg/m³', 'Več kot 10 µg/m³'],
+    pravilno: razponPostaj < 2.5 ? 0 : razponPostaj < 8 ? 1 : 2,
+    stevilka: `${fmt(razponPostaj)} µg/m³`,
+    stavek: 'Zrak je po vsem mestu skoraj enak – tudi ob prometni Celovški.',
+    zakaj: `${postaje.map((p) => `${p.ime} ${fmt(p.pm25)}`).join(', ')} µg/m³ PM2.5 (${z.postaje.od}–${z.postaje.do}). Delci se razlezejo po vsej kotlini, zato šteje, kaj počnemo v celem mestu.`,
     color: 'var(--aq-3)',
     unit: `PM2.5 · povprečje ${z.postaje.od}–${z.postaje.do} (µg/m³)`,
     kind: 'bars',
     bars: postaje.map((p) => ({ label: p.ime, value: p.pm25, color: pm25Color(p.pm25), hi: true })),
   },
   {
-    id: 'rekord',
-    ikona: '🎆',
+    id: 'rekord-krat',
     kicker: 'Rekord',
-    vprasanje: `Kateri dan je bil najslabši v ${leta.length} letih meritev?`,
+    vprasanje: 'Kolikokrat je bila na najslabši dan v desetih letih presežena dnevna meja EU (50 µg/m³ PM10)?',
     nacin: 'izbira',
-    moznosti: [datumTxt(rekordDatum), `15. julij ${rekordLeto + 2}`, `3. marec ${rekordLeto + 4}`],
-    pravilno: 0,
+    moznosti: ['Komaj presežena', 'Približno 1,5-krat', `Skoraj ${Math.round(kratNadMejo)}-krat`],
+    pravilno: 2,
     stevilka: `${fmt(z.rekord.pm10)}`,
-    stavek: `µg/m³ PM10 – skoraj ${Math.round(z.rekord.pm10 / 50)}-krat nad dnevno mejo.`,
-    zakaj: `Najslabši dan v vseh meritvah je bil ${datumTxt(rekordDatum)}.${novoLeto ? ' Prvi dan leta, takoj po noči z ognjemeti v mrzlem, mirnem zraku.' : ''}`,
+    stavek: `µg/m³ PM10 dne ${datumTxt(rekordDatum)} – ${fmt(kratNadMejo)}-krat nad mejo.`,
+    zakaj: `${novoLeto ? 'Prvi dan leta, takoj po noči z ognjemeti v mrzlem, mirnem zraku. ' : ''}Tak dan je redek, a pokaže, kako hitro se zrak v kotlini lahko poslabša.`,
     color: 'var(--aq-6)',
     unit: 'PM10 · dnevno povprečje',
     kind: 'big',
   },
 ]
 
-// --- odgovori (shranjeni na napravi) ---
-const KEY = 'zrak-dejstva'
-function nalozi(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '{}')
-  } catch {
-    return {}
-  }
-}
-const odgovori = reactive<Record<string, number>>(nalozi())
-watch(odgovori, (o) => {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(o))
-  } catch {
-    /* ni pomembno */
-  }
-})
-const stOdkritih = computed(() => kartice.filter((k) => odgovori[k.id] != null).length)
-const vseOdkrite = computed(() => stOdkritih.value === kartice.length)
+// --- odgovori (vsak kviz se začne na novo) ---
+const odgovori = reactive<Record<string, number>>({})
+const stOdgovorjenih = computed(() => kartice.filter((k) => odgovori[k.id] != null).length)
+const stPravilnih = computed(() => kartice.filter((k) => odgovori[k.id] === k.pravilno).length)
+const konec = computed(() => stOdgovorjenih.value === kartice.length)
 
 // --- listanje ---
-const ZADNJA = kartice.length // zadnja »kartica« je zbirka
-const prvaNeodkrita = kartice.findIndex((k) => odgovori[k.id] == null)
-const idx = ref(prvaNeodkrita < 0 ? ZADNJA : prvaNeodkrita) // začni pri prvi neodkriti (ali pri zbirki)
+const ZADNJA = kartice.length // zadnja »kartica« je rezultat
+const idx = ref(0)
 const k = computed(() => kartice[idx.value])
 const smer = ref(1)
 const zakajOdprto = ref(false)
@@ -266,6 +242,7 @@ function onUp() {
 function onKey(e: KeyboardEvent) {
   const t = e.target as HTMLElement
   if (t.closest('input, textarea')) return
+  if (e.key === 'Escape') emit('zapri')
   if (e.key === 'ArrowRight') pojdi(idx.value + 1)
   if (e.key === 'ArrowLeft') pojdi(idx.value - 1)
 }
@@ -301,24 +278,25 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
 </script>
 
 <template>
-  <section class="dejstva" aria-label="Kartice dejstev">
+  <section class="dejstva" aria-label="Kviz o zraku">
     <header class="glava">
-      <p><strong>Ugani, obrni in zberi vseh {{ kartice.length }} kartic.</strong> Listaj s puščicami ali potegni kartico levo in desno.</p>
-      <div class="zbirka" role="tablist" aria-label="Zbirka kartic">
+      <h2>Kviz: koliko si si zapomnil?</h2>
+      <p>{{ kartice.length }} vprašanj iz naših meritev. Klikni odgovor, kartica se obrne. Listaj s puščicami ali potegni kartico.</p>
+      <div class="zbirka" role="tablist" aria-label="Vprašanja">
         <button
           v-for="(kk, i) in kartice"
           :key="kk.id"
           class="mini"
-          :class="{ odkrita: odgovori[kk.id] != null, zdaj: i === idx }"
+          :class="{ odkrita: odgovori[kk.id] != null, prav: odgovori[kk.id] === kk.pravilno, narobe: odgovori[kk.id] != null && odgovori[kk.id] !== kk.pravilno, zdaj: i === idx }"
           :style="{ '--c': kk.color }"
           role="tab"
           :aria-selected="i === idx"
-          :aria-label="`Kartica ${i + 1}: ${kk.kicker}${odgovori[kk.id] != null ? ' (odkrita)' : ''}`"
+          :aria-label="`Vprašanje ${i + 1}${odgovori[kk.id] == null ? '' : odgovori[kk.id] === kk.pravilno ? ' (pravilno)' : ' (napačno)'}`"
           @click="pojdi(i)"
         >
-          <span aria-hidden="true">{{ odgovori[kk.id] != null ? kk.ikona : '?' }}</span>
+          <span aria-hidden="true">{{ i + 1 }}</span>
         </button>
-        <span class="stevec"><strong>{{ stOdkritih }}</strong>/{{ kartice.length }} odkritih</span>
+        <span class="stevec">Pravilno: <strong>{{ stPravilnih }}</strong>/{{ stOdgovorjenih }}</span>
       </div>
     </header>
 
@@ -328,33 +306,39 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
       <div v-if="idx < ZADNJA" class="zadaj z1" aria-hidden="true" />
 
       <Transition :name="smer > 0 ? 'naprej' : 'nazaj'" mode="out-in">
-        <!-- zbirka / značka -->
-        <article v-if="!k" key="zbirka" class="kartica konec" :style="{ transform: `translateX(${dx}px) rotate(${dx / 25}deg)` }">
-          <template v-if="vseOdkrite">
-            <div class="znacka" aria-hidden="true">🏅</div>
-            <h3>Strokovnjak za zrak!</h3>
-            <p>Zbral si vseh {{ kartice.length }} kartic. Zdaj veš o ljubljanskem zraku več kot večina odraslih.</p>
+        <!-- konec kviza -->
+        <article v-if="!k" key="konec" class="kartica konec" :style="{ transform: `translateX(${dx}px) rotate(${dx / 25}deg)` }">
+          <template v-if="konec">
+            <p class="rezultat"><strong>{{ stPravilnih }}</strong> / {{ kartice.length }}</p>
+            <h3>{{ stPravilnih === kartice.length ? 'Odlično, vse pravilno!' : stPravilnih >= kartice.length / 2 ? 'Bravo, dobro ti gre!' : 'Lep začetek!' }}</h3>
+            <p class="sporocilo">
+              Dobro je, da se o kakovosti zraka ozaveščamo. Onesnažen zrak vpliva na zdravje vseh nas – najbolj
+              na otroke, starejše in bolnike. Ko veš, kdaj in zakaj je zrak slab, lahko bolje zaščitiš sebe in
+              svoje bližnje, hkrati pa s svojimi odločitvami pomagaš, da bo zrak v Ljubljani še čistejši.
+            </p>
+            <p class="poziv">Deli, kar si izvedel – čist zrak je skupna stvar.</p>
           </template>
           <template v-else>
-            <div class="znacka siva" aria-hidden="true">🏅</div>
-            <h3>Še {{ kartice.length - stOdkritih }} do značke</h3>
-            <p>Odkrij vse kartice in postani »Strokovnjak za zrak«.</p>
+            <h3>Še {{ kartice.length - stOdgovorjenih }} {{ kartice.length - stOdgovorjenih === 1 ? 'vprašanje' : 'vprašanj' }}</h3>
+            <p class="sporocilo">Odgovori na vsa vprašanja in poglej svoj rezultat.</p>
+            <div class="mreza">
+              <button
+                v-for="(kk, i) in kartice"
+                :key="kk.id"
+                class="celica"
+                :class="{ odkrita: odgovori[kk.id] != null }"
+                :style="{ '--c': kk.color }"
+                @click="pojdi(i)"
+              >
+                <span class="ik">{{ i + 1 }}</span>
+                <span class="ime">{{ kk.kicker }}</span>
+              </button>
+            </div>
           </template>
-          <div class="mreza">
-            <button
-              v-for="(kk, i) in kartice"
-              :key="kk.id"
-              class="celica"
-              :class="{ odkrita: odgovori[kk.id] != null }"
-              :style="{ '--c': kk.color }"
-              @click="pojdi(i)"
-            >
-              <span class="ik" aria-hidden="true">{{ odgovori[kk.id] != null ? kk.ikona : '?' }}</span>
-              <span class="ime">{{ kk.kicker }}</span>
-              <strong v-if="odgovori[kk.id] != null">{{ kk.stevilka }}</strong>
-            </button>
+          <div class="gumbi">
+            <button v-if="stOdgovorjenih" class="btn ghost" @click="znova">Ponovi kviz</button>
+            <button class="btn" @click="emit('zapri')">Zapri</button>
           </div>
-          <button v-if="stOdkritih" class="btn ghost znova" @click="znova">Začni znova</button>
         </article>
 
         <!-- kartica -->
@@ -365,7 +349,6 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
           :style="{ '--c': k.color, transform: `translateX(${dx}px) rotate(${dx / 25}deg)` }"
         >
           <div class="vrh">
-            <span class="ikona" aria-hidden="true">{{ k.ikona }}</span>
             <span class="kicker">{{ k.kicker }}</span>
             <span class="stran">{{ idx + 1 }} / {{ kartice.length }}</span>
           </div>
@@ -391,7 +374,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
             <!-- hrbtna stran: odgovor -->
             <div v-else key="zadaj" class="stran-kartice odgovor">
               <p class="ocena" :class="{ prav }">
-                {{ prav ? 'Bravo, uganil si!' : `Skoraj! Pravilno: ${k.nacin === 'stolpec' ? k.bars![k.pravilno]!.label : k.moznosti![k.pravilno]}` }}
+                {{ prav ? 'Pravilno!' : `Ne čisto. Pravilen odgovor: ${k.nacin === 'stolpec' ? k.bars![k.pravilno]!.label.replace("'", '20') : k.moznosti![k.pravilno]}` }}
               </p>
               <div class="izid">
                 <div class="besedilo">
@@ -437,13 +420,13 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         </article>
       </Transition>
 
-      <button class="puscica levo" aria-label="Prejšnja kartica" :disabled="idx === 0" @click="pojdi(idx - 1)">‹</button>
-      <button class="puscica desno" aria-label="Naslednja kartica" :disabled="idx === ZADNJA" @click="pojdi(idx + 1)">›</button>
+      <button class="puscica levo" aria-label="Prejšnje vprašanje" :disabled="idx === 0" @click="pojdi(idx - 1)">‹</button>
+      <button class="puscica desno" aria-label="Naslednje vprašanje" :disabled="idx === ZADNJA" @click="pojdi(idx + 1)">›</button>
     </div>
 
     <div v-if="razkrito && idx < ZADNJA" class="naprej">
       <button class="btn" :style="{ '--btn': k?.color }" @click="pojdi(idx + 1)">
-        {{ idx === ZADNJA - 1 ? 'Poglej zbirko' : 'Naslednja kartica' }} →
+        {{ idx === ZADNJA - 1 ? 'Poglej rezultat' : 'Naslednje vprašanje' }} →
       </button>
     </div>
   </section>
@@ -462,6 +445,10 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
 .glava h2 {
   font-size: clamp(1.9rem, 4.5vw, 2.8rem);
   margin-bottom: 4px;
+}
+.glava h2 {
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  margin: 0 0 4px;
 }
 .glava p {
   margin: 0 auto 14px;
@@ -494,6 +481,16 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
 .mini.odkrita {
   border: 2px solid var(--c);
   background: color-mix(in srgb, var(--c) 22%, var(--card));
+}
+.mini.prav {
+  border: 2px solid var(--aq-1);
+  background: color-mix(in srgb, var(--aq-1) 25%, var(--card));
+  color: var(--ink);
+}
+.mini.narobe {
+  border: 2px solid var(--aq-5);
+  background: color-mix(in srgb, var(--aq-5) 18%, var(--card));
+  color: var(--ink);
 }
 .mini.zdaj {
   transform: translateY(-5px);
@@ -862,6 +859,34 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
   filter: grayscale(1);
   opacity: 0.4;
   animation: none;
+}
+.rezultat {
+  margin: 4px auto 0 !important;
+  font-family: var(--font-head);
+  font-size: 1.6rem;
+  color: var(--scene-muted) !important;
+}
+.rezultat strong {
+  font-size: 4.2rem;
+  line-height: 1;
+  color: var(--aq-1);
+  animation: poskok 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-block;
+}
+.sporocilo {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+.poziv {
+  font-weight: 800;
+  color: var(--scene-ink) !important;
+}
+.gumbi {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
 }
 .konec h3 {
   font-size: clamp(1.6rem, 3.6vw, 2.2rem);
