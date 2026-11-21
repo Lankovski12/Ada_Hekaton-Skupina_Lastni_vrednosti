@@ -62,7 +62,7 @@ export function sestaviVprasanja(dan: DanZaVprasanja): Vprasanje[] {
           `${pm} deljeno s ${WHO} je približno ${krat}. Toliko več delcev je bilo v zraku, kot je še zdravo.`,
         )
       : v(
-          `${kdaj} v zraku ${pm} µg/m³ drobnih delcev. Je to pod priporočilom Svetovne zdravstvene organizacije (${WHO})?`,
+          `${kdaj} v zraku ${pm} µg/m³ drobnih delcev. Priporočilo Svetovne zdravstvene organizacije je največ ${WHO}. Je zrak ta dan zdrav za igro zunaj?`,
           'Da, zrak je čist',
           ['Ne, je veliko preveč', 'Tega se ne da izmeriti'],
           `${pm} je manj kot ${WHO}, zato je zrak ta dan zdrav za igro zunaj.`,
