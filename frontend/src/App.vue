@@ -19,8 +19,8 @@ watchEffect(() => {
 // domača stran je celozaslonska: brez zgornje navigacije in noge (spodnja navigacija na telefonu ostane)
 const route = useRoute()
 const domov = computed(() => route.name === 'domov')
-// celozaslonska 3D igra: brez noge, ki bi se sicer izrisala čez igro
-const brezNoge = computed(() => domov.value || route.name === 'igra-zmaj')
+// celozaslonski strani (3D igra, izbira iger z Oblačkom): brez noge, ki bi se sicer izrisala čez
+const brezNoge = computed(() => domov.value || route.name === 'igra-zmaj' || route.name === 'igre')
 </script>
 
 <template>

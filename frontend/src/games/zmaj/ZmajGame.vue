@@ -436,7 +436,7 @@ function play() {
   right: 0;
   bottom: 0;
   z-index: 15;
-  background: #0b1520;
+  background: var(--bg); /* svetla shema strani; med nalaganjem kremno, ne temno */
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -760,7 +760,7 @@ function play() {
   display: grid;
   place-items: center;
   padding: 12px;
-  background: linear-gradient(180deg, rgba(100, 180, 255, 0.35), rgba(20, 40, 80, 0.55));
+  background: linear-gradient(180deg, rgba(248, 245, 238, 0.25), rgba(248, 245, 238, 0.7));
   color: var(--k-ink);
   text-align: center;
   overflow-y: auto;
@@ -914,7 +914,8 @@ function play() {
 /* --- vprašanje --- */
 .quiz-wrap {
   z-index: 6;
-  background: rgba(30, 60, 110, 0.45);
+  background: rgba(248, 245, 238, 0.6);
+  backdrop-filter: blur(3px);
 }
 .quiz {
   width: min(620px, 100%);
@@ -1086,15 +1087,15 @@ function play() {
   display: grid;
   justify-items: center;
   gap: 10px;
-  color: #fff;
+  color: var(--ink);
   font-size: 1.3rem;
 }
 .load-bar {
   width: 240px;
   height: 18px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 3px solid #fff;
+  background: var(--bg-soft);
+  border: 3px solid var(--line);
   overflow: hidden;
 }
 .load-bar div {
