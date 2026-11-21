@@ -62,7 +62,7 @@ function potrdi() {
       >
         <span class="hr">{{ i }}h</span>
         <span v-if="odgovorjeno && v != null" class="val">{{ Math.round(v) }}</span>
-        <span v-if="odgovorjeno && v != null" class="truth" :class="v > meja ? 'r' : 'g'" />
+        <span v-if="odgovorjeno && v != null && v > meja !== slabo[i]" class="x" aria-label="narobe" />
       </button>
     </div>
     <p v-if="odgovorjeno" class="score">Zadetki: <strong>{{ zadetki }}</strong></p>
@@ -106,8 +106,30 @@ function potrdi() {
   box-shadow: 0 5px 0 #b2bdc8;
 }
 .tile.miss {
-  outline: 4px dashed #1d3557;
-  outline-offset: -4px;
+  opacity: 0.85;
+}
+/* narobe pobarvana ura: ploščica ostane, kot jo je otrok pobarval, in je prekrižana */
+.x {
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+}
+.x::before,
+.x::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(29, 53, 87, 0.7);
+}
+.x::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.x::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 .hr {
   font-size: 1.05rem;
@@ -117,21 +139,6 @@ function potrdi() {
   bottom: 4px;
   font-size: 0.75rem;
   opacity: 0.9;
-}
-.truth {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-}
-.truth.r {
-  background: #8e1b20;
-}
-.truth.g {
-  background: #0f6b33;
 }
 .score {
   font-size: 1.2rem;

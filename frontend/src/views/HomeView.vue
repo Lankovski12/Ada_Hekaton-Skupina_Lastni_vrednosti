@@ -35,7 +35,7 @@ const rezerva = computed(() => {
   return stolpec + Math.max(24, w * 0.04) + 28
 })
 
-// okenca: tri na levi, dve na desni (besedila bomo še spreminjali)
+// okenca: dve na levi, dve na desni (besedila bomo še spreminjali)
 const okna = [
   {
     to: '/igre',
@@ -54,15 +54,6 @@ const okna = [
     color: 'var(--accent)',
     ikona: 'zemljevid',
     pos: 'l2',
-  },
-  {
-    to: '/izobrazevanje',
-    kicker: 'Poučuj',
-    title: 'Izobraževanje',
-    text: 'Pripravljene ure za učitelje in predavatelje: za otroke in za starejše.',
-    color: 'var(--lilac)',
-    ikona: 'ucitelji',
-    pos: 'l3',
   },
   {
     to: '/grafi',
@@ -99,10 +90,10 @@ const okna = [
       <p class="hint">{{ odprto ? 'Kam greš naprej?' : 'Klikni na pljuča' }}</p>
     </header>
 
-    <nav class="okna pet" aria-label="Kam naprej">
+    <nav class="okna" aria-label="Kam naprej">
       <div class="stolpec levo">
         <RouterLink
-          v-for="(o, i) in okna.filter((x) => x.pos.startsWith('l'))"
+          v-for="(o, i) in okna.slice(0, 2)"
           :key="o.to"
           :to="o.to"
           class="okno"
@@ -121,11 +112,6 @@ const okna = [
             <svg v-else-if="o.ikona === 'zemljevid'" viewBox="0 0 32 32">
               <path d="M4 9l7-3 10 3 7-3v17l-7 3-10-3-7 3z" />
               <path d="M11 6v17M21 9v17" />
-            </svg>
-            <svg v-else-if="o.ikona === 'ucitelji'" viewBox="0 0 32 32">
-              <path d="M3 12l13-6 13 6-13 6z" />
-              <path d="M8 14.5v6c0 2 4 4 8 4s8-2 8-4v-6" />
-              <path d="M29 12v7" />
             </svg>
             <svg v-else-if="o.ikona === 'moj'" viewBox="0 0 32 32">
             <path d="M16 28s9-8.2 9-15a9 9 0 0 0-18 0c0 6.8 9 15 9 15z" />
@@ -146,7 +132,7 @@ const okna = [
       </div>
       <div class="stolpec desno">
         <RouterLink
-          v-for="(o, i) in okna.filter((x) => x.pos.startsWith('r'))"
+          v-for="(o, i) in okna.slice(2)"
           :key="o.to"
           :to="o.to"
           class="okno"
@@ -165,11 +151,6 @@ const okna = [
             <svg v-else-if="o.ikona === 'zemljevid'" viewBox="0 0 32 32">
               <path d="M4 9l7-3 10 3 7-3v17l-7 3-10-3-7 3z" />
               <path d="M11 6v17M21 9v17" />
-            </svg>
-            <svg v-else-if="o.ikona === 'ucitelji'" viewBox="0 0 32 32">
-              <path d="M3 12l13-6 13 6-13 6z" />
-              <path d="M8 14.5v6c0 2 4 4 8 4s8-2 8-4v-6" />
-              <path d="M29 12v7" />
             </svg>
             <svg v-else-if="o.ikona === 'moj'" viewBox="0 0 32 32">
             <path d="M16 28s9-8.2 9-15a9 9 0 0 0-18 0c0 6.8 9 15 9 15z" />
@@ -397,29 +378,6 @@ h1 {
 }
 .okno:hover .go {
   transform: translateX(5px);
-}
-
-/* pet okenc (trije v levem stolpcu): nižja okenca */
-.okna.pet .stolpec {
-  gap: 16px;
-}
-.okna.pet .okno {
-  min-height: 0;
-  padding: 14px 18px;
-}
-.okna.pet .okno .t {
-  margin-top: 4px;
-  font-size: 0.88rem;
-}
-.okna.pet .okno strong {
-  font-size: 1.5rem;
-}
-
-/* zelo nizek zaslon s petimi okenci: brez opisov, da trije v stolpcu ostanejo na zaslonu */
-@media (max-height: 700px) and (min-width: 721px) {
-  .okna.pet .okno .t {
-    display: none;
-  }
 }
 
 /* nizek zaslon: manjša okenca, da gresta leva eno pod drugo */

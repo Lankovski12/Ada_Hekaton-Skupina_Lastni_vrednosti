@@ -10,7 +10,6 @@ const router = createRouter({
     { path: '/zemljevid', name: 'zemljevid', component: () => import('@/views/ZemljevidView.vue') },
     { path: '/grafi', name: 'grafi', component: () => import('@/views/GrafiView.vue') },
     { path: '/moj-zrak', name: 'moj-zrak', component: () => import('@/views/MojZrakView.vue') },
-    { path: '/izobrazevanje', name: 'izobrazevanje', component: () => import('@/views/IzobrazevanjeView.vue') },
     // stari naslovi (nekdanja zavihka Naloge in Blogi)
     { path: '/otroci', redirect: '/igre' },
     { path: '/starsi', redirect: '/grafi' },
