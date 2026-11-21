@@ -5,7 +5,14 @@
 // Narejeno s canvas 2D (brez knjižnic), da teče tudi na telefonu v Capacitorju.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-const props = defineProps<{ pm25: number; color: string }>()
+const props = withDefaults(
+  defineProps<{
+    pm25: number
+    color: string
+    rezerva?: number // prostor (px) ob vsaki strani, ki ga pljuča pustijo prazen (za okenca)
+  }>(),
+  { rezerva: 0 },
+)
 const emit = defineEmits<{ klik: [] }>()
 
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -138,6 +145,7 @@ let w = 0
 let h = 0
 let dpr = 1
 let breathPhase = 0
+let Rzdaj = 0
 let lastMs = 0
 let box = { x0: 0, y0: 0, x1: 0, y1: 0 } // obseg pljuč na zaslonu (za klik)
 const hover = ref(false)
@@ -194,7 +202,10 @@ function frame(ms: number) {
   const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch)
 
   const wide = w > 720
-  const R = Math.min(w, h) * (wide ? 0.25 : 0.27)
+  // velikost: glede na zaslon, a nikoli čez prostor med okenci; spremembe so mehke
+  const Rcilj = Math.min(Math.min(w, h) * (wide ? 0.25 : 0.27), props.rezerva ? (w - 2 * props.rezerva) / 2.7 : Infinity)
+  Rzdaj = Rzdaj ? Rzdaj + (Rcilj - Rzdaj) * 0.08 : Rcilj
+  const R = Rzdaj
   const ox = w / 2
   const oy = wide ? h * 0.6 : h * 0.43
   const fov = 3.6

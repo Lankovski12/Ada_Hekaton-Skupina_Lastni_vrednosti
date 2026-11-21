@@ -2,13 +2,14 @@
 // Domača stran: pljuča iz pik, ki dihajo današnji zrak. Klik na pljuča odpre tri okenca:
 // Igre in Zemljevid na eni strani, Podatki (grafi) na drugi.
 // Ko so okenca enkrat odprta, ostanejo odprta tudi ob vrnitvi na to stran (do zaprtja zavihka brskalnika).
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import PljucaPike from '@/scenes/PljucaPike.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
 import { typicalPm25 } from '@/lib/klima'
+import { oknaOdprta } from '@/composables/useOkna'
 
 const { currentPm25, now } = useAirData()
 const { sensitivity } = useProfile()
@@ -19,22 +20,19 @@ const NEON = '#4e9f35'
 const level = computed(() => levelFor(pm.value, sensitivity.value))
 const izmerjeno = computed(() => now.value?.postaje.some((p) => p.vir === 'meritev') ?? false)
 
-// okenca: odprta, če jih je uporabnik v tem obisku že odprl
-const KEY = 'zrak-okna-odprta'
-function prebrano() {
-  try {
-    return sessionStorage.getItem(KEY) === '1'
-  } catch {
-    return false
-  }
-}
-const odprto = ref(prebrano())
-watch(odprto, (v) => {
-  try {
-    if (v) sessionStorage.setItem(KEY, '1')
-  } catch {
-    /* ni pomembno */
-  }
+// okenca: ob prvem obisku zaprta; ko jih odpreš, ostanejo odprta med premikanjem po zavihkih
+const odprto = oknaOdprta
+
+// pri odprtih okencih pljuča naredijo prostor ob straneh, da se nič ne prekriva
+const sirina = ref(typeof window !== 'undefined' ? window.innerWidth : 1200)
+const onResize = () => (sirina.value = window.innerWidth)
+onMounted(() => window.addEventListener('resize', onResize))
+onBeforeUnmount(() => window.removeEventListener('resize', onResize))
+const rezerva = computed(() => {
+  const w = sirina.value
+  if (!odprto.value || w <= 720) return 0
+  const stolpec = Math.min(300, Math.max(230, w * 0.24))
+  return stolpec + Math.max(24, w * 0.04) + 28
 })
 
 // okenca: dve na levi, eno na desni (besedila bomo še spreminjali)
@@ -71,7 +69,7 @@ const okna = [
 
 <template>
   <div class="landing" :class="{ odprto }" :style="{ '--lvl': level.color }">
-    <PljucaPike class="scena" :pm25="pm" :color="NEON" @klik="odprto = !odprto" />
+    <PljucaPike class="scena" :pm25="pm" :color="NEON" :rezerva="rezerva" @klik="odprto = !odprto" />
 
     <header class="naslov">
       <span class="badge">
@@ -84,39 +82,76 @@ const okna = [
     </header>
 
     <nav class="okna" aria-label="Kam naprej">
-      <RouterLink
-        v-for="(o, i) in okna"
-        :key="o.to"
-        :to="o.to"
-        class="okno"
-        :class="o.pos"
-        :style="{ '--c': o.color, '--d': `${i * 90}ms` }"
-        :tabindex="odprto ? 0 : -1"
-        :aria-hidden="!odprto"
-      >
-        <span class="ikona" aria-hidden="true">
-          <svg v-if="o.ikona === 'igre'" viewBox="0 0 32 32">
-            <rect x="4" y="10" width="24" height="14" rx="7" />
-            <path d="M10 14v6M7 17h6" />
-            <circle cx="21" cy="15.5" r="1.3" class="fill" />
-            <circle cx="24" cy="18.5" r="1.3" class="fill" />
-          </svg>
-          <svg v-else-if="o.ikona === 'zemljevid'" viewBox="0 0 32 32">
-            <path d="M4 9l7-3 10 3 7-3v17l-7 3-10-3-7 3z" />
-            <path d="M11 6v17M21 9v17" />
-          </svg>
-          <svg v-else viewBox="0 0 32 32">
-            <path d="M5 26h22" />
-            <rect x="7" y="15" width="4" height="9" rx="1.5" />
-            <rect x="14" y="9" width="4" height="15" rx="1.5" />
-            <rect x="21" y="12" width="4" height="12" rx="1.5" />
-          </svg>
-        </span>
-        <span class="k">{{ o.kicker }}</span>
-        <strong>{{ o.title }}</strong>
-        <span class="t">{{ o.text }}</span>
-        <span class="go" aria-hidden="true">→</span>
-      </RouterLink>
+      <div class="stolpec levo">
+        <RouterLink
+          v-for="(o, i) in okna.slice(0, 2)"
+          :key="o.to"
+          :to="o.to"
+          class="okno"
+          :class="o.pos"
+          :style="{ '--c': o.color, '--d': `${i * 90}ms` }"
+          :tabindex="odprto ? 0 : -1"
+          :aria-hidden="!odprto"
+        >
+          <span class="ikona" aria-hidden="true">
+            <svg v-if="o.ikona === 'igre'" viewBox="0 0 32 32">
+              <rect x="4" y="10" width="24" height="14" rx="7" />
+              <path d="M10 14v6M7 17h6" />
+              <circle cx="21" cy="15.5" r="1.3" class="fill" />
+              <circle cx="24" cy="18.5" r="1.3" class="fill" />
+            </svg>
+            <svg v-else-if="o.ikona === 'zemljevid'" viewBox="0 0 32 32">
+              <path d="M4 9l7-3 10 3 7-3v17l-7 3-10-3-7 3z" />
+              <path d="M11 6v17M21 9v17" />
+            </svg>
+            <svg v-else viewBox="0 0 32 32">
+              <path d="M5 26h22" />
+              <rect x="7" y="15" width="4" height="9" rx="1.5" />
+              <rect x="14" y="9" width="4" height="15" rx="1.5" />
+              <rect x="21" y="12" width="4" height="12" rx="1.5" />
+            </svg>
+          </span>
+          <span class="k">{{ o.kicker }}</span>
+          <strong>{{ o.title }}</strong>
+          <span class="t">{{ o.text }}</span>
+          <span class="go" aria-hidden="true">→</span>
+        </RouterLink>
+      </div>
+      <div class="stolpec desno">
+        <RouterLink
+          v-for="(o, i) in okna.slice(2)"
+          :key="o.to"
+          :to="o.to"
+          class="okno"
+          :class="o.pos"
+          :style="{ '--c': o.color, '--d': `${(i + 2) * 90}ms` }"
+          :tabindex="odprto ? 0 : -1"
+          :aria-hidden="!odprto"
+        >
+          <span class="ikona" aria-hidden="true">
+            <svg v-if="o.ikona === 'igre'" viewBox="0 0 32 32">
+              <rect x="4" y="10" width="24" height="14" rx="7" />
+              <path d="M10 14v6M7 17h6" />
+              <circle cx="21" cy="15.5" r="1.3" class="fill" />
+              <circle cx="24" cy="18.5" r="1.3" class="fill" />
+            </svg>
+            <svg v-else-if="o.ikona === 'zemljevid'" viewBox="0 0 32 32">
+              <path d="M4 9l7-3 10 3 7-3v17l-7 3-10-3-7 3z" />
+              <path d="M11 6v17M21 9v17" />
+            </svg>
+            <svg v-else viewBox="0 0 32 32">
+              <path d="M5 26h22" />
+              <rect x="7" y="15" width="4" height="9" rx="1.5" />
+              <rect x="14" y="9" width="4" height="15" rx="1.5" />
+              <rect x="21" y="12" width="4" height="12" rx="1.5" />
+            </svg>
+          </span>
+          <span class="k">{{ o.kicker }}</span>
+          <strong>{{ o.title }}</strong>
+          <span class="t">{{ o.text }}</span>
+          <span class="go" aria-hidden="true">→</span>
+        </RouterLink>
+      </div>
     </nav>
   </div>
 </template>
@@ -195,17 +230,34 @@ h1 {
     opacity: 0.6;
   }
 }
-/* --- okenca --- */
-.okno {
+/* --- okenca: zaklenjena v dva stolpca ob pljučih (levo dve, desno eno), nikoli se ne prekrivajo --- */
+.okna {
   position: absolute;
-  width: min(300px, 26vw);
+  left: 0;
+  right: 0;
+  top: 200px; /* pod naslovom */
+  bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 max(24px, 4vw);
+  pointer-events: none;
+}
+.stolpec {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: clamp(230px, 24vw, 300px);
+}
+.okno {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
   column-gap: 12px;
   row-gap: 2px;
   align-items: center;
   padding: 18px 20px;
-  min-height: 212px; /* vsa okenca enako visoka, da so poravnana */
+  min-height: 196px; /* vsa okenca enako visoka, da so poravnana */
   border-radius: var(--radius);
   background: var(--panel);
   border: 2px solid color-mix(in srgb, var(--c) 55%, transparent);
@@ -223,35 +275,24 @@ h1 {
     transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) var(--d),
     box-shadow 0.2s;
 }
-.okno.l1,
-.okno.l2 {
-  left: max(24px, 7vw);
+.levo .okno {
   transform: translateX(40px) scale(0.9);
 }
-.okno.r1 {
-  right: max(24px, 7vw);
-  top: 44%;
+.desno .okno {
   transform: translateX(-40px) scale(0.9);
-}
-.okno.l1 {
-  top: 29%;
-}
-.okno.l2 {
-  top: 57%;
 }
 /* črtkana nit proti pljučem */
 .okno::after {
   content: '';
   position: absolute;
   top: 50%;
-  width: 5vw;
+  width: 28px;
   border-top: 2px dashed color-mix(in srgb, var(--c) 60%, transparent);
 }
-.okno.l1::after,
-.okno.l2::after {
+.levo .okno::after {
   left: 100%;
 }
-.okno.r1::after {
+.desno .okno::after {
   right: 100%;
 }
 .odprto .okno {
@@ -322,6 +363,27 @@ h1 {
   transform: translateX(5px);
 }
 
+/* nizek zaslon: manjša okenca, da gresta leva eno pod drugo */
+@media (max-height: 760px) and (min-width: 721px) {
+  .okna {
+    top: 170px;
+  }
+  .stolpec {
+    gap: 14px;
+  }
+  .okno {
+    min-height: 0;
+    padding: 12px 16px;
+  }
+  .okno .t {
+    font-size: 0.85rem;
+    margin-top: 4px;
+  }
+  .okno strong {
+    font-size: 1.4rem;
+  }
+}
+
 @media (max-width: 720px) {
   .landing {
     height: calc(100svh - 72px); /* spodnja navigacija na telefonu */
@@ -331,21 +393,20 @@ h1 {
     max-width: 100%;
   }
   .okna {
-    position: absolute;
+    top: auto;
     left: 16px;
     right: 16px;
     bottom: 16px;
     display: grid;
     gap: 10px;
-    pointer-events: none;
+    padding: 0;
+  }
+  .stolpec {
+    display: contents;
   }
   .okno,
-  .okno.l1,
-  .okno.l2,
-  .okno.r1 {
-    position: relative;
-    inset: auto;
-    width: auto;
+  .levo .okno,
+  .desno .okno {
     min-height: 0;
     padding: 10px 14px;
     transform: translateY(16px);
@@ -374,9 +435,7 @@ h1 {
     top: 50%;
     transform: translateY(-50%);
   }
-  .odprto .okno.l1,
-  .odprto .okno.l2,
-  .odprto .okno.r1 {
+  .odprto .okno {
     transform: none;
   }
 }
