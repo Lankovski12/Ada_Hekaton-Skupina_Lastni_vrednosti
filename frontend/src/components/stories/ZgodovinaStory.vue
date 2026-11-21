@@ -13,10 +13,20 @@ interface Bar {
   color?: string // privzeto: barva poglavja
   hi?: boolean // poudarjen stolpec s številko
 }
+// Kurjenje v Ljubljani (paket ARSOhack):
+// - 04_prostor/evidim_kurilne_naprave_obcine.csv (ARSO, EviDim 2026): vse naprave in naprave na trda goriva v MOL
+// - 04_prostor/emisije/ (ARSO, emisijski inventar): mala kurišča skupaj 127,9 t PM10 na leto
+const NAPRAVE = 75328
+const NAPRAVE_TRDNO = 14141
+const KURISCA_T = 127.9
+const KG_NA_NAPRAVO = Math.round((KURISCA_T * 1000) / NAPRAVE_TRDNO)
+const fmtInt = (n: number) => n.toLocaleString('sl-SI')
+
 interface Step {
   kicker: string
   title: string
   text: string
+  nasvet?: string // »Kaj lahko narediš?« – kaj prinese sprememba navad ali nova naprava
   color: string
   unit: string
   kind: 'bars' | 'calendar' | 'big'
@@ -50,6 +60,7 @@ const steps: Step[] = [
     kicker: `${leta.length} let meritev ARSO`,
     title: 'Zrak je vse boljši',
     text: `Povprečje delcev PM10 na Bežigradu je padlo s ${fmt(prvo.pm10)} µg/m³ (${prvo.leto}) na ${fmt(zadnje.pm10)} µg/m³ (${zadnje.leto}). To je ${padec} % manj kot leta ${prvo.leto}.`,
+    nasvet: `Spremembe se poznajo: vsaka zamenjana stara peč in vsak nov priključek na plin ali daljinsko ogrevanje pomaga, da je zrak iz leta v leto čistejši.`,
     color: 'var(--aq-2)',
     unit: 'PM10 na Bežigradu · letno povprečje (µg/m³)',
     kind: 'bars',
@@ -59,6 +70,7 @@ const steps: Step[] = [
     kicker: 'Dnevi nad mejo',
     title: `Z ${najvecDni.dniNad50} na ${zadnje.dniNad50} dni`,
     text: `Toliko dni na leto je bil zrak nad dnevno mejo EU (50 µg/m³ PM10). Leta ${najvecDni.leto} kar ${najvecDni.dniNad50} dni, leta ${zadnje.leto} le še ${zadnje.dniNad50}.`,
+    nasvet: `Takih dni je že skoraj štirikrat manj kot leta ${najvecDni.leto}. Večina jih je pozimi, zato največ naredimo s tem, kako ogrevamo domove.`,
     color: 'var(--aq-4)',
     unit: 'Dni s PM10 nad 50 µg/m³ · Bežigrad',
     kind: 'bars',
@@ -68,6 +80,7 @@ const steps: Step[] = [
     kicker: 'Po mesecih',
     title: `Pozimi ${fmt(maxMesec.pm25 / minMesec.pm25)}× več delcev`,
     text: `Ko je zrak najslabši (${maxMesec.mesec}), je v njem povprečno ${fmt(maxMesec.pm25)} µg/m³ PM2.5, ko je najboljši (${minMesec.mesec}), le ${fmt(minMesec.pm25)}. Pozimi kurimo, mrzel zrak pa se pogosto ujame v kotlini.`,
+    nasvet: `V Ljubljani je ${fmtInt(NAPRAVE_TRDNO)} kurilnih naprav na drva, pelete ali premog – le slaba petina od ${fmtInt(NAPRAVE)} vseh, a vsa mala kurišča skupaj izpustijo okoli ${fmtInt(Math.round(KURISCA_T))} ton delcev PM10 na leto, približno ${KG_NA_NAPRAVO} kg na peč na drva. Zato ima zamenjava ene same stare peči velik učinek.`,
     color: 'var(--aq-5)',
     unit: `PM2.5 na Bežigradu · povprečje po mesecih ${z.pm25Od}–${z.zadnjeLeto} (µg/m³)`,
     kind: 'bars',
@@ -77,6 +90,7 @@ const steps: Step[] = [
     kicker: 'Zimski dan',
     title: 'Najslabše je zvečer',
     text: `Pozimi je zrak najslabši pozno zvečer (okoli ${maxUra.ura}. ure, ${fmt(maxUra.pm25)} µg/m³), najboljši pa popoldne (okoli ${minUra.ura}. ure). Zato je stanovanje najbolje prezračiti sredi dneva.`,
+    nasvet: 'Če kuriš z drvi: uporabljaj suh, vsaj leto dni sušen les, ne zapiraj dovoda zraka do konca in nikoli ne sežigaj odpadkov ali papirja s tiskom. Peč tako izpusti precej manj dima – brez stroškov.',
     color: 'var(--aq-4)',
     unit: 'PM2.5 na Bežigradu · povprečje po urah, november–februar (µg/m³)',
     kind: 'bars',
@@ -86,6 +100,7 @@ const steps: Step[] = [
     kicker: 'Inverzija v številkah',
     title: `${fmt(inv.z / inv.brez)}× več delcev`,
     text: `Ko je na Pasji ravni (1019 m) topleje kot v mestu, je pozimi v zraku povprečno ${fmt(inv.z)} µg/m³ PM2.5. Brez inverzije ${fmt(inv.brez)}. Inverzija je kar v ${inv.delezUr} % zimskih ur.`,
+    nasvet: 'Model ARSO (GRAL) kaže, da je prispevek kurišč k onesnaženju premo sorazmeren izpustom: polovica manj dima iz dimnikov pomeni polovico manj delcev od kurišč v zraku. Ob inverziji šteje vsak dimnik, zato je takrat vredno kuriti manj ali uporabiti drug način ogrevanja.',
     color: 'var(--aq-5)',
     unit: 'PM2.5 na Bežigradu pozimi (µg/m³)',
     kind: 'bars',
@@ -98,6 +113,7 @@ const steps: Step[] = [
     kicker: 'Smernica WHO',
     title: `${z.who.dni} dni nad mejo`,
     text: `Leta ${z.who.leto} je bilo dnevno povprečje PM2.5 nad 15 µg/m³ kar ${z.who.dni} dni od ${z.who.izmed}. Vsak kvadratek je en dan, obarvani so dnevi nad mejo.`,
+    nasvet: 'Največ prinese zamenjava stare peči na drva ali kurilno olje s toplotno črpalko, priključkom na daljinsko ogrevanje ali plin oziroma s sodobnim kotlom na pelete – izpusti delcev se močno zmanjšajo. Eko sklad za take naložbe ponuja nepovratna sredstva, tudi dobra izolacija hiše pa pomeni manj kurjenja.',
     color: 'var(--aq-3)',
     unit: `Vsi dnevi leta ${z.who.leto} · Bežigrad`,
     kind: 'calendar',
@@ -106,6 +122,7 @@ const steps: Step[] = [
     kicker: 'Po mestu',
     title: 'Povsod podobno',
     text: `${postaje.seznam.map((p) => `${p.ime} ${fmt(p.pm25)}`).join(', ')} µg/m³ PM2.5 (${postaje.od}–${postaje.do}). Delci se razlezejo po vsej kotlini, zato šteje, kaj počnemo v celem mestu.`,
+    nasvet: 'Model ARSO kaže, da imajo v središču mesta najmanj kurišč, a se dim tam najbolj pozna, ker je gosto pozidano in slabo prevetreno. Vsaka sprememba – tudi na obrobju – zato pomaga vsem. Za kratke poti po mestu pojdi peš, s kolesom ali avtobusom.',
     color: 'var(--aq-3)',
     unit: `PM2.5 · povprečje ${postaje.od}–${postaje.do} (µg/m³)`,
     kind: 'bars',
@@ -115,6 +132,7 @@ const steps: Step[] = [
     kicker: `Rekord ${leta.length} let`,
     title: datum.toLocaleDateString('sl-SI', { day: 'numeric', month: 'long', year: 'numeric' }),
     text: `Najslabši dan v vseh meritvah: povprečje PM10 ${fmt(z.rekord.pm10)} µg/m³, skoraj ${Math.round(z.rekord.pm10 / 50)}× nad dnevno mejo.${novoLeto ? ' Prvi dan leta, takoj po noči z ognjemeti.' : ''}`,
+    nasvet: 'Tak dan je redek in pokaže, kako hitro se lahko zrak v mirni zimski noči poslabša. Manj petard in ognjemetov ter skupni ognjemet namesto mnogih zasebnih pomenijo čistejše novoletno jutro za vse.',
     color: 'var(--aq-6)',
     unit: 'PM10 · dnevno povprečje',
     kind: 'big',
@@ -166,11 +184,44 @@ const dayColor = (v: number | null) => (v == null ? 'transparent' : v > 15 ? lev
     <template #step="{ i }">
       <h2>{{ steps[i]!.title }}</h2>
       <p>{{ steps[i]!.text }}</p>
+      <p v-if="steps[i]!.nasvet" class="nasvet"><strong>Kaj lahko narediš?</strong> {{ steps[i]!.nasvet }}</p>
     </template>
   </ScrollStory>
 </template>
 
 <style scoped>
+/* konstruktivni nasvet na kartici koraka */
+.nasvet {
+  margin-top: 14px !important;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border-left: 4px solid var(--aq-1);
+  background: color-mix(in srgb, var(--aq-1) 12%, transparent);
+  font-size: 0.98rem !important;
+  line-height: 1.5;
+}
+/* nizek telefon: manjša pisava, da kartica ostane na zaslonu */
+@media (max-width: 720px) and (max-height: 820px) {
+  .nasvet {
+    margin-top: 10px !important;
+    padding: 8px 10px;
+    font-size: 0.82rem !important;
+    line-height: 1.4;
+  }
+}
+@media (max-width: 720px) and (max-height: 720px) {
+  p:not(.nasvet):not(.vir):not(.source) {
+    font-size: 0.95rem !important;
+  }
+  h2 {
+    font-size: 1.5rem !important;
+  }
+}
+.nasvet strong {
+  display: block;
+  margin-bottom: 2px;
+  color: color-mix(in srgb, var(--aq-1) 70%, var(--scene-ink));
+}
 .chart {
   margin: 0;
   --chart-h: clamp(200px, 40vh, 340px);

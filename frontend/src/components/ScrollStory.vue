@@ -166,4 +166,9 @@ onBeforeUnmount(() => io?.disconnect())
     right: 10px;
   }
 }
+@media (max-width: 720px) and (max-height: 760px) {
+  .step {
+    padding-bottom: 96px; /* nizek telefon: kartica tik nad spodnjo navigacijo */
+  }
+}
 </style>
