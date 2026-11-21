@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+backend/zrak.db
+backend/models/*.joblib
+.env
+
+# Podatki hekatona (kloniraj posebej, glej data/README.md)
+data/ARSOhack/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/android/
+frontend/ios/
+frontend/.env
+.DS_Store

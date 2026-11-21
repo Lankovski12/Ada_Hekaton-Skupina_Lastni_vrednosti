@@ -1,0 +1,170 @@
+/* Barvni žetoni – svetla in temna tema */
+:root {
+  --bg: #f4f8fb;
+  --bg-soft: #e8f1f7;
+  --card: #ffffff;
+  --ink: #17324d;
+  --ink-soft: #4b6580;
+  --line: #d5e3ee;
+  --brand: #2f80ed;
+  --brand-ink: #ffffff;
+  --accent: #ffb547;
+  --sky-top: #8fd3ff;
+  --sky-bottom: #e7f6ff;
+  --mountain-far: #9bb7c9;
+  --mountain-mid: #6f97ad;
+  --mountain-near: #4c7a8f;
+  --city: #2e4d61;
+
+  /* kakovost zraka */
+  --aq-1: #2bb673;
+  --aq-2: #8ccf3f;
+  --aq-3: #f2c335;
+  --aq-4: #f28c28;
+  --aq-5: #e5484d;
+  --aq-6: #8e4ec6;
+
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: 0 10px 30px -12px rgba(23, 50, 77, 0.25);
+  --font-head: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+  --font-body: 'Nunito', system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0e1a26;
+    --bg-soft: #142636;
+    --card: #182c3e;
+    --ink: #e6f0f8;
+    --ink-soft: #9db4c8;
+    --line: #26425a;
+    --brand: #5aa2ff;
+    --sky-top: #1b3554;
+    --sky-bottom: #335a7a;
+    --mountain-far: #2d4a60;
+    --mountain-mid: #23394b;
+    --mountain-near: #1a2c3b;
+    --city: #0f1d29;
+    --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0e1a26;
+  --bg-soft: #142636;
+  --card: #182c3e;
+  --ink: #e6f0f8;
+  --ink-soft: #9db4c8;
+  --line: #26425a;
+  --brand: #5aa2ff;
+  --sky-top: #1b3554;
+  --sky-bottom: #335a7a;
+  --mountain-far: #2d4a60;
+  --mountain-mid: #23394b;
+  --mountain-near: #1a2c3b;
+  --city: #0f1d29;
+  --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-head);
+  line-height: 1.1;
+  margin: 0 0 0.4em;
+}
+
+a {
+  color: var(--brand);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 22px;
+  min-height: 48px; /* veliki gumbi za otroke */
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  touch-action: manipulation;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--line);
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--bg-soft);
+  color: var(--ink-soft);
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--brand);
+  height: 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
