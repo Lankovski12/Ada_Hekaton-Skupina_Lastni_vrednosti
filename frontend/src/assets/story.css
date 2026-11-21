@@ -1,0 +1,159 @@
+/* Temne drseče zgodbe (Domov, Blogi) – skupni izgled.
+   Ovij vsebino v <div class="story">, poglavja pa naredi s komponento ScrollStory. */
+
+.story {
+  position: relative;
+  background: #05080f;
+  color: #eaf2fb;
+  /* temne barve tudi za vgrajene komponente (Kotlina, ForecastStrip, .card), ne glede na temo strani */
+  --ink: #eaf2fb;
+  --ink-soft: #9fb3c8;
+  --line: rgba(255, 255, 255, 0.14);
+  --card: #0b1422;
+  --bg-soft: rgba(255, 255, 255, 0.08);
+  --shadow: none;
+  --sky-top: #3a78ad;
+  --sky-bottom: #8fbedf;
+  --mountain-far: #2d4a60;
+  --mountain-mid: #20364a;
+  --mountain-near: #142433;
+  --city: #0b1621;
+}
+
+/* besedilo na karticah */
+.story .kicker {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--lvl);
+  margin-bottom: 8px;
+  transition: color 0.6s;
+}
+.story h1 {
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+}
+.story h2 {
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+}
+.story h2.big {
+  font-size: clamp(3rem, 9vw, 5rem);
+  color: var(--lvl);
+}
+.story h2.big small {
+  font-size: 1.2rem;
+  color: #9fb3c8;
+}
+.story p {
+  color: #c4d3e2;
+  font-size: 1.1rem;
+  margin: 0;
+}
+.story .src {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #8197ad;
+}
+.story .slider {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  font-weight: 700;
+}
+.story .slider input {
+  accent-color: var(--lvl);
+}
+.story .slider .play {
+  justify-self: start;
+  background: var(--lvl);
+  color: #05080f;
+}
+.story .scroll-hint {
+  display: inline-block;
+  margin-top: 24px;
+  color: #8197ad;
+  font-weight: 700;
+  animation: story-hint 1.6s ease-in-out infinite;
+}
+@keyframes story-hint {
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+/* velika številka v kotu scene */
+.story .readout {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  column-gap: 10px;
+  pointer-events: none;
+}
+.story .readout .num {
+  font-family: var(--font-head);
+  font-size: clamp(3rem, 9vw, 6rem);
+  line-height: 1;
+  color: var(--lvl);
+  transition: color 0.6s;
+}
+.story .readout .unit {
+  color: #9fb3c8;
+  font-weight: 700;
+}
+.story .readout .lvl {
+  grid-column: 1 / -1;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--lvl);
+}
+
+/* plošča z grafom na levi strani scene (napoved, zgodovina) */
+.story .panel-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 calc(420px + max(56px, 6vw) + 40px) 0 max(24px, 5vw);
+  background: radial-gradient(ellipse at 30% 60%, color-mix(in srgb, var(--lvl) 18%, transparent), transparent 60%);
+  transition: background 0.6s;
+}
+.story .panel {
+  width: 100%;
+  padding: 24px 26px;
+  border-radius: var(--radius);
+  background: rgba(10, 18, 30, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* mehak prehod iz temne zgodbe v svetlo nogo strani */
+.story-end {
+  height: 120px;
+  background: linear-gradient(#05080f, var(--bg));
+}
+
+@media (max-width: 1000px) {
+  .story .panel-stage {
+    align-items: flex-start;
+    padding: 24px 40px 0 16px;
+  }
+}
+@media (max-width: 720px) {
+  .story .readout {
+    left: 16px;
+    top: 14px;
+    bottom: auto;
+  }
+  .story .readout .num {
+    font-size: 2.6rem;
+  }
+  .story .panel {
+    padding: 16px;
+  }
+}

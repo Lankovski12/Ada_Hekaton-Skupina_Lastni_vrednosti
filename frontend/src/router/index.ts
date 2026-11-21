@@ -16,4 +16,25 @@ const router = createRouter({
   ],
 })
 
+// Po novi gradnji (npr. docker compose up --build) ima stara odprta stran še stara imena datotek.
+// Če se stran ne naloži, enkrat osvežimo celo aplikacijo, da dobi novo različico.
+router.onError((err, to) => {
+  const stale = /dynamically imported module|Importing a module script failed|Failed to fetch/i.test(String(err?.message))
+  if (!stale) return
+  try {
+    if (sessionStorage.getItem('reloaded-for') === to.fullPath) return // že poskusili – ne osvežuj v nedogled
+    sessionStorage.setItem('reloaded-for', to.fullPath)
+  } catch {
+    /* sessionStorage ni na voljo – vseeno osvežimo enkrat */
+  }
+  window.location.assign(to.fullPath)
+})
+router.afterEach(() => {
+  try {
+    sessionStorage.removeItem('reloaded-for')
+  } catch {
+    /* ni pomembno */
+  }
+})
+
 export default router

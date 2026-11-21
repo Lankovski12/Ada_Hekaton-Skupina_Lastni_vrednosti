@@ -183,4 +183,5 @@ if FRONTEND_DIST.exists():
         f = FRONTEND_DIST / full_path
         if full_path and f.is_file() and FRONTEND_DIST in f.resolve().parents:
             return FileResponse(f)
-        return FileResponse(FRONTEND_DIST / "index.html")  # Vue router
+        # index.html se ne sme shraniti v brskalniku: po novi gradnji imajo datoteke v /assets nova imena
+        return FileResponse(FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})  # Vue router
