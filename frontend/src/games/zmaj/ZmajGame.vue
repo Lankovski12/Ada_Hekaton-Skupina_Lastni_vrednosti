@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAirData } from '@/composables/useAirData'
 import { useProgressStore } from '@/stores/progress'
+import { typicalPm25 } from '@/lib/klima'
 import { LEVELS, makeSmoke, spawnRate, type Smoke } from './logic'
 
 const { currentPm25 } = useAirData()
@@ -21,7 +22,7 @@ let acc = 0
 
 const level = computed(() => LEVELS[levelIdx.value]!)
 const danger = computed(() => smokes.value.length / level.value.maxNaZaslonu)
-const pm = computed(() => currentPm25.value ?? 20)
+const pm = computed(() => currentPm25.value ?? typicalPm25())
 
 function start(i = 0) {
   levelIdx.value = i

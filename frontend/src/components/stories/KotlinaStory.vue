@@ -6,6 +6,7 @@ import Kotlina from '@/scenes/Kotlina.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
+import { klimaLabel, typicalPm25 } from '@/lib/klima'
 
 const { scene, currentPm25 } = useAirData()
 const { sensitivity } = useProfile()
@@ -70,7 +71,7 @@ watch(
   },
   { immediate: true },
 )
-const level = computed(() => levelFor(ure.value[hour.value]?.pm25 ?? currentPm25.value ?? 15, sensitivity.value))
+const level = computed(() => levelFor(ure.value[hour.value]?.pm25 ?? currentPm25.value ?? typicalPm25(), sensitivity.value))
 const clock = computed(() => {
   const u = ure.value[hour.value]
   return u ? `${String(hourOf(u.cas_utc)).padStart(2, '0')}:00` : ''
@@ -94,6 +95,11 @@ onBeforeUnmount(() => window.clearInterval(timer))
         <span class="num">{{ ure[hour]?.pm25 }}</span>
         <span class="unit">µg/m³ PM2.5</span>
         <span class="lvl">{{ clock }} · {{ ure[hour]?.inverzija ? 'inverzija – zrak je ujet' : 'zrak se meša' }}</span>
+        <span class="lvl src">{{
+          scene.vir === 'klima'
+            ? `običajne razmere (${klimaLabel})`
+            : 'vreme: Open-Meteo (Bežigrad in Pasja ravan)'
+        }}</span>
       </div>
     </template>
     <template #step="{ i }">

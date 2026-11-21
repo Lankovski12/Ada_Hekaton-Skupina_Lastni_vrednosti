@@ -49,7 +49,7 @@ const steps: Step[] = [
   {
     kicker: `${leta.length} let meritev ARSO`,
     title: 'Zrak je vse boljši',
-    text: `Povprečje delcev PM10 na Bežigradu je padlo s ${fmt(prvo.pm10)} µg/m³ (${prvo.leto}) na ${fmt(zadnje.pm10)} µg/m³ (${zadnje.leto}). To je ${padec} % manj kot pred desetimi leti.`,
+    text: `Povprečje delcev PM10 na Bežigradu je padlo s ${fmt(prvo.pm10)} µg/m³ (${prvo.leto}) na ${fmt(zadnje.pm10)} µg/m³ (${zadnje.leto}). To je ${padec} % manj kot leta ${prvo.leto}.`,
     color: 'var(--aq-2)',
     unit: 'PM10 na Bežigradu · letno povprečje (µg/m³)',
     kind: 'bars',
@@ -69,7 +69,7 @@ const steps: Step[] = [
     title: `Pozimi ${fmt(maxMesec.pm25 / minMesec.pm25)}× več delcev`,
     text: `Ko je zrak najslabši (${maxMesec.mesec}), je v njem povprečno ${fmt(maxMesec.pm25)} µg/m³ PM2.5, ko je najboljši (${minMesec.mesec}), le ${fmt(minMesec.pm25)}. Pozimi kurimo, mrzel zrak pa se pogosto ujame v kotlini.`,
     color: 'var(--aq-5)',
-    unit: `PM2.5 na Bežigradu · povprečje po mesecih 2021–${z.zadnjeLeto} (µg/m³)`,
+    unit: `PM2.5 na Bežigradu · povprečje po mesecih ${z.pm25Od}–${z.zadnjeLeto} (µg/m³)`,
     kind: 'bars',
     bars: meseci.map((m) => ({ label: m.mesec, value: m.pm25, color: pm25Color(m.pm25), hi: m === maxMesec || m === minMesec })),
   },

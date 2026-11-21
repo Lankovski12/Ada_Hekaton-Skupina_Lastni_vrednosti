@@ -7,6 +7,7 @@ import ForecastStrip from '@/components/ForecastStrip.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { formatDayHour, levelFor } from '@/lib/airQuality'
+import { klimaLabel, typicalPm25 } from '@/lib/klima'
 
 const { forecast, origin, currentPm25 } = useAirData()
 const { profile, sensitivity } = useProfile()
@@ -54,7 +55,7 @@ watch(
   },
   { immediate: true },
 )
-const level = computed(() => levelFor(ure.value[selected.value]?.pm25 ?? currentPm25.value ?? 15, sensitivity.value))
+const level = computed(() => levelFor(ure.value[selected.value]?.pm25 ?? currentPm25.value ?? typicalPm25(), sensitivity.value))
 </script>
 
 <template>
@@ -71,7 +72,13 @@ const level = computed(() => levelFor(ure.value[selected.value]?.pm25 ?? current
       <h2>{{ steps[i]!.title }}</h2>
       <p>{{ steps[i]!.text }}</p>
       <p v-if="i === 0" class="src">
-        Vir: {{ origin === 'api' ? 'ARSO in CAMS' : 'demo' }} ·
+        Vir:
+        {{
+          forecast.model === 'klima'
+            ? `napoved ni na voljo – običajne vrednosti (${klimaLabel})`
+            : `napoved CAMS (Open-Meteo)${origin === 'predpomnilnik' ? ', shranjena' : ''}`
+        }}
+        ·
         <template v-if="profile.astma">upoštevam strožje meje za astmo</template>
         <RouterLink v-else to="/nastavitve">Ima vaš otrok astmo? Nastavite profil.</RouterLink>
       </p>

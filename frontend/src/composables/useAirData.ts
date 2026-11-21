@@ -11,7 +11,7 @@ const scene = ref<SceneResponse | null>(null)
 const daily = ref<DailyGame | null>(null)
 const facts = ref<Fact[]>([])
 const places = ref<Place[]>([])
-const origin = ref<DataOrigin>('demo')
+const origin = ref<DataOrigin>('arhiv ARSO')
 const loading = ref(false)
 let loadedAt = 0
 

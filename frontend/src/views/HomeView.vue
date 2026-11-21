@@ -9,11 +9,13 @@ import StoryNext from '@/components/StoryNext.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
+import { klimaLabel, typicalPm25 } from '@/lib/klima'
+import z from '@/data/zgodovina.json'
 
 const { currentPm25, origin, now } = useAirData()
 const { sensitivity } = useProfile()
 
-const live = computed(() => currentPm25.value ?? 15)
+const live = computed(() => currentPm25.value ?? typicalPm25())
 
 /* ---------- 1. poglavje: oblak delcev ---------- */
 const myPm = ref(30) // zadnji korak: »ustvari svoj zrak«
@@ -52,15 +54,15 @@ const steps: Step[] = [
   },
   {
     kicker: 'Zimski večer z inverzijo',
-    title: '65 µg/m³',
-    text: 'Hladen zrak obleži na dnu kotline kot pod pokrovko. Dim iz dimnikov in izpuhov ne more ven – oblak postane nemiren in temen.',
-    pm: () => 65,
+    title: `${Math.round(z.primeri.inverzijaVecer)} µg/m³`,
+    text: `Hladen zrak obleži na dnu kotline kot pod pokrovko. Dim iz dimnikov in izpuhov ne more ven – oblak postane nemiren in temen. Toliko je povprečno izmerila postaja ARSO na Bežigradu ob zimskih večerih z inverzijo (${z.pm25Od}–${z.zadnjeLeto}).`,
+    pm: () => z.primeri.inverzijaVecer,
   },
   {
     kicker: 'Poletno jutro po dežju',
-    title: '4 µg/m³',
-    text: 'Dež spere delce, veter jih odnese. Oblak se umiri in diha počasi.',
-    pm: () => 4,
+    title: `${Math.round(z.primeri.poletjeDez)} µg/m³`,
+    text: `Dež spere delce, veter jih odnese. Oblak se umiri in diha počasi. Povprečje meritev ARSO poleti zjutraj, ko je pred tem padlo vsaj 1 mm dežja.`,
+    pm: () => z.primeri.poletjeDez,
   },
   {
     kicker: 'Zdaj ti',
@@ -74,7 +76,7 @@ const steps: Step[] = [
 const active = ref(0)
 const pm = computed(() => steps[active.value]!.pm())
 const level = computed(() => levelFor(pm.value, sensitivity.value))
-const isMeasured = computed(() => origin.value === 'api' && now.value?.postaje.some((p) => p.vir === 'meritev'))
+const isMeasured = computed(() => now.value?.postaje.some((p) => p.vir === 'meritev') ?? false)
 const stationTime = computed(() => {
   const t = now.value?.cas_utc
   return t ? new Date(t).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) : ''
@@ -103,7 +105,11 @@ const stationTime = computed(() => {
         <h2 v-else>{{ steps[i]!.title }}</h2>
         <p>{{ steps[i]!.text }}</p>
         <p v-if="i === 1" class="src">
-          {{ isMeasured ? `Meritev ARSO ob ${stationTime}` : 'Demo vrednost – meritve ARSO še niso prispele' }}
+          {{
+            isMeasured
+              ? `Meritev ARSO ob ${stationTime}${origin === 'predpomnilnik' ? ' (shranjena, ni povezave)' : ''}`
+              : `Meritve še niso prispele – to je običajna vrednost ob tej uri (${klimaLabel})`
+          }}
         </p>
         <label v-if="steps[i]!.interactive" class="slider">
           <input v-model.number="myPm" type="range" min="0" max="100" aria-label="PM2.5" />

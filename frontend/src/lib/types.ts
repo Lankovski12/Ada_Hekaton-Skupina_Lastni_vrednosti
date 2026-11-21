@@ -30,6 +30,7 @@ export interface ForecastResponse {
   lon: number
   ure: ForecastHour[]
   najboljsa_ura: string
+  model?: 'cams' | 'klima' | 'model' // klima = povprečje meritev ARSO za ta mesec in uro
 }
 
 export interface SceneHour {
@@ -41,6 +42,7 @@ export interface SceneHour {
 
 export interface SceneResponse {
   ure: SceneHour[]
+  vir?: 'open-meteo' | 'klima' // klima = običajne razmere iz ARSOhack (ni povezave)
 }
 
 export interface DailyGame {
