@@ -46,7 +46,7 @@ function potrdi() {
 
 <template>
   <div class="naloga">
-    <p class="vprasanje">Razvrsti kraje od <strong>najbolj</strong> do <strong>najmanj</strong> onesnaženega včeraj. Tapni jih po vrsti.</p>
+    <p class="vprasanje">Razvrsti kraje od <strong>najbolj</strong> do <strong>najmanj</strong> onesnaženega za včerejšni dan. Tapni jih po vrsti.</p>
     <div class="cards">
       <button v-for="p in izbor" :key="p.id" class="place" :class="{ picked: vrstni.includes(p.id) }" :disabled="odgovorjeno" @click="tapni(p)">
         <span class="num">{{ vrstni.includes(p.id) ? vrstni.indexOf(p.id) + 1 : '' }}</span>

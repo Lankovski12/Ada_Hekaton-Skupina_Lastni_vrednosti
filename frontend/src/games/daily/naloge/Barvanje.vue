@@ -35,7 +35,7 @@ function potrdi() {
     zvezdice: delez >= 0.9 ? 3 : delez >= 0.75 ? 2 : delez >= 0.55 ? 1 : 0,
     razlaga:
       `Zadel si ${ok} od ${n} ur. Včeraj je bil zrak nad mejo ${meja.value} µg/m³ ${slabih} ${slabih === 1 ? 'uro' : slabih < 5 && slabih > 1 ? 'ure' : 'ur'}. ` +
-      (slabih > 12 ? 'Več kot pol dneva – takrat je bolje, da se igraš v hiši.' : 'Ko veš, kdaj je zrak boljši, lahko takrat greš ven.'),
+      (slabih > 12 ? 'Več kot pol dneva, takrat je bolje, da se igraš v hiši.' : 'Zrak je bil včeraj večinoma čist, zato je bilo varno, da si se igral zunaj.'),
   })
 }
 </script>

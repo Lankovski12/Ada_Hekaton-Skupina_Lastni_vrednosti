@@ -23,10 +23,10 @@ function potrdi() {
   emit('konec', {
     zvezdice,
     razlaga:
-      `Včeraj je bilo v Ljubljani (Bežigrad) povprečno ${prav.value} µg/m³ drobnih delcev, ti si rekel ${ugib.value}. ` +
+      `Včeraj je bilo v Ljubljani povprečno ${prav.value} µg/m³ drobnih delcev, ti si rekel ${ugib.value}. ` +
       (krat > 1.1
         ? `To je ${krat.toFixed(1).replace('.', ',')}-krat več, kot priporoča Svetovna zdravstvena organizacija (15).`
-        : 'To je pod priporočilom Svetovne zdravstvene organizacije (15) – zrak je bil zdrav.'),
+        : 'To je pod priporočilom Svetovne zdravstvene organizacije (15), zrak je bil čist.'),
   })
 }
 </script>

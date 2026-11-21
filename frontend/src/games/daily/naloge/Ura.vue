@@ -23,7 +23,7 @@ function potrdi() {
     zvezdice,
     razlaga:
       `Največ delcev je bilo ob ${naj.value}. uri: ${Math.round(vals.value[naj.value] ?? 0)} µg/m³. Ti si izbral ${izbrana.value}. uro. ` +
-      'Pozimi je na Bežigradu zrak navadno najslabši zvečer in ponoči, ko ljudje kurijo in se zrak ohladi, najboljši pa popoldne.',
+      'Pozimi je zrak navadno najslabši zvečer in ponoči, ko ljudje kurijo in se zrak ohladi, najboljši pa popoldne.',
   })
 }
 </script>
@@ -93,7 +93,7 @@ function potrdi() {
 }
 .col.best .bar {
   box-shadow: 0 0 0 3px #e5484d;
-  animation: glow 1s ease-in-out infinite alternate;
+  animation: glow 0.5s ease-in-out infinite alternate;
 }
 .h {
   font-size: 0.7rem;

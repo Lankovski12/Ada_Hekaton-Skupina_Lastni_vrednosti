@@ -57,7 +57,7 @@ function izberi(i: Izbira) {
     zvezdice: d === 0 ? 3 : d === 1 ? 1 : 0,
     razlaga:
       `Predvčerajšnjim je bilo ${Math.round(prej.value)} µg/m³, včeraj ${Math.round(danes.value)} µg/m³ – zrak je bil ${{ boljsi: 'boljši', podoben: 'podoben kot dan prej', slabsi: 'slabši' }[resnica.value]}. ` +
-      (r.length ? `Namigi: ${r.join(', ')}.` : 'Tokrat vreme ni povedalo vsega – pomembni so tudi kurjenje in promet.'),
+      (r.length ? `Namigi: ${r.join(', ')}.` : 'Tokrat vreme ni povedalo vsega, pomembni so tudi kurjenje in promet.'),
   })
 }
 </script>
@@ -130,7 +130,7 @@ function izberi(i: Izbira) {
   gap: 8px;
   padding: 4px 8px;
   border-radius: 10px;
-  background: #fff;
+  background: #76b5e3f9;
   font-size: 0.95rem;
 }
 .pm {

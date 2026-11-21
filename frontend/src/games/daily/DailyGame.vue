@@ -159,7 +159,7 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Odlično, pravi vede
             <GameIcon v-for="i in 3" :key="i" name="zvezda" :size="56" class="s" :class="{ on: i <= zeOdgovorjeno }" />
           </div>
           <p>Novo vprašanje čez <strong class="count">{{ doJutri }}</strong></p>
-          <button class="k-btn purple" @click="vaja">Vaja s starimi dnevi</button>
+          <button class="k-btn purple" @click="vaja">Vaja s preteklimi dnevi</button>
         </div>
 
         <template v-else>
@@ -178,7 +178,7 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Odlično, pravi vede
                 <p>{{ rezultat.razlaga }}</p>
               </div>
               <div class="row">
-                <button class="k-btn purple" @click="vaja">{{ nacin === 'vaja' ? 'Še en star dan' : 'Vaja s starimi dnevi' }}</button>
+                <button class="k-btn purple" @click="vaja">{{ nacin === 'vaja' ? 'Še en star dan' : 'Vaja s preteklimi dnevi' }}</button>
               </div>
               <p v-if="nacin === 'dnevno'" class="next">Novo vprašanje dneva čez <strong class="count">{{ doJutri }}</strong></p>
             </div>
