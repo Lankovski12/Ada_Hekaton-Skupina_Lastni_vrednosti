@@ -4,6 +4,8 @@ import { GAME, gostotaDanes, VETER, VPRASANJA } from '../config'
 import { Breath } from './breath'
 import { Dragon, type SteerInput } from './dragon'
 import { type PickupKind, Pickups } from './pickups'
+import { sound } from './sound'
+import { SpeedLines } from './speedlines'
 import { type Conditions, Smog } from './smog'
 import { Terrain } from './terrain'
 import { buildWorld, GRAD } from './world'
@@ -35,6 +37,10 @@ export class ZmajEngine {
   private smog!: Smog
   private pickups!: Pickups
   private breath = new Breath()
+  private speedLines = new SpeedLines()
+  private baseFov = 60
+  private shake = 0
+  private lastTick = 99
   private paused = false
   private boost = 0
   private nextQuestion = 0
@@ -68,7 +74,7 @@ export class ZmajEngine {
     this.smog = new Smog(terrain)
     this.pickups = new Pickups(terrain, this.smog)
 
-    this.scene.add(buildWorld(terrain), this.smog.group, this.pickups.group, this.dragon.group, this.breath.points)
+    this.scene.add(buildWorld(terrain), this.smog.group, this.pickups.group, this.dragon.group, this.breath.points, this.speedLines.lines)
     // manj razpršene in več usmerjene svetlobe: pobočja dobijo sence, teren je bolj 3D
     this.scene.add(new THREE.HemisphereLight('#dfefff', '#4a5536', 0.9))
     const sun = new THREE.DirectionalLight('#fff0d8', 3)
@@ -103,7 +109,9 @@ export class ZmajEngine {
     this.boost = 0
     this.nextQuestion = 0
     this.paused = false
+    this.lastTick = 99
     this.playing = true
+    sound.music(true)
   }
 
   /** Odgovor na vprašanje: igra teče naprej; pravilen odgovor da več časa in sunek vetra. */
@@ -111,12 +119,15 @@ export class ZmajEngine {
     if (correct) {
       this.timeLeft += VPRASANJA.bonusCas
       this.boost = VETER.trajanje
+      this.shake = 0.4
+      sound.boost()
     }
     this.paused = false
     this.clock.getDelta() // čas med vprašanjem ne šteje
   }
 
   dispose() {
+    sound.stopAll()
     cancelAnimationFrame(this.raf)
     this.ro?.disconnect()
     this.unbindInput()
@@ -159,13 +170,27 @@ export class ZmajEngine {
       this.nextQuestion++
     }
     for (const kind of this.pickups.update(dt, this.time, this.dragon, this.camera, this.playing && !this.paused)) {
-      if (kind === 'veter') this.boost = VETER.trajanje
+      if (kind === 'veter') {
+        this.boost = VETER.trajanje
+        this.shake = 0.5
+        sound.boost()
+      }
+      if (kind === 'dez') sound.rainStart()
+      if (kind === 'dim') {
+        this.shake = 0.35
+        sound.smoke()
+      }
       if (kind === 'vprasanje') {
         this.paused = true
         this.blowing = false
+        sound.question()
         this.events.onQuestion?.()
       } else this.events.onPickup?.(kind)
     }
+    const live = this.playing && !this.paused
+    sound.blow(live && blowing)
+    sound.wind(live && this.boost > 0)
+    sound.rain(live && this.pickups.raining)
     this.smog.update(dt, this.time, this.camera, this.host.clientHeight)
 
     this.updateCamera(dt)
@@ -173,6 +198,11 @@ export class ZmajEngine {
 
     if (this.playing && !this.paused) {
       this.timeLeft -= dt
+      const sec = Math.ceil(this.timeLeft)
+      if (sec <= 10 && sec !== this.lastTick && sec > 0) {
+        this.lastTick = sec
+        sound.tick(sec <= 5)
+      }
       this.hudAcc += dt
       if (this.hudAcc > 0.1) {
         this.hudAcc = 0
@@ -188,6 +218,7 @@ export class ZmajEngine {
       if (this.timeLeft <= 0) {
         this.playing = false
         this.blowing = false
+        sound.stopAll()
         this.events.onEnd?.(this.smog.cleared())
       }
     }
@@ -206,7 +237,18 @@ export class ZmajEngine {
     const minY = this.terrain.groundY(this.camera.position.x, this.camera.position.z) + 25
     if (this.camera.position.y < minY) this.camera.position.y = minY
     this.lookAt.lerp(p.clone().addScaledVector(this.dragon.forward(), 160), 1 - Math.exp(-dt * 6))
+    // sunek vetra: širši pogled in rahlo tresenje
+    const targetFov = this.baseFov + (this.boost > 0 ? 16 : 0)
+    this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 4)
+    if (this.shake > 0) {
+      this.shake = Math.max(0, this.shake - dt)
+      const a = this.shake * 14
+      this.camera.position.x += (Math.random() - 0.5) * a
+      this.camera.position.y += (Math.random() - 0.5) * a
+    }
+    this.camera.updateProjectionMatrix()
     this.camera.lookAt(this.lookAt)
+    this.speedLines.update(dt, this.boost > 0 && this.playing && !this.paused, this.camera)
   }
 
   /** Ko je kamera v smogu, se vidljivost zmanjša. */
@@ -227,7 +269,8 @@ export class ZmajEngine {
     if (!w || !h) return
     this.renderer.setSize(w, h)
     this.camera.aspect = w / h
-    this.camera.fov = w < h ? 75 : 60 // pokončen telefon: širši pogled
+    this.baseFov = w < h ? 75 : 60 // pokončen telefon: širši pogled
+    this.camera.fov = this.baseFov
     this.camera.updateProjectionMatrix()
   }
 

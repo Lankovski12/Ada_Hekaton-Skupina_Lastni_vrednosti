@@ -38,6 +38,9 @@ src/games/zmaj/
   engine/dragon.ts    model, mahanje kril (shader), let
   engine/breath.ts    delci pihanja
   engine/pickups.ts   Oblaček Kapljica (dež), obroči vetra, dimniki, zlati vprašaj
+  engine/sound.ts     zvoki in glasba, ustvarjeni v brskalniku (Web Audio, brez datotek)
+  engine/speedlines.ts črte hitrosti ob sunku vetra
+  ui/                 ikone (SVG) in konfeti
 ```
 
 Teren pripravi `backend/scripts/build_game_assets.py` (enkrat; rezultat je v gitu).

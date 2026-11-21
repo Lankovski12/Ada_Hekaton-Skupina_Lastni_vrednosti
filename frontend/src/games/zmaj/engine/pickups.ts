@@ -286,6 +286,10 @@ export class Pickups {
     }
   }
 
+  get raining() {
+    return this.rain.active > 0
+  }
+
   /** Nova razporeditev za novo igro (po setConditions, ker je odvisna od smoga). */
   reset() {
     for (const c of this.clouds) this.placeCloud(c)
