@@ -15,7 +15,7 @@ const { sensitivity } = useProfile()
 
 const pm = computed(() => currentPm25.value ?? typicalPm25())
 // pljuča so vedno zelena (med prvotno in neon zeleno); kakovost zraka pokaže hitrost dihanja in število delcev okoli
-const NEON = '#5adc32'
+const NEON = '#4e9f35'
 const level = computed(() => levelFor(pm.value, sensitivity.value))
 const izmerjeno = computed(() => now.value?.postaje.some((p) => p.vir === 'meritev') ?? false)
 
