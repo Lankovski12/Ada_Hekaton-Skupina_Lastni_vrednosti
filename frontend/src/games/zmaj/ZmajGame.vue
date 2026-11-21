@@ -6,7 +6,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import { useAirData } from '@/composables/useAirData'
 import { useProgressStore } from '@/stores/progress'
 import { levelFor } from '@/lib/airQuality'
-import { GAME } from './config'
+import { GAME, LEP_DAN_PM25, vrhZaIgro } from './config'
 import { type Conditions, type HudState, ZmajEngine } from './engine/Game'
 
 const { currentPm25, scene, now, origin } = useAirData()
@@ -24,7 +24,7 @@ const rezultat = ref(0)
 // Za predstavitev lahko stanje povoziš v naslovu: /igre/zmaj?pm=70&megla=1&vrh=380
 const route = useRoute()
 const q = (k: string) => (typeof route.query[k] === 'string' ? (route.query[k] as string) : undefined)
-const conditions = computed<Conditions>(() => {
+const danes = computed<Conditions>(() => {
   const h = scene.value?.ure[0]
   const pm = q('pm') ? Number(q('pm')) : (currentPm25.value ?? h?.pm25 ?? 20)
   return {
@@ -35,7 +35,30 @@ const conditions = computed<Conditions>(() => {
   }
 })
 const povozeno = computed(() => !!(q('pm') || q('megla') || q('vrh')))
+
+// Resnični slabi dnevi iz zgodovine ARSO (public/assets/terrain/slabi_dnevi.json)
+interface SlabDan { datum: string; pm25: number; vrh_m: number; visina_mesanja_m: number }
+const slabiDnevi = ref<SlabDan[]>([])
+const izbran = ref<SlabDan | null>(null)
+const lepDan = computed(() => !danes.value.megla && danes.value.pm25 < LEP_DAN_PM25)
+const naDanes = ref(false) // igralec lahko vseeno izbere današnji (čist) zrak
+const zgodovina = computed(() => lepDan.value && !naDanes.value && izbran.value != null)
+
+function izberiSlabDan() {
+  const d = slabiDnevi.value
+  if (d.length) izbran.value = d[Math.floor(Math.random() * d.length)]!
+}
+const datumSl = (iso: string) => new Date(iso).toLocaleDateString('sl-SI', { day: 'numeric', month: 'long', year: 'numeric' })
+
+const conditions = computed<Conditions>(() => {
+  const c = zgodovina.value
+    ? { pm25: izbran.value!.pm25, vrhPlastiM: izbran.value!.vrh_m, inverzija: true, megla: false }
+    : danes.value
+  // plast mora biti dovolj debela, da zmaj leti skozi njo
+  return { ...c, vrhPlastiM: vrhZaIgro(c.vrhPlastiM) }
+})
 const level = computed(() => levelFor(conditions.value.pm25))
+const levelDanes = computed(() => levelFor(danes.value.pm25))
 const pravi = computed(() => origin.value === 'api' && (now.value?.postaje.some((p) => p.vir === 'meritev') ?? false))
 
 onMounted(async () => {
@@ -49,6 +72,10 @@ onMounted(async () => {
     },
   })
   try {
+    slabiDnevi.value = await fetch(`${import.meta.env.BASE_URL}assets/terrain/slabi_dnevi.json`)
+      .then((r) => r.json())
+      .catch(() => [])
+    izberiSlabDan()
     await e.load((p) => (nalozeno.value = Math.round(p * 100)))
     e.setConditions(conditions.value)
     engine.value = e
@@ -59,6 +86,12 @@ onMounted(async () => {
   }
 })
 onBeforeUnmount(() => engine.value?.dispose())
+
+function zamenjaj(naDanasnji: boolean) {
+  naDanes.value = naDanasnji
+  if (!naDanasnji) izberiSlabDan()
+  engine.value?.setConditions(conditions.value)
+}
 
 function play() {
   engine.value?.setConditions(conditions.value)
@@ -90,6 +123,7 @@ const sporocilo = computed(() => {
         </div>
       </div>
       <div class="hud top-right">
+        <span v-if="zgodovina" class="chip">📅 {{ datumSl(izbran!.datum) }}</span>
         <span class="chip" :style="{ background: level.color }">{{ Math.round(conditions.pm25) }} µg/m³</span>
         <span v-if="conditions.megla" class="chip">🌫️ megla</span>
         <span v-if="conditions.inverzija" class="chip">⤵ inverzija</span>
@@ -113,18 +147,40 @@ const sporocilo = computed(() => {
       <div class="panel">
         <RouterLink to="/otroci" class="back">← Igre</RouterLink>
         <h1>Zmajček čisti nebo</h1>
-        <p class="today">
-          Danes nad Ljubljano:
-          <strong :style="{ color: level.color }">{{ Math.round(conditions.pm25) }} µg/m³ PM2.5 ({{ level.label.toLowerCase() }})</strong>
-          <span v-if="conditions.inverzija"> · inverzija – smog je ujet do {{ Math.round(conditions.vrhPlastiM) }} m</span>
-          <span v-if="conditions.megla"> · megla</span>
-        </p>
+        <template v-if="zgodovina">
+          <p class="today">
+            Danes je zrak v Ljubljani čist:
+            <strong :style="{ color: levelDanes.color }">{{ Math.round(danes.pm25) }} µg/m³</strong> 🎉
+          </p>
+          <p class="today">
+            Zato letiš nad resničnim slabim dnem:
+            <strong :style="{ color: level.color }">{{ datumSl(izbran!.datum) }} – {{ Math.round(izbran!.pm25) }} µg/m³ PM2.5</strong>,
+            z inverzijo.
+          </p>
+          <p class="note">
+            Takrat je bil smog ujet v plasti, debeli le ~{{ izbran!.visina_mesanja_m }} m (radiosondaža ARSO). V igri je plast debelejša, da jo zmajček lahko preleti.
+          </p>
+          <div class="row small">
+            <button class="btn ghost" @click="zamenjaj(false)">🎲 Drug slab dan</button>
+            <button class="btn ghost" @click="zamenjaj(true)">☀️ Igraj z današnjim zrakom</button>
+          </div>
+        </template>
+        <template v-else>
+          <p class="today">
+            Danes nad Ljubljano:
+            <strong :style="{ color: level.color }">{{ Math.round(conditions.pm25) }} µg/m³ PM2.5 ({{ level.label.toLowerCase() }})</strong>
+            <span v-if="conditions.inverzija"> · inverzija</span>
+            <span v-if="conditions.megla"> · megla</span>
+          </p>
+          <button v-if="lepDan" class="btn ghost" @click="zamenjaj(false)">🌫️ Raje slab dan iz zgodovine</button>
+        </template>
         <p v-if="povozeno" class="demo">Stanje je nastavljeno ročno v naslovu strani (?pm=…).</p>
         <p v-else-if="!pravi" class="demo">Demo podatki – zaledje ali ARSO trenutno ni dosegljiv.</p>
         <ul class="how">
           <li>🐉 Zmajček sam leti naprej, <strong>z miško ga usmerjaš</strong> levo, desno, gor in dol.</li>
           <li>💨 <strong>Drži levi gumb</strong> (ali presledek) in odpihni smog nad mestom.</li>
-          <li>⏱ Imaš {{ GAME.trajanje }} sekund. Smog se vrača – več ko ga je danes, hitreje.</li>
+          <li>🌫️ Sive kepe nad mestom so smog. Zleti nizko vanj – ko pihaš, izginejo.</li>
+          <li>⏱ Imaš {{ GAME.trajanje }} sekund. Smog se vrača – več ko ga je, hitreje.</li>
         </ul>
         <button class="btn big" @click="play">Poleti! 🚀</button>
         <p class="credits">Teren: Copernicus DEM · Smog: ARSO inventar izpustov · Meritve: ARSO</p>
@@ -290,6 +346,16 @@ const sporocilo = computed(() => {
 }
 .today {
   font-size: 1.05rem;
+  margin: 6px 0;
+}
+.note {
+  font-size: 0.85rem;
+  color: #a9bdcf;
+}
+.row.small .btn {
+  padding: 10px 16px;
+  min-height: 40px;
+  font-size: 0.9rem;
 }
 .demo {
   color: #ffd27a;

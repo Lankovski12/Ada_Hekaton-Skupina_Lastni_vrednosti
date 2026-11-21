@@ -1,14 +1,15 @@
-// Ljubljana: teren z barvami (mesto, travniki, gozd), reki in nekaj znamenitosti z napisi.
+// Ljubljana: teren z barvami (mesto, travniki, gozd) in reki. Znamenitosti dodamo kasneje.
 import * as THREE from 'three'
 import { Terrain } from './terrain'
 
 // --- teren ---------------------------------------------------------------
 
 const C = {
-  travnik: new THREE.Color('#a9c77c'),
-  barje: new THREE.Color('#b9c48a'),
-  mesto: new THREE.Color('#c4bcae'),
-  mestoTemno: new THREE.Color('#a59c8e'),
+  travnik: new THREE.Color('#9cc46a'),
+  barje: new THREE.Color('#a9c271'),
+  // mesto toplo opečnato (strehe), da se ne zameša s sivim smogom
+  mesto: new THREE.Color('#c4a38c'),
+  mestoTemno: new THREE.Color('#a98670'),
   gozd: new THREE.Color('#4f7d3c'),
   gozdVisoko: new THREE.Color('#3d6630'),
   skala: new THREE.Color('#7d8a6a'),
@@ -94,127 +95,10 @@ function river(t: Terrain, pts: [number, number][], width: number): THREE.Mesh {
   return new THREE.Mesh(geo, mat)
 }
 
-// --- znamenitosti ------------------------------------------------------
-
-const mat = (color: string) => new THREE.MeshLambertMaterial({ color })
-const ZID = mat('#ece5d3')
-const STREHA = mat('#b8553d')
-const ZELENA = mat('#3f8a64')
-
-function box(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0) {
-  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)
-  b.position.set(x, y + h / 2, z)
-  return b
-}
-function cyl(r: number, h: number, m: THREE.Material, x = 0, y = 0, z = 0, seg = 10) {
-  const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), m)
-  c.position.set(x, y + h / 2, z)
-  return c
-}
-function cone(r: number, h: number, m: THREE.Material, x = 0, y = 0, z = 0, seg = 8) {
-  const c = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), m)
-  c.position.set(x, y + h / 2, z)
-  return c
-}
-
-function grad() {
-  const g = new THREE.Group()
-  g.add(box(130, 22, 14, ZID, 0, 0, -38), box(130, 22, 14, ZID, 0, 0, 38), box(14, 22, 90, ZID, -60, 0, 0), box(14, 22, 90, ZID, 60, 0, 0))
-  g.add(box(40, 30, 30, ZID, -35, 0, 15), cone(26, 14, STREHA, -35, 30, 15, 4))
-  g.add(cyl(11, 52, ZID, 52, 0, -30, 12), cone(13, 10, STREHA, 52, 52, -30, 12)) // razgledni stolp
-  const zastava = new THREE.Mesh(new THREE.PlaneGeometry(14, 8), new THREE.MeshLambertMaterial({ color: '#3f8a64', side: THREE.DoubleSide }))
-  zastava.position.set(59, 70, -30)
-  g.add(cyl(0.8, 14, ZID, 52, 60, -30, 4), zastava)
-  return g
-}
-function neboticnik() {
-  const g = new THREE.Group()
-  g.add(box(24, 70, 24, ZID), box(20, 8, 20, ZID, 0, 70), cyl(7, 8, mat('#d7c9a5'), 0, 78), cone(8, 6, STREHA, 0, 86))
-  return g
-}
-function zmajskiMost() {
-  const g = new THREE.Group()
-  g.add(box(50, 5, 18, mat('#d8d2c4'), 0, 6))
-  for (const [x, z] of [[-22, -8], [-22, 8], [22, -8], [22, 8]] as const) {
-    g.add(box(5, 8, 5, mat('#d8d2c4'), x, 11, z))
-    const zmaj = new THREE.Group()
-    zmaj.add(box(4, 6, 10, ZELENA, 0, 0, 0), box(3, 4, 4, ZELENA, 0, 5, 4), cone(1.5, 4, ZELENA, 0, 8, 4, 4))
-    zmaj.position.set(x, 19, z)
-    zmaj.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2
-    g.add(zmaj)
-  }
-  return g
-}
-function kristalnaPalaca() {
-  const g = new THREE.Group()
-  const steklo = new THREE.MeshLambertMaterial({ color: '#8cc3e6', emissive: '#1d3d55' })
-  g.add(box(28, 92, 22, steklo), cone(16, 14, steklo, 0, 92, 0, 4))
-  return g
-}
-function stozice() {
-  const g = new THREE.Group()
-  const ring = new THREE.Mesh(new THREE.CylinderGeometry(120, 110, 30, 32, 1, true), new THREE.MeshLambertMaterial({ color: '#f2f2ee', side: THREE.DoubleSide }))
-  ring.position.y = 15
-  ring.scale.z = 0.8
-  const igrisce = new THREE.Mesh(new THREE.CircleGeometry(100, 24), mat('#4f9a45'))
-  igrisce.rotation.x = -Math.PI / 2
-  igrisce.position.y = 2
-  igrisce.scale.y = 0.8
-  g.add(ring, igrisce)
-  return g
-}
-function cerkevSmarnaGora() {
-  const g = new THREE.Group()
-  g.add(box(18, 14, 34, ZID), cone(14, 10, STREHA, 0, 14, 0, 4), box(8, 34, 8, ZID, 0, 0, -18), cone(6, 10, STREHA, 0, 34, -18, 4))
-  return g
-}
-
-function label(text: string): THREE.Sprite {
-  const cv = document.createElement('canvas')
-  cv.width = 512
-  cv.height = 128
-  const ctx = cv.getContext('2d')!
-  ctx.font = '800 54px Nunito, system-ui, sans-serif'
-  const w = Math.min(500, ctx.measureText(text).width + 50)
-  ctx.fillStyle = 'rgba(15,30,45,0.72)'
-  ctx.beginPath()
-  ctx.roundRect((512 - w) / 2, 22, w, 84, 42)
-  ctx.fill()
-  ctx.fillStyle = '#ffffff'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(text, 256, 66)
-  const tex = new THREE.CanvasTexture(cv)
-  tex.colorSpace = THREE.SRGBColorSpace
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }))
-  s.scale.set(760, 190, 1)
-  s.renderOrder = 10
-  return s
-}
-
-const ZNAMENITOSTI: { ime: string; lat: number; lon: number; make: () => THREE.Group; scale: number }[] = [
-  { ime: 'Ljubljanski grad', lat: 46.0489, lon: 14.5087, make: grad, scale: 2.2 },
-  { ime: 'Nebotičnik', lat: 46.0517, lon: 14.5034, make: neboticnik, scale: 2.4 },
-  { ime: 'Zmajski most', lat: 46.0525, lon: 14.5103, make: zmajskiMost, scale: 3 },
-  { ime: 'Kristalna palača', lat: 46.0656, lon: 14.5466, make: kristalnaPalaca, scale: 2.4 },
-  { ime: 'Stožice', lat: 46.0806, lon: 14.5258, make: stozice, scale: 1.6 },
-  { ime: 'Šmarna gora', lat: 46.1268, lon: 14.4644, make: cerkevSmarnaGora, scale: 2.4 },
-]
-
 export function buildWorld(t: Terrain): THREE.Group {
   const world = new THREE.Group()
   world.add(buildTerrain(t))
   world.add(river(t, LJUBLJANICA, 70), river(t, SAVA, 130))
-  for (const z of ZNAMENITOSTI) {
-    const [x, zz] = t.toXZ(z.lat, z.lon)
-    const g = z.make()
-    g.scale.setScalar(z.scale)
-    g.position.set(x, t.groundY(x, zz) - 2, zz)
-    const box3 = new THREE.Box3().setFromObject(g)
-    const l = label(z.ime)
-    l.position.set(x, box3.max.y + 120, zz)
-    world.add(g, l)
-  }
   return world
 }
 

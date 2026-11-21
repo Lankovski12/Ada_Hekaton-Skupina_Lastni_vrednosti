@@ -32,14 +32,15 @@ src/games/zmaj/
   config.ts           VSE nastavitve igre (čas, hitrost, moč pihanja, vračanje smoga)
   engine/Game.ts      zanka, kamera, vnos (miška, presledek)
   engine/terrain.ts   teren iz public/assets/terrain (višine, mesto, izpusti)
-  engine/world.ts     barve terena, reki, znamenitosti z napisi
-  engine/smog.ts      mreža gostote smoga + plasti, pihanje, vračanje, točke
+  engine/world.ts     barve terena (mesto, travniki, gozd), reki
+  engine/smog.ts      mreža gostote smoga, kepe smoga, pihanje, vračanje, točke
   engine/dragon.ts    model, mahanje kril (shader), let
   engine/breath.ts    delci pihanja
 ```
 
 Teren pripravi `backend/scripts/build_game_assets.py` (enkrat; rezultat je v gitu).
-Za predstavitev lahko stanje zraka nastaviš v naslovu: `/igre/zmaj?pm=70&megla=1&vrh=400`.
+Če je danes zrak čist (PM2.5 < 30), igra vzame resničen slab dan iz zgodovine ARSO (`public/assets/terrain/slabi_dnevi.json`).
+Za predstavitev lahko stanje zraka nastaviš v naslovu: `/igre/zmaj?pm=70&megla=1&vrh=500`.
 
 ## Nova igra
 

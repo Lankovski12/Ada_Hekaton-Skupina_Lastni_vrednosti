@@ -9,6 +9,7 @@ Izhod v frontend/public/assets/terrain/:
     teren.bin    višine terena (Uint16, decimetri), mreža NX × NZ, vrstica 0 = sever
     mesto.bin    gostota stavb (Uint8 0–255), mreža SX × SZ  -> barva mesta na terenu
     smog.bin     izpusti PM10 kurišča + promet (Uint8 0–255), mreža SX × SZ -> kje je smog gostejši
+    slabi_dnevi.json  resnični dnevi z veliko PM2.5 in inverzijo (igra jih uporabi, ko je danes zrak čist)
 
 Viri: Copernicus DEM GLO-30, ARSO inventar emisij (mreža 250 m), GURS KN (število stavb). Glej ARSOhack/04_prostor.
 """
@@ -26,6 +27,8 @@ from app.config import REPO_DIR, TRAINING_DATA_DIR  # noqa: E402
 
 DEM = TRAINING_DATA_DIR / "04_prostor" / "dem_lj_kotlina_30m.tif"
 EMISIJE = TRAINING_DATA_DIR / "04_prostor" / "emisije" / "emisije_mreza_250m_skupaj.csv"
+MERITVE = TRAINING_DATA_DIR / "01_meritve" / "arso_lj_pm_urno_2016_2026.csv.gz"
+SONDAZA = TRAINING_DATA_DIR / "03_vreme_inverzija" / "igra2_lj_inverzija_dnevno.csv"
 OUT = REPO_DIR / "frontend" / "public" / "assets" / "terrain"
 
 # Območje igre: Ljubljana s Šmarno goro, Rožnikom, Golovcem in Barjem
@@ -98,6 +101,42 @@ def emissions():
     return smog, to_u8(blur(stavbe, 2), 0.9)
 
 
+def bad_days(n: int = 12) -> list[dict]:
+    """Najbolj onesnaženi zimski dnevi na Bežigradu (od 2021, ko se meri PM2.5) z višino inverzije iz radiosondaže."""
+    import pandas as pd
+
+    m = pd.read_csv(MERITVE, usecols=["time_utc", "station_code", "pm10", "pm25"], parse_dates=["time_utc"])
+    m = m[(m.station_code == "E403") & (m.time_utc >= "2021-01-01")]
+    m["datum"] = (m.time_utc + pd.Timedelta(hours=1)).dt.date
+    d = m.groupby("datum").agg(pm25=("pm25", "mean"), pm10=("pm10", "mean"), ur=("pm25", "count")).reset_index()
+    d = d[d.ur >= 20]
+    s = pd.read_csv(SONDAZA, parse_dates=["time_utc"])
+    s["datum"] = s.time_utc.dt.date
+    s = s.groupby("datum").first().reset_index()[["datum", "inv_type", "inv_top_m_agl", "mixing_height_m_agl"]]
+    d = d.merge(s, on="datum", how="inner")
+    d = d[d.inv_type.isin(["surface", "elevated"])].sort_values("pm25", ascending=False)
+    out = []
+    used_months = set()
+    for r in d.itertuples():
+        key = (r.datum.year, r.datum.month)
+        if key in used_months:  # raje različni meseci kot pet dni iste epizode
+            continue
+        used_months.add(key)
+        # globina prizemne stabilne plasti (višina mešanja) dobro opiše »jezero« smoga v kotlini
+        mh = float(r.mixing_height_m_agl) if r.mixing_height_m_agl == r.mixing_height_m_agl else 250.0
+        out.append({
+            "datum": r.datum.isoformat(),
+            "pm25": round(float(r.pm25), 1),
+            "pm10": round(float(r.pm10), 1),
+            "inverzija": True,
+            "visina_mesanja_m": round(mh),
+            "vrh_m": round(299 + min(max(mh, 160), 380)),  # m n. v., omejeno za igro
+        })
+        if len(out) >= n:
+            break
+    return out
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     h = sample_dem()
@@ -116,6 +155,9 @@ def main() -> None:
         "viri": "Copernicus DEM GLO-30; ARSO inventar emisij PM10 (kurišča, promet); GURS KN",
     }
     (OUT / "teren.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    dnevi = bad_days()
+    (OUT / "slabi_dnevi.json").write_text(json.dumps(dnevi, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(f"{len(dnevi)} slabih dni, npr. {dnevi[0] if dnevi else '-'}")
     print(f"Shranjeno v {OUT}: višine {h.min():.0f}–{h.max():.0f} m")
 
 

@@ -101,10 +101,10 @@ export class ZmajEngine {
   }
 
   private resetDragon() {
-    // začne nad Barjem jugozahodno od centra in leti proti gradu
+    // začne južno od centra tik nad smogom in leti proti gradu
     const [gx, gz] = this.terrain.toXZ(GRAD.lat, GRAD.lon)
-    const [sx, sz] = this.terrain.toXZ(46.012, 14.462)
-    this.dragon.position.set(sx, Terrain.Y(620), sz)
+    const [sx, sz] = this.terrain.toXZ(46.022, 14.49)
+    this.dragon.position.set(sx, this.smog.topY + Terrain.Y(250 + 60), sz)
     this.dragon.yaw = Math.atan2(-(gx - sx), -(gz - sz))
     this.dragon.pitch = 0
     const f = this.dragon.forward()
@@ -125,7 +125,7 @@ export class ZmajEngine {
     const mouth = this.dragon.mouthWorld()
     this.breath.update(dt, blowing, mouth, f, f.clone().multiplyScalar(GAME.hitrost))
     if (blowing) this.smog.blow(this.dragon.position, this.dragon.yaw, dt)
-    this.smog.update(dt, this.time)
+    this.smog.update(dt, this.time, this.camera, this.host.clientHeight)
 
     this.updateCamera(dt)
     this.updateAtmosphere()
@@ -174,8 +174,8 @@ export class ZmajEngine {
     const inside = c.y < this.smog.topY ? this.smog.densityAt(c.x, c.z) : 0
     const depth = c.y < this.smog.topY ? Math.min(1, (this.smog.topY - c.y) / 200) : 0
     const v = inside * (0.4 + 0.6 * depth)
-    fog.near = THREE.MathUtils.lerp(3000, 80, v)
-    fog.far = THREE.MathUtils.lerp(22000, 1800, v)
+    fog.near = THREE.MathUtils.lerp(3000, 60, v)
+    fog.far = THREE.MathUtils.lerp(22000, 2200, v)
     fog.color.copy(this.sky).lerp(this.smog.color, v)
   }
 
