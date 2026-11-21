@@ -9,44 +9,66 @@ Otroci dobijo igre na pravih podatkih, starši napoved in nasvete. Profil (astma
 
 Podatki hekatona: https://github.com/vidacex/ARSOhack (glej `data/README.md`).
 
+## Zagon z enim ukazom (Docker)
+
+```bash
+docker compose up --build
+```
+
+Odpri http://localhost:8000 (aplikacija) ali http://localhost:8000/docs (API).
+Ena slika zgradi Vue frontend in ga streže skupaj s Python zaledjem. Ob zagonu in nato vsako uro ob :50
+zaledje prebere žive meritve ARSO ter vreme in napoved CAMS (Open-Meteo). Brez interneta kaže demo vrednosti.
+
+## Katere podatke uporablja aplikacija
+
+| Kaj | Od kod | Kdaj |
+|---|---|---|
+| trenutne meritve PM2.5/PM10 | ARSO XML (živo, brez ključa) | vsako uro |
+| vreme, višina mejne plasti | Open-Meteo (živo) | vsako uro |
+| napoved PM2.5 za 48 h | CAMS prek Open-Meteo, kasneje naš model | vsako uro |
+| vrtci, šole, bolnišnice | `backend/data/osm_obcutljive_lokacije.csv` (iz ARSOhack, v gitu) | statično |
+| zgodovina 2016–2026 | ARSOhack, samo za učenje modela (`scripts/download_training_data.py`) | enkrat |
+
+Celotnega ARSOhack repozitorija ni treba klonirati.
+
 ## Struktura
 
 ```
-backend/                 Python zaledje
-  app/main.py            FastAPI, endpointi (/api/now, /forecast, /scene, /daily-game, /facts, /places)
-  app/ingest.py          zajem: ARSO, Sensor.Community, Open-Meteo (vsako uro ob :50)
-  app/forecast.py        nalaganje modela, napoved
+Dockerfile, docker-compose.yml   vse v eni sliki
+backend/                 Python zaledje (FastAPI)
+  app/main.py            endpointi + streženje frontenda
+  app/ingest.py          zajem: ARSO XML, Open-Meteo, CAMS (ob zagonu in vsako uro ob :50)
+  app/forecast.py        napoved (naš model -> CAMS -> demo)
   app/db.py              SQLAlchemy modeli (SQLite)
   app/schemas.py         oblika JSON odgovorov (= frontend/src/lib/types.ts)
-  training/train.py      učenje modela iz podatkov hekatona -> models/model.joblib
-  scripts/dem_to_heightmap.py   DEM -> heightmap za 3D kotlino
+  data/                  majhne statične datoteke (lokacije, postaje)
+  training/train.py      učenje modela -> models/model.joblib
+  scripts/               prenos podatkov za učenje, DEM -> heightmap
   tests/                 pytest
-frontend/                Vue 3 + TS + Vite + Pinia (+ kasneje Capacitor, TresJS)
+frontend/                Vue 3 + TS + Vite + Pinia
+  src/scenes/            DataSculpture (oblak delcev), Kotlina
   src/games/             igre (vsaka v svoji mapi)
-  src/scenes/            3D / 2.5D scene (Kotlina)
   src/composables/       useAirData, useProfile
-  src/views/             strani: Domov, Otroci, Starši, Profil
-  public/assets/         3D modeli in teren
-data/                    sem kloniraj ARSOhack (ni v gitu)
-docs/                    arhitektura in zapiski
+  src/views/             Domov, Otroci, Starši, Profil
+data/                    podatki za učenje (ni v gitu)
+docs/                    arhitektura
 ```
 
-## Zagon
+## Razvoj brez Dockerja
 
-Zaledje:
+Zaledje (terminal 1):
 
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload        # http://localhost:8000/docs
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload
 ```
 
-Frontend:
+Frontend (terminal 2, sprotno osveževanje; `/api` gre na zaledje):
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env
-npm run dev                          # http://localhost:5173
+npm run dev
 ```

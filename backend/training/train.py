@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.config import DATA_DIR, MODEL_PATH
+from app.config import MODEL_PATH, TRAINING_DATA_DIR as DATA_DIR
 
 MERITVE = DATA_DIR / "01_meritve" / "arso_lj_pm_urno_2016_2026.csv.gz"
 INVERZIJA = DATA_DIR / "03_vreme_inverzija" / "inverzija_urno_2016_2026.csv"
@@ -16,7 +16,7 @@ HORIZONTI = [1, 3, 6, 12, 24, 48]
 
 def load() -> pd.DataFrame:
     if not MERITVE.exists():
-        raise SystemExit(f"Ni podatkov: {MERITVE}\nKloniraj ARSOhack v data/ (glej data/README.md).")
+        raise SystemExit(f"Ni podatkov: {MERITVE}\nPoženi: python scripts/download_training_data.py")
     df = pd.read_csv(MERITVE)
     print(df.head())
     print(df.columns.tolist())

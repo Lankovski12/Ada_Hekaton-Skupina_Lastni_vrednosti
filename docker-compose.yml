@@ -1,0 +1,14 @@
+# Zagon vsega z enim ukazom:  docker compose up --build
+# Aplikacija: http://localhost:8000   ·   API dokumentacija: http://localhost:8000/docs
+services:
+  zrak:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - zrak-db:/app/db                    # baza meritev preživi ponovni zagon
+      - ./backend/models:/app/backend/models  # naučen model.joblib brez ponovne gradnje
+    restart: unless-stopped
+
+volumes:
+  zrak-db:

@@ -41,7 +41,7 @@ const links = [
   top: 0;
   z-index: 20;
   backdrop-filter: blur(12px);
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
 .bar {

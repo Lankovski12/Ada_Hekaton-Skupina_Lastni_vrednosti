@@ -1,53 +1,133 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+// Domača stran = zgodba, ki naredi nevidno vidno (navdih: »Seeing the Invisible«, WHO + Google Arts & Culture).
+// Skulptura ostane pripeta, besedilo drsi čez njo; vsak korak skulpturi pove, kakšen zrak naj pokaže.
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import AirBuddy from '@/components/AirBuddy.vue'
-import ParticleField from '@/components/ParticleField.vue'
+import DataSculpture from '@/scenes/DataSculpture.vue'
 import ForecastStrip from '@/components/ForecastStrip.vue'
+import AirBuddy from '@/components/AirBuddy.vue'
 import Kotlina from '@/scenes/Kotlina.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
 
-const { currentPm25, forecast, scene, origin } = useAirData()
+const { currentPm25, forecast, scene, origin, now } = useAirData()
 const { sensitivity } = useProfile()
 
-// Drsnik »Kaj če?« – začne na trenutni vrednosti, otrok pa se lahko igra.
-const pm = ref(15)
-const touched = ref(false)
-watch(currentPm25, (v) => {
-  if (v != null && !touched.value) pm.value = v
-}, { immediate: true })
+const live = computed(() => currentPm25.value ?? 15)
+const myPm = ref(30) // zadnji korak: »ustvari svoj zrak«
 
+interface Step {
+  kicker: string
+  title: string
+  text: string
+  pm: () => number
+  interactive?: boolean
+}
+const steps: Step[] = [
+  {
+    kicker: 'Nevidno postane vidno',
+    title: 'Zrak, ki ga dihamo',
+    text: 'Drobnih delcev PM2.5 z očmi ne vidiš. Tukaj jih lahko. Vsaka pika je delček zraka nad Ljubljano. Povleci, da ga zavrtiš.',
+    pm: () => live.value,
+  },
+  {
+    kicker: 'Ljubljana, ta trenutek',
+    title: '',
+    text: 'Toliko mikrogramov drobnih delcev je v vsakem kubičnem metru zraka. Bolj ko je oblak nemiren in bodičast, slabši je zrak.',
+    pm: () => live.value,
+  },
+  {
+    kicker: 'Kako majhno je to?',
+    title: '~30× tanjše od lasu',
+    text: 'Delec PM2.5 je velik največ 2,5 mikrometra. Tako je majhen, da ga vdihneš globoko v pljuča. Otroci dihajo hitreje kot odrasli, zato vdihnejo več.',
+    pm: () => live.value,
+  },
+  {
+    kicker: 'Smernica WHO',
+    title: '15 µg/m³ na dan',
+    text: 'Svetovna zdravstvena organizacija priporoča, naj dnevno povprečje ne preseže 15 µg/m³. Tako izgleda zrak tik pod to mejo.',
+    pm: () => 15,
+  },
+  {
+    kicker: 'Zimski večer z inverzijo',
+    title: '65 µg/m³',
+    text: 'Hladen zrak obleži na dnu kotline kot pod pokrovko. Dim iz dimnikov in izpuhov ne more ven – oblak postane nemiren in temen.',
+    pm: () => 65,
+  },
+  {
+    kicker: 'Poletno jutro po dežju',
+    title: '4 µg/m³',
+    text: 'Dež spere delce, veter jih odnese. Oblak se umiri in diha počasi.',
+    pm: () => 4,
+  },
+  {
+    kicker: 'Zdaj ti',
+    title: 'Ustvari svoj zrak',
+    text: 'Povleci drsnik in poglej, kako se oblak spreminja.',
+    pm: () => myPm.value,
+    interactive: true,
+  },
+]
+
+const active = ref(0)
+const pm = computed(() => steps[active.value]!.pm())
 const level = computed(() => levelFor(pm.value, sensitivity.value))
-const isLive = computed(() => !touched.value)
+const isMeasured = computed(() => origin.value === 'api' && now.value?.postaje.some((p) => p.vir === 'meritev'))
+const stationTime = computed(() => {
+  const t = now.value?.cas_utc
+  return t ? new Date(t).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) : ''
+})
+
+const stepEls = ref<HTMLElement[]>([])
+let io: IntersectionObserver | undefined
+onMounted(() => {
+  io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) if (e.isIntersecting) active.value = Number((e.target as HTMLElement).dataset.i)
+    },
+    { rootMargin: '-45% 0px -45% 0px' },
+  )
+  stepEls.value.forEach((el) => io!.observe(el))
+})
+onBeforeUnmount(() => io?.disconnect())
 </script>
 
 <template>
-  <section class="hero" :style="{ '--lvl': level.color }">
-    <ParticleField :pm25="pm" />
-    <div class="container hero-inner">
-      <div class="copy">
-        <span class="pill">{{ isLive ? (origin === 'api' ? '● v živo' : '● demo podatki') : '🧪 Kaj če …?' }} · Ljubljana</span>
-        <h1>
-          Danes je zrak
-          <span class="lvl">{{ level.label.toLowerCase() }}</span>
-        </h1>
-        <p class="lead">{{ level.kids }}</p>
-        <div class="big">
-          <strong>{{ pm }}</strong>
-          <span>µg/m³ drobnih delcev PM2.5</span>
+  <!-- ZGODBA: pripeta skulptura + besedilo, ki drsi čez -->
+  <section class="story" :style="{ '--lvl': level.color }">
+    <div class="stage">
+      <DataSculpture :pm25="pm" :color="level.hex" />
+      <div class="readout" aria-live="polite">
+        <span class="num">{{ Math.round(pm) }}</span>
+        <span class="unit">µg/m³ PM2.5</span>
+        <span class="lvl">{{ level.label }}</span>
+      </div>
+      <ol class="dots" aria-hidden="true">
+        <li v-for="(s, i) in steps" :key="i" :class="{ on: i === active }" />
+      </ol>
+    </div>
+
+    <div class="steps">
+      <article v-for="(s, i) in steps" :key="i" ref="stepEls" :data-i="i" class="step">
+        <div class="step-card" :class="{ first: i === 0 }">
+          <span class="kicker">{{ s.kicker }}</span>
+          <h1 v-if="i === 0">{{ s.title }}</h1>
+          <h2 v-else-if="i === 1" class="big">
+            {{ live }} <small>µg/m³</small>
+          </h2>
+          <h2 v-else>{{ s.title }}</h2>
+          <p>{{ s.text }}</p>
+          <p v-if="i === 1" class="src">
+            {{ isMeasured ? `Meritev ARSO ob ${stationTime}` : 'Demo vrednost – meritve ARSO še niso prispele' }}
+          </p>
+          <label v-if="s.interactive" class="slider">
+            <input v-model.number="myPm" type="range" min="0" max="100" aria-label="PM2.5" />
+            <span>{{ myPm }} µg/m³ · {{ levelFor(myPm).kids }}</span>
+          </label>
+          <span v-if="i === 0" class="scroll-hint" aria-hidden="true">↓ drsi</span>
         </div>
-        <label class="slider">
-          <span>Povleci in poglej, kako se spremeni zrak 👇</span>
-          <input v-model.number="pm" type="range" min="0" max="100" @input="touched = true" />
-        </label>
-        <button v-if="touched" class="btn ghost" @click="touched = false; pm = currentPm25 ?? 15">↺ Nazaj na pravo vrednost</button>
-        <p class="hint">Namig: s prstom ali miško odpihni delce!</p>
-      </div>
-      <div class="buddy-wrap">
-        <AirBuddy :mood="level.mood" :color="level.color" :size="280" />
-      </div>
+      </article>
     </div>
   </section>
 
@@ -71,9 +151,9 @@ const isLive = computed(() => !touched.value)
 
   <section class="container section doors">
     <RouterLink to="/otroci" class="door kids">
-      <span class="emoji">🐉</span>
+      <AirBuddy :mood="levelFor(live).mood" :color="levelFor(live).color" :size="140" />
       <h3>Za otroke</h3>
-      <p>Igre na pravih podatkih: pomagaj zmaju očistiti nebo in ugani jutrišnji zrak.</p>
+      <p>Igre na pravih podatkih: pomagaj zmajčku očistiti nebo in ugani jutrišnji zrak.</p>
       <span class="btn">Igraj →</span>
     </RouterLink>
     <RouterLink to="/starsi" class="door parents">
@@ -86,67 +166,153 @@ const isLive = computed(() => !touched.value)
 </template>
 
 <style scoped>
-.hero {
+/* --- zgodba: vedno temna, kot razstava --- */
+.story {
   position: relative;
+  background: #05080f;
+  color: #eaf2fb;
+}
+.stage {
+  position: sticky;
+  top: 64px;
+  height: calc(100svh - 64px);
   overflow: hidden;
-  background:
-    radial-gradient(1200px 500px at 80% 10%, color-mix(in srgb, var(--lvl) 30%, transparent), transparent 60%),
-    linear-gradient(180deg, var(--bg-soft), var(--bg));
-  transition: background 0.6s ease;
-  border-bottom: 1px solid var(--line);
 }
-.hero-inner {
-  position: relative;
+.readout {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  align-items: center;
-  gap: 24px;
-  padding-top: 48px;
-  padding-bottom: 48px;
-}
-h1 {
-  font-size: clamp(2.2rem, 6vw, 4rem);
-  margin-top: 12px;
-}
-.lvl {
-  color: var(--lvl);
-  transition: color 0.4s;
-}
-.lead {
-  font-size: 1.25rem;
-  color: var(--ink-soft);
-  margin: 0 0 16px;
-}
-.big {
-  display: flex;
+  grid-template-columns: auto auto;
   align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
+  column-gap: 10px;
+  pointer-events: none;
 }
-.big strong {
+.readout .num {
   font-family: var(--font-head);
-  font-size: 4.5rem;
+  font-size: clamp(3rem, 9vw, 6rem);
   line-height: 1;
   color: var(--lvl);
+  transition: color 0.6s;
 }
-.big span {
-  color: var(--ink-soft);
+.readout .unit {
+  color: #9fb3c8;
   font-weight: 700;
+}
+.readout .lvl {
+  grid-column: 1 / -1;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--lvl);
+}
+.dots {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.dots li {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  transition: transform 0.3s, background 0.3s;
+}
+.dots li.on {
+  background: var(--lvl);
+  transform: scale(1.6);
+}
+.steps {
+  position: relative;
+  margin-top: calc(-100svh + 64px);
+  pointer-events: none; /* da lahko skulpturo vrtiš skozi besedilo */
+}
+.step {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 max(56px, 6vw) 0 24px;
+}
+.step-card {
+  pointer-events: auto;
+  max-width: 420px;
+  padding: 24px 26px;
+  border-radius: var(--radius);
+  background: rgba(10, 18, 30, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+.step-card.first {
+  background: transparent;
+  border: 0;
+  backdrop-filter: none;
+  max-width: 520px;
+}
+.kicker {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--lvl);
+  margin-bottom: 8px;
+  transition: color 0.6s;
+}
+.step-card h1 {
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+}
+.step-card h2 {
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+}
+.step-card h2.big {
+  font-size: clamp(3rem, 9vw, 5rem);
+  color: var(--lvl);
+}
+.step-card h2.big small {
+  font-size: 1.2rem;
+  color: #9fb3c8;
+}
+.step-card p {
+  color: #c4d3e2;
+  font-size: 1.1rem;
+  margin: 0;
+}
+.step-card .src {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #8197ad;
 }
 .slider {
-  display: block;
-  margin: 18px 0 8px;
-  max-width: 460px;
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
   font-weight: 700;
 }
-.hint {
-  color: var(--ink-soft);
-  font-size: 0.9rem;
+.slider input {
+  accent-color: var(--lvl);
 }
-.buddy-wrap {
-  display: grid;
-  place-items: center;
+.scroll-hint {
+  display: inline-block;
+  margin-top: 24px;
+  color: #8197ad;
+  font-weight: 700;
+  animation: hint 1.6s ease-in-out infinite;
 }
+@keyframes hint {
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+/* --- ostale sekcije --- */
 .section {
   padding-top: 56px;
 }
@@ -197,16 +363,24 @@ h2 {
 }
 
 @media (max-width: 720px) {
-  .hero-inner {
-    grid-template-columns: 1fr;
-    padding-top: 24px;
+  .step {
+    justify-content: center;
+    align-items: flex-end;
+    padding: 0 16px 140px;
   }
-  .buddy-wrap {
-    order: -1;
+  .step-card.first {
+    background: rgba(10, 18, 30, 0.5);
   }
-  .buddy-wrap :deep(svg) {
-    width: 180px;
-    height: 144px;
+  .readout {
+    left: 16px;
+    top: 14px;
+    bottom: auto;
+  }
+  .readout .num {
+    font-size: 2.6rem;
+  }
+  .dots {
+    right: 10px;
   }
   .doors {
     grid-template-columns: 1fr;

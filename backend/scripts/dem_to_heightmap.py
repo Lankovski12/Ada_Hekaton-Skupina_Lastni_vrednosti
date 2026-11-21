@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import DATA_DIR, REPO_DIR  # noqa: E402
+from app.config import REPO_DIR, TRAINING_DATA_DIR as DATA_DIR  # noqa: E402
 
 SRC = DATA_DIR / "04_prostor" / "dem_lj_kotlina_30m.tif"
 OUT = REPO_DIR / "frontend" / "public" / "assets" / "terrain"

@@ -2,22 +2,21 @@
 
 ```bash
 npm install
-cp .env.example .env   # nastavi VITE_API_URL
-npm run dev            # http://localhost:5173
+npm run dev            # http://localhost:5173, /api gre na http://localhost:8000
 ```
 
-Brez zaledja aplikacija uporablja demo podatke (`src/api/mock.ts`).
+Brez zaledja aplikacija uporablja demo podatke (`src/api/mock.ts`). Za vse skupaj glej `docker compose up` v korenu.
 
 ## Kje je kaj
 
 ```
 src/
   api/          client.ts (fetch + predpomnilnik), mock.ts (demo podatki)
-  components/   AppNav, AirBuddy (maskota), ParticleField (delci), ForecastStrip
+  components/   AppNav, AirBuddy (maskota), ForecastStrip
   composables/  useAirData.ts (en vir podatkov), useProfile.ts (astma, lokalno)
   games/        vsaka igra v svoji mapi: zmaj/, daily/, ujemanje/
   lib/          types.ts (= odgovori API), airQuality.ts (razredi, barve)
-  scenes/       Kotlina.vue (kotlina z meglo; kasneje TresJS 3D)
+  scenes/       DataSculpture.vue (oblak delcev), Kotlina.vue (kotlina z meglo; kasneje TresJS 3D)
   stores/       progress.ts (točke v igrah, lokalno)
   views/        Home, Otroci, Starsi, Nastavitve
 public/assets/

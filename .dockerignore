@@ -1,0 +1,12 @@
+.git
+**/node_modules
+frontend/dist
+frontend/android
+frontend/ios
+data
+**/__pycache__
+**/.venv
+**/venv
+**/*.db
+**/.env
+docs
