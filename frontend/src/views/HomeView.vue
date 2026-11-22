@@ -17,8 +17,7 @@ const { currentPm25, now, forecast } = useAirData()
 const { sensitivity } = useProfile()
 
 const pm = computed(() => currentPm25.value ?? typicalPm25())
-// pljuča so vedno zelena (med prvotno in neon zeleno); kakovost zraka pokaže hitrost dihanja in število delcev okoli
-const NEON = '#4e9f35'
+// pljuča so zelena; kakovost zraka pokaže hitrost dihanja in število delcev okoli (gumb »Dodaj smog« jih počasi obarva rjavo)
 const level = computed(() => levelFor(pm.value, sensitivity.value))
 const izmerjeno = computed(() => now.value?.postaje.some((p) => p.vir === 'meritev') ?? false)
 
@@ -49,6 +48,55 @@ const sirina = ref(typeof window !== 'undefined' ? window.innerWidth : 1200)
 const onResize = () => (sirina.value = window.innerWidth)
 onMounted(() => window.addEventListener('resize', onResize))
 onBeforeUnmount(() => window.removeEventListener('resize', onResize))
+
+// --- gumb »Dodaj smog«: stran se počasi zamegli kot Ljubljana ob inverziji, pljuča počasi potemnijo ---
+// Za primer vzamemo resničen najslabši dan iz meritev ARSO (public/assets/terrain/slabi_dnevi.json).
+const smogVklopljen = ref(false)
+const smog = ref(0) // 0 = čist zrak, 1 = poln smog (gladko animirano)
+const slabDan = ref<{ datum: string; pm25: number } | null>(null)
+const ZELENA = [0x4e, 0x9f, 0x35]
+const RJAVA = [0x4a, 0x36, 0x28] // poškodovana pljuča, ki dihajo delce
+let smogRaf = 0
+let smogT = 0
+function animirajSmog(ms: number) {
+  const dt = smogT ? (ms - smogT) / 1000 : 0
+  smogT = ms
+  // megla se nabira počasi (~12 s), razkadi pa hitreje (~4 s)
+  const cilj = smogVklopljen.value ? 1 : 0
+  const korak = dt / (smogVklopljen.value ? 12 : 4)
+  smog.value = cilj > smog.value ? Math.min(cilj, smog.value + korak) : Math.max(cilj, smog.value - korak)
+  if (smog.value !== cilj) smogRaf = requestAnimationFrame(animirajSmog)
+  else smogT = 0
+}
+async function preklopiSmog() {
+  smogVklopljen.value = !smogVklopljen.value
+  if (!slabDan.value) {
+    try {
+      const dnevi: { datum: string; pm25: number }[] = await (
+        await fetch(`${import.meta.env.BASE_URL}assets/terrain/slabi_dnevi.json`)
+      ).json()
+      slabDan.value = dnevi.reduce((a, b) => (b.pm25 > a.pm25 ? b : a))
+    } catch {
+      slabDan.value = { datum: '2022-01-17', pm25: 70.7 }
+    }
+  }
+  cancelAnimationFrame(smogRaf)
+  smogT = 0
+  smogRaf = requestAnimationFrame(animirajSmog)
+}
+onBeforeUnmount(() => cancelAnimationFrame(smogRaf))
+const barvaPljuc = computed(() => {
+  const k = smog.value
+  const c = ZELENA.map((v, i) => Math.round(v + (RJAVA[i]! - v) * k))
+  return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`
+})
+const pmPljuc = computed(() => pm.value + ((slabDan.value?.pm25 ?? 70) - pm.value) * smog.value)
+const MESECI_RODILNIK = ['januarja', 'februarja', 'marca', 'aprila', 'maja', 'junija', 'julija', 'avgusta', 'septembra', 'oktobra', 'novembra', 'decembra']
+const slabDatum = computed(() => {
+  if (!slabDan.value) return ''
+  const [y, m, d] = slabDan.value.datum.split('-').map(Number)
+  return `${d}. ${MESECI_RODILNIK[m! - 1]} ${y}`
+})
 const rezerva = computed(() => {
   const w = sirina.value
   if (!odprto.value || w <= 720) return 0
@@ -99,7 +147,15 @@ const okna = [
 
 <template>
   <div class="landing" :class="{ odprto }" :style="{ '--lvl': level.color }">
-    <PljucaPike class="scena" :pm25="pm" :color="NEON" :rezerva="rezerva" @klik="odprto = !odprto" />
+    <!-- smog: plast se dviga od dna, kot hladen onesnažen zrak na dnu kotline.
+         Gosta plast je za pljuči, pred njimi le tanka tančica, da se vidi, kako pljuča potemnijo. -->
+    <div class="smog" :style="{ '--s': smog }" aria-hidden="true">
+      <span v-for="i in 7" :key="i" class="krpa" :class="`k${i}`" />
+    </div>
+    <PljucaPike class="scena" :pm25="pmPljuc" :color="barvaPljuc" :rezerva="rezerva" @klik="odprto = !odprto" />
+    <div class="smog tancica" :style="{ '--s': smog }" aria-hidden="true">
+      <span v-for="i in 3" :key="i" class="krpa" :class="`k${i + 3}`" />
+    </div>
 
     <header class="naslov">
       <span class="znamka">Zrak, ki ga dihamo · Ljubljana</span>
@@ -117,7 +173,20 @@ const okna = [
           <RouterLink to="/moj-zrak" class="vec">Načrt za tvojo lokacijo →</RouterLink>
         </p>
       </div>
-      <p class="hint">{{ odprto ? 'Kam greš naprej?' : 'Klikni na pljuča' }}</p>
+      <button class="smog-gumb" :class="{ on: smogVklopljen }" :aria-pressed="smogVklopljen" @click="preklopiSmog">
+        <svg viewBox="0 0 16 12" shape-rendering="crispEdges" aria-hidden="true">
+          <rect x="3" y="1" width="5" height="1" /><rect x="2" y="2" width="8" height="1" /><rect x="9" y="2" width="3" height="1" />
+          <rect x="1" y="3" width="12" height="2" /><rect x="0" y="5" width="15" height="1" />
+          <rect x="1" y="7" width="9" height="1" class="s" /><rect x="11" y="7" width="4" height="1" class="s" />
+          <rect x="3" y="9" width="11" height="1" class="s" /><rect x="0" y="9" width="2" height="1" class="s" />
+        </svg>
+        {{ smogVklopljen ? 'Očisti zrak' : 'Dodaj smog' }}
+      </button>
+      <p v-if="smog > 0.6 && slabDan" class="smog-napis">
+        Tak zrak je Ljubljana dihala {{ slabDatum }}: {{ Math.round(slabDan.pm25) }} µg/m³ PM2.5
+        <VirZnacka vrsta="meritev" />. Vsak vdih prinese delce globoko v pljuča.
+      </p>
+      <p v-else class="hint">{{ odprto ? 'Kam greš naprej?' : 'Klikni na pljuča' }}</p>
     </header>
 
     <nav class="okna" aria-label="Kam naprej">
@@ -307,6 +376,116 @@ h1 {
   font-size: clamp(2rem, 4.6vw, 3.4rem);
   margin: 0;
 }
+.smog-gumb {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 2px solid #8a7a66;
+  background: var(--panel);
+  color: var(--scene-ink);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 4px 0 color-mix(in srgb, #8a7a66 45%, transparent);
+  transition: transform 0.15s, background 0.2s;
+}
+.smog-gumb:hover {
+  transform: translateY(-2px);
+}
+.smog-gumb:active {
+  transform: translateY(2px);
+}
+.smog-gumb.on {
+  background: #5b4a3a;
+  border-color: #3d3128;
+  color: #fff;
+}
+.smog-gumb svg {
+  width: 24px;
+  height: 18px;
+  fill: #9aa5b1;
+}
+.smog-gumb svg .s {
+  fill: #8a7a66;
+}
+.smog-gumb.on svg {
+  fill: #d5dde5;
+}
+.smog-napis {
+  max-width: 560px;
+  margin: 8px 0 0;
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  color: var(--scene-ink);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+/* --- smog: plast se dviga od dna zaslona, krpe megle se počasi premikajo --- */
+.smog {
+  --s: 0;
+  --megla: 214, 206, 192;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--s) * 92%);
+  pointer-events: none;
+  opacity: min(1, calc(var(--s) * 1.6));
+  background: linear-gradient(
+    to top,
+    rgba(var(--megla), 0.92) 0%,
+    rgba(var(--megla), 0.78) 45%,
+    rgba(var(--megla), 0.35) 80%,
+    rgba(var(--megla), 0) 100%
+  );
+  overflow: hidden;
+  /* mehak zgornji rob plasti */
+  -webkit-mask-image: linear-gradient(to top, #000 75%, transparent);
+  mask-image: linear-gradient(to top, #000 75%, transparent);
+}
+.smog.tancica {
+  opacity: calc(var(--s) * 0.45);
+  background: linear-gradient(to top, rgba(var(--megla), 0.5), rgba(var(--megla), 0) 70%);
+}
+:root[data-theme='dark'] .smog {
+  --megla: 120, 112, 100;
+}
+.krpa {
+  position: absolute;
+  width: 60vw;
+  height: 30vh;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--megla), 0.85), rgba(var(--megla), 0));
+  filter: blur(8px);
+  animation: krpa 26s ease-in-out infinite alternate;
+}
+.k1 { left: -20vw; top: 0; }
+.k2 { left: 30vw; top: 8%; animation-duration: 34s; animation-delay: -6s; }
+.k3 { left: 60vw; top: -4%; animation-duration: 30s; animation-delay: -12s; }
+.k4 { left: 5vw; top: 35%; animation-duration: 38s; animation-delay: -3s; background: radial-gradient(closest-side, rgba(170, 155, 130, 0.6), transparent); }
+.k5 { left: 45vw; top: 40%; animation-duration: 28s; animation-delay: -18s; }
+.k6 { left: 75vw; top: 55%; animation-duration: 36s; animation-delay: -9s; background: radial-gradient(closest-side, rgba(150, 135, 112, 0.5), transparent); }
+.k7 { left: 20vw; top: 65%; animation-duration: 32s; animation-delay: -15s; }
+@keyframes krpa {
+  from {
+    transform: translateX(-6vw) scale(1);
+  }
+  to {
+    transform: translateX(8vw) scale(1.15);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .krpa {
+    animation: none;
+  }
+}
 .hint {
   margin: 6px 0 0;
   color: var(--scene-muted);
@@ -486,6 +665,14 @@ h1 {
   }
   .nasvet {
     font-size: 0.85rem;
+  }
+  .smog-napis {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+  }
+  .smog-gumb {
+    margin-top: 8px;
+    padding: 5px 14px;
   }
   .okna {
     top: auto;
