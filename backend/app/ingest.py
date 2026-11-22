@@ -20,7 +20,6 @@ log = logging.getLogger(__name__)
 ARSO_XML = "https://www.arso.gov.si/xml/zrak/ones_zrak_urni_podatki_zadnji.xml"
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 OPEN_METEO_AQ_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
-SENSOR_COMMUNITY_URL = "https://data.sensor.community/airrohr/v1/filter/area=46.05,14.5,15"
 
 ARSO_OFFSET = dt.timedelta(hours=ARSO_OFFSET_H)  # ARSO: lokalni čas UTC+1 brez poletnega premika
 
@@ -135,11 +134,6 @@ def fetch_arso_history() -> int:
     return n
 
 
-def fetch_sensor_community() -> None:
-    """Občanski senzorji; vrednosti je treba umeriti (senzorji_umerjanje_koeficienti.csv), senzor 21901 je pokvarjen."""
-    # TODO: httpx.get(SENSOR_COMMUNITY_URL) -> filtriraj 21901 -> umerjanje -> Measurement(vrsta='ocena')
-
-
 def fetch_open_meteo() -> None:
     """Vremenska napoved za Bežigrad in Pasjo ravan (1019 m) -> weather.
 
@@ -194,16 +188,13 @@ _history_done = False
 
 
 def run_hourly() -> None:
-    """En urni cikel: zajem -> napoved. Ob prvem zagonu dopolni še zgodovino ARSO."""
+    """En urni cikel: meritve ARSO, vreme in napoved CAMS. Ob prvem zagonu dopolni še zgodovino ARSO."""
     global _history_done
-    from .forecast import run_forecast
 
     log.info("Urni zajem se je začel")
     if not _history_done:
         _history_done = fetch_arso_history() >= 0
     fetch_arso()
-    fetch_sensor_community()
     fetch_open_meteo()
     fetch_cams()
-    run_forecast()
     log.info("Urni zajem končan")

@@ -8,19 +8,18 @@ REPO_DIR = BACKEND_DIR.parent
 # Majhne statične datoteke, ki jih aplikacija rabi vedno (so v gitu): backend/data/
 STATIC_DATA_DIR = BACKEND_DIR / "data"
 
-# Velike zgodovinske datoteke iz ARSOhack – SAMO za učenje modela (training/), ne za delovanje aplikacije.
+# Velike zgodovinske datoteke iz ARSOhack – SAMO za skripte s pripravo podatkov (scripts/), ne za delovanje aplikacije.
 TRAINING_DATA_DIR = Path(os.getenv("TRAINING_DATA_DIR", REPO_DIR / "data" / "ARSOhack"))
 
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BACKEND_DIR / 'zrak.db'}")
-MODEL_PATH = Path(os.getenv("MODEL_PATH", BACKEND_DIR / "models" / "model.joblib"))
 
 # Zgrajen Vue frontend (v Dockerju ga FastAPI streže na istem naslovu kot API)
 FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", REPO_DIR / "frontend" / "dist"))
 
-# Frontend v razvoju (Vite) in Capacitor WebView
+# Frontend v razvoju (Vite)
 CORS_ORIGINS = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:4173,capacitor://localhost,http://localhost",
+    "http://localhost:5173,http://localhost:4173,http://localhost",
 ).split(",")
 
 # Zajem vsako uro ob :50 + enkrat ob zagonu

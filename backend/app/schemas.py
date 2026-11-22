@@ -46,16 +46,3 @@ class SceneHour(BaseModel):
 class SceneResponse(BaseModel):
     ure: list[SceneHour]
     vir: Literal["open-meteo", "klima"] = "open-meteo"  # klima = običajne razmere iz ARSOhack (ni povezave)
-
-
-class FactOut(BaseModel):
-    besedilo: str
-    stevilka: str | None = None
-    vir: str
-
-
-class PlaceOut(BaseModel):
-    ime: str
-    tip: str
-    lat: float
-    lon: float

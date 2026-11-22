@@ -13,15 +13,16 @@ Brez zaledja aplikacija uporablja demo podatke (`src/api/mock.ts`). Za vse skupa
 src/
   api/          client.ts (fetch + predpomnilnik), mock.ts (demo podatki)
   components/   AppNav, AirBuddy (maskota), VirZnacka (meritev/model/ocena), SolaKartica
-  composables/  useAirData.ts (en vir podatkov), useProfile.ts (astma, lokalno)
+  composables/  useAirData.ts (en vir podatkov), useProfile.ts (astma in lokacija, samo na napravi)
   games/        vsaka igra v svoji mapi: zmaj/, daily/, pokrovka/ (skupno/ za zvoke in ikone)
   lib/          types.ts (= odgovori API), airQuality.ts (razredi, barve)
-  scenes/       DataSculpture.vue (oblak delcev), Kotlina.vue (kotlina z meglo; kasneje TresJS 3D)
-  stores/       progress.ts (točke v igrah, lokalno)
-  views/        Home, Otroci, Starsi, Nastavitve
+  scenes/       PljucaPike.vue (pljuča na domači strani), Kotlina.vue, Zemljevid3D.vue
+  stores/       progress.ts (rekord v Zmajčku, lokalno)
+  views/        Home, Otroci (igre), Zemljevid, Grafi (podatki), MojZrak
 public/assets/
   models/       3D modeli .glb (low-poly)
-  terrain/      heightmap.png, teren.json (iz backend/scripts/dem_to_heightmap.py)
+  terrain/      teren, smog in stavbe za Zmajčka (iz backend/scripts/build_game_assets.py)
+  map/          3D zemljevid in šole (backend/scripts/zemljevid_3d.py, zemljevid_dnevi.py, zemljevid_sole.py)
 ```
 
 ## Igra Zmajček (3D, three.js)
@@ -57,10 +58,10 @@ zemljevid, drsnik, ura, pobarvaj dan, razvrsti, pokrovka, detektiv.
 
 ```
 src/games/daily/
-  DailyGame.vue       glava (niz dni, zvezdice), naloga, rezultat, odštevanje, vaja
+  DailyGame.vue       glava (niz dni), naloga, rezultat, odštevanje, vaja
   dan.ts              nalaganje dneva: /api/vceraj ali arhiv (public/assets/daily/arhiv.json)
   vrste.ts            katere naloge so možne za dan in katera je na vrsti
-  napredek.ts         zvezdice in niz dni (samo na napravi)
+  napredek.ts         odgovori in niz dni (samo na napravi)
   naloge/*.vue        sedem nalog; vsaka pošlje 'konec' z 0–3 zvezdicami in razlago
 src/games/skupno/     zvoki, ikone in konfeti (skupni obema igrama)
 ```
@@ -92,18 +93,3 @@ Arhiv pripravi `backend/scripts/build_pokrovka_archive.py`. Za predstavitev: `/i
 3. Dodaj ploščico v `src/views/OtrociView.vue`.
 
 Pravila: pointer events (dotik + miška), veliki gumbi, podatke beri samo prek `useAirData()`.
-
-## Telefon (Capacitor) – ko bo čas
-
-```bash
-npm i @capacitor/core @capacitor/android @capacitor/local-notifications @capacitor/preferences
-npm i -D @capacitor/cli
-npx cap init "Zrak" si.hekaton.zrak --web-dir dist
-npm run build && npx cap add android && npx cap sync android
-```
-
-## 3D (TresJS) – ko bo čas
-
-```bash
-npm i three @tresjs/core @tresjs/cientos
-```

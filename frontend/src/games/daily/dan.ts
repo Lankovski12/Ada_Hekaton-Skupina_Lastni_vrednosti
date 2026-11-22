@@ -26,7 +26,6 @@ export interface Dan {
   prejsnji: { pm25: number | null; vreme: Vreme | null } | null
 }
 
-const API = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '')
 let arhiv: Dan[] | null = null
 
 export async function naloziArhiv(): Promise<Dan[]> {
@@ -39,7 +38,7 @@ export async function naloziArhiv(): Promise<Dan[]> {
 /** Včerajšnji dan. Če zaledje nima podatkov, vrne zadnji dan iz arhiva (in to označi). */
 export async function naloziVceraj(): Promise<{ dan: Dan; izArhiva: boolean }> {
   try {
-    const r = await fetch(`${API}/api/vceraj`, { signal: AbortSignal.timeout(8000) })
+    const r = await fetch('/api/vceraj', { signal: AbortSignal.timeout(8000) })
     if (r.ok && r.headers.get('content-type')?.includes('json')) return { dan: (await r.json()) as Dan, izArhiva: false }
   } catch {
     /* zaledje ni dosegljivo */

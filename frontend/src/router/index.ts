@@ -13,7 +13,6 @@ const router = createRouter({
     // stari naslovi (nekdanja zavihka Naloge in Blogi)
     { path: '/otroci', redirect: '/igre' },
     { path: '/starsi', redirect: '/grafi' },
-    { path: '/nastavitve', name: 'nastavitve', component: () => import('@/views/NastavitveView.vue') },
     // Igre – vsaka je svoja komponenta v src/games/<ime>/
     { path: '/igre/zmaj', name: 'igra-zmaj', component: () => import('@/games/zmaj/ZmajGame.vue') },
     { path: '/igre/ujemanje', redirect: '/igre' },

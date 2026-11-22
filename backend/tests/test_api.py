@@ -28,11 +28,9 @@ def test_parse_arso_xml():
 
 def test_endpoints_respond():
     with TestClient(app) as c:
-        for path in ["/api/health", "/api/now", "/api/forecast?h=48", "/api/scene",
-                     "/api/facts", "/api/places?tip=vrtec"]:
+        for path in ["/api/health", "/api/now", "/api/forecast?h=48", "/api/scene"]:
             assert c.get(path).status_code == 200, path
         assert len(c.get("/api/forecast?h=48").json()["ure"]) == 48
-        assert c.get("/api/places?tip=vrtec").json()[0]["tip"] == "vrtec"
         assert c.get("/api/vceraj").status_code == 404  # prazna baza: igra vzame arhiv
 
 
@@ -98,4 +96,3 @@ def test_fallbacks_use_arso_climatology():
     with TestClient(app) as c:
         assert c.get("/api/forecast?h=3").json()["model"] in ("cams", "klima")
         assert c.get("/api/scene").json()["vir"] in ("open-meteo", "klima")
-        assert len(c.get("/api/facts").json()) >= 3

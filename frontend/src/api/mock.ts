@@ -1,8 +1,8 @@
-// Rezervni podatki, kadar zaledje ne odgovori in ni shranjenega odgovora (npr. telefon brez interneta).
+// Rezervni podatki, kadar zaledje ne odgovori in ni shranjenega odgovora (npr. brez interneta).
 // Nič ni izmišljeno: vse vrednosti so povprečja meritev ARSO za isti mesec in uro (paket ARSOhack,
 // src/data/zgodovina.json) in so v aplikaciji označene kot »običajno«, ne kot meritev.
 // Oblika je ista kot pri pravem API-ju (backend/app/main.py dela enako, ko nima meritev).
-import type { Fact, ForecastResponse, NowResponse, Place, SceneResponse } from '@/lib/types'
+import type { ForecastResponse, NowResponse, SceneResponse } from '@/lib/types'
 import { klimaLabel, typical } from '@/lib/klima'
 import z from '@/data/zgodovina.json'
 
@@ -67,33 +67,4 @@ export function mockScene(): SceneResponse {
       }
     }),
   }
-}
-
-export function mockFacts(): Fact[] {
-  const vir = 'ARSO (ARSOhack)'
-  const { who, inverzija: inv, leta } = z
-  const prvo = leta[0]!
-  const zadnje = leta[leta.length - 1]!
-  return [
-    {
-      besedilo: `Leta ${who.leto} je bilo dnevno povprečje PM2.5 na Bežigradu nad smernico WHO (15 µg/m³) kar ${who.dni} od ${who.izmed} dni.`,
-      stevilka: `${who.dni} dni`,
-      vir: `${vir}; smernica WHO 2021`,
-    },
-    {
-      besedilo: `Ob temperaturni inverziji je pozimi v zraku povprečno ${fmt(inv.z)} µg/m³ PM2.5, brez nje ${fmt(inv.brez)} µg/m³. Inverzija je v ${inv.delezUr} % zimskih ur.`,
-      stevilka: `${fmt(inv.z / inv.brez)}×`,
-      vir,
-    },
-    {
-      besedilo: `Povprečje PM10 na Bežigradu je od leta ${prvo.leto} do ${zadnje.leto} padlo s ${fmt(prvo.pm10)} na ${fmt(zadnje.pm10)} µg/m³.`,
-      stevilka: `−${Math.round((1 - zadnje.pm10 / prvo.pm10) * 100)} %`,
-      vir,
-    },
-  ]
-}
-
-export function mockPlaces(): Place[] {
-  // brez zaledja ni seznama; 3D zemljevid ima svoje lokacije v public/assets/map/lokacije.json
-  return []
 }

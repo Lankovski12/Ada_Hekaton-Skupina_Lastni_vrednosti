@@ -1,11 +1,9 @@
 // Edini kraj, ki ve, kje je API.
-// - Docker: frontend in API sta na istem naslovu -> VITE_API_URL ni potreben.
+// - Docker in fly.io: frontend in API sta na istem naslovu.
 // - npm run dev: Vite preusmeri /api na http://localhost:8000 (vite.config.ts).
-// - telefon (Capacitor): nastavi VITE_API_URL na javni naslov zaledja.
 // Če zaledje ne odgovori, vrnemo zadnji shranjen odgovor ali povprečja meritev ARSO (api/mock.ts),
 // da aplikacija in igre delujejo tudi brez interneta.
 
-const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '')
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 export type DataOrigin = 'api' | 'predpomnilnik' | 'arhiv ARSO'
@@ -17,7 +15,7 @@ export async function getJson<T>(
   const cacheKey = `zrak-cache:${path}`
   if (!USE_MOCK) {
     try {
-      const res = await fetch(`${API_URL}${path}`, { signal: AbortSignal.timeout(6000) })
+      const res = await fetch(path, { signal: AbortSignal.timeout(6000) })
       if (!res.ok || !res.headers.get('content-type')?.includes('json')) throw new Error(`${res.status}`)
       const data = (await res.json()) as T
       try {

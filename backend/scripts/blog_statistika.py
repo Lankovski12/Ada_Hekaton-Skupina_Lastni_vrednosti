@@ -5,9 +5,9 @@ Zagon (v mapi backend/):
     python scripts/blog_statistika.py            # zapiše frontend/src/data/zgodovina.json in backend/data/zgodovina.json
 
 Isti JSON uporabljata frontend (zgodbe, rezervni podatki brez interneta) in zaledje
-(/api/facts, rezervna napoved, ko CAMS ni dosegljiv) – tako nikjer ni izmišljenih številk.
+(rezervna napoved, ko CAMS ni dosegljiv) – tako nikjer ni izmišljenih številk.
 
-Potrebuje pandas (v requirements-dev.txt / training). Aplikacija sama pandas ne rabi – bere samo JSON.
+Potrebuje pandas (v requirements-dev.txt). Aplikacija sama pandas ne rabi – bere samo JSON.
 Vir: ARSO (meritve PM10/PM2.5 in meteorološke postaje) prek paketa ARSOhack.
 """
 import json

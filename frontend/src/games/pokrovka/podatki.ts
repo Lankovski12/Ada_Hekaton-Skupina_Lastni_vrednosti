@@ -9,7 +9,6 @@ export interface Jutro {
   pm25: number | null // povprečje dneva v Ljubljani
 }
 
-const API = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '')
 let arhiv: Jutro[] | null = null
 
 export async function naloziArhiv(): Promise<Jutro[]> {
@@ -19,7 +18,7 @@ export async function naloziArhiv(): Promise<Jutro[]> {
 
 export async function naloziVceraj(): Promise<{ jutro: Jutro; izArhiva: boolean }> {
   try {
-    const r = await fetch(`${API}/api/pokrovka`, { signal: AbortSignal.timeout(8000) })
+    const r = await fetch('/api/pokrovka', { signal: AbortSignal.timeout(8000) })
     if (r.ok && r.headers.get('content-type')?.includes('json')) return { jutro: (await r.json()) as Jutro, izArhiva: false }
   } catch {
     /* zaledje ni dosegljivo */

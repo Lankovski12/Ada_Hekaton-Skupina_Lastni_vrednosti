@@ -2,7 +2,7 @@
 // Pljuča iz pik (enak slog kot nekdanja krogla delcev), ki dihajo zrak, ki ga pokaže PM2.5.
 // Čist zrak = počasno, globoko dihanje in malo delcev okoli. Umazan zrak = hitro, plitvo, nemirno dihanje
 // in vedno več zbeglih delcev. Povleci (miška ali prst), da jih zavrtiš; klik sproži dogodek »klik«.
-// Narejeno s canvas 2D (brez knjižnic), da teče tudi na telefonu v Capacitorju.
+// Narejeno s canvas 2D (brez knjižnic), da teče tudi na telefonu.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(

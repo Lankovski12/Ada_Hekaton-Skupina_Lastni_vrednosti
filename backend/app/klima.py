@@ -6,7 +6,7 @@ Datoteko zapiše scripts/blog_statistika.py iz:
   03_vreme_inverzija/era5_openmeteo_urno_2021_2026  (višina mejne plasti)
 
 Uporabimo jih kot rezervo, kadar ni žive meritve ali napovedi (namesto izmišljenih številk),
-in za »Ali ste vedeli?« (/api/facts).
+in za igre.
 """
 import json
 from datetime import datetime, timedelta

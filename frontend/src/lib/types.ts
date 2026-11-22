@@ -45,16 +45,3 @@ export interface SceneResponse {
   ure: SceneHour[]
   vir?: 'open-meteo' | 'klima' // klima = običajne razmere iz ARSOhack (ni povezave)
 }
-
-export interface Fact {
-  besedilo: string
-  stevilka?: string
-  vir: string
-}
-
-export interface Place {
-  ime: string
-  tip: 'vrtec' | 'sola' | 'bolnisnica' | string
-  lat: number
-  lon: number
-}

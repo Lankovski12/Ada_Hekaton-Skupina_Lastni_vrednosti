@@ -3,12 +3,10 @@
 Zagon brez Dockerja:  uvicorn app.main:app --reload   (v mapi backend/)
 Dokumentacija API:    http://localhost:8000/docs
 """
-import csv
 import logging
 import threading
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from functools import lru_cache
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,15 +24,12 @@ from .config import (
     LJ_ALT,
     LJ_STATIONS,
     SCHEDULER_ENABLED,
-    STATIC_DATA_DIR,
 )
 from .db import Measurement, SessionLocal, Station, Weather, init_db
 from .ingest import run_hourly
 from .schemas import (
-    FactOut,
     ForecastResponse,
     NowResponse,
-    PlaceOut,
     SceneResponse,
     StationNow,
 )
@@ -69,7 +64,7 @@ app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["G
 def health():
     with SessionLocal() as db:
         n = db.scalar(select(Measurement.id).limit(1))
-    return {"ok": True, "model": fc.load_model() is not None, "ima_meritve": n is not None}
+    return {"ok": True, "ima_meritve": n is not None}
 
 
 def _typical_now() -> NowResponse:
@@ -171,63 +166,6 @@ def pokrovka():
     if d is None:
         raise HTTPException(404, "Podatkov za včeraj ni.")
     return d
-
-
-def _fmt(x: float) -> str:
-    return f"{x:.1f}".replace(".", ",").replace(",0", "")
-
-
-@app.get("/api/facts", response_model=list[FactOut])
-def facts():
-    """Zanimivosti, izračunane iz meritev ARSO (ARSOhack) in trenutne meritve."""
-    z = klima.data()
-    vir = "ARSO (ARSOhack)"
-    out = []
-    n = now(46.05, 14.51)
-    meritve = [p.pm25 for p in n.postaje if p.vir == "meritev" and p.pm25 is not None]
-    obicajno = klima.typical(datetime.fromisoformat(n.cas_utc), "pm25")  # ob uri meritve
-    if meritve and obicajno:
-        zdaj = sum(meritve) / len(meritve)
-        primerjava = "manj" if zdaj < obicajno else "več"
-        out.append(FactOut(besedilo=f"Zdaj je v zraku {_fmt(zdaj)} µg/m³ PM2.5, kar je {primerjava} kot običajno "
-                                    f"ob tej uri v tem mesecu ({_fmt(obicajno)} µg/m³, {klima.label()}).",
-                           stevilka=f"{_fmt(zdaj)} µg/m³", vir="ARSO"))
-    who = z["who"]
-    out.append(FactOut(besedilo=f"Leta {who['leto']} je bilo dnevno povprečje PM2.5 na Bežigradu nad smernico WHO "
-                                f"(15 µg/m³) kar {who['dni']} od {who['izmed']} dni.",
-                       stevilka=f"{who['dni']} dni", vir=f"{vir}; smernica WHO 2021"))
-    inv = z["inverzija"]
-    out.append(FactOut(besedilo=f"Ob temperaturni inverziji je pozimi v zraku povprečno {_fmt(inv['z'])} µg/m³ PM2.5, "
-                                f"brez nje {_fmt(inv['brez'])} µg/m³. Inverzija je v {inv['delezUr']} % zimskih ur.",
-                       stevilka=f"{_fmt(inv['z'] / inv['brez'])}×", vir=vir))
-    leta = z["leta"]
-    padec = round((1 - leta[-1]["pm10"] / leta[0]["pm10"]) * 100)
-    out.append(FactOut(besedilo=f"Povprečje PM10 na Bežigradu je od leta {leta[0]['leto']} do {leta[-1]['leto']} "
-                                f"padlo s {_fmt(leta[0]['pm10'])} na {_fmt(leta[-1]['pm10'])} µg/m³.",
-                       stevilka=f"−{padec} %", vir=vir))
-    return out
-
-
-TIP = {"vrtec": "vrtec", "sola": "sola", "bolnisnica": "bolnisnica", "zdravstveni_dom": "zdravstveni_dom",
-       "dom_za_starejse": "dom_za_starejse"}
-
-
-@lru_cache(maxsize=1)
-def _places() -> list[PlaceOut]:
-    path = STATIC_DATA_DIR / "osm_obcutljive_lokacije.csv"
-    with path.open(encoding="utf-8") as fh:
-        return [
-            PlaceOut(ime=r["ime"] or r["naslov"] or r["kategorija"], tip=TIP.get(r["kategorija"], r["kategorija"]),
-                     lat=float(r["lat"]), lon=float(r["lon"]))
-            for r in csv.DictReader(fh)
-        ]
-
-
-@app.get("/api/places", response_model=list[PlaceOut])
-def places(tip: str | None = None, limit: int = Query(1000, le=1000)):
-    """Vrtci, šole, bolnišnice … iz OpenStreetMap (© OpenStreetMap contributors, ODbL)."""
-    rows = [p for p in _places() if tip is None or p.tip == tip]
-    return rows[:limit]
 
 
 # --- Frontend (Vue build) na istem naslovu: http://localhost:8000/ ---

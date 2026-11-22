@@ -1,7 +1,7 @@
 """SQLAlchemy modeli. V bazi so SAMO podatki o zraku – nič o uporabnikih."""
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from .config import DATABASE_URL
@@ -20,7 +20,7 @@ class Station(Base):
     ime: Mapped[str] = mapped_column(String)
     lat: Mapped[float] = mapped_column(Float)
     lon: Mapped[float] = mapped_column(Float)
-    vir: Mapped[str] = mapped_column(String)  # arso | sensor_community
+    vir: Mapped[str] = mapped_column(String)  # arso
     tip: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
@@ -45,58 +45,5 @@ class Weather(Base):
     inverzija: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
-class Forecast(Base):
-    __tablename__ = "forecasts"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    izdano_utc: Mapped[datetime] = mapped_column(DateTime, index=True)
-    ciljni_utc: Mapped[datetime] = mapped_column(DateTime, index=True)
-    lokacija: Mapped[str] = mapped_column(String)
-    pm25: Mapped[float] = mapped_column(Float)
-    pm10: Mapped[float | None] = mapped_column(Float, nullable=True)
-    model: Mapped[str] = mapped_column(String)
-
-
-class ModelMetric(Base):
-    __tablename__ = "model_metrics"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    model: Mapped[str] = mapped_column(String)
-    horizont_h: Mapped[int] = mapped_column(Integer)
-    mae: Mapped[float] = mapped_column(Float)
-    mae_vztrajnost: Mapped[float] = mapped_column(Float)
-
-
-class DailyGame(Base):
-    __tablename__ = "daily_game"
-    datum: Mapped[date] = mapped_column(Date, primary_key=True)
-    vprasanje: Mapped[str] = mapped_column(Text)
-    napoved: Mapped[str | None] = mapped_column(String, nullable=True)
-    pravi_odgovor: Mapped[str | None] = mapped_column(String, nullable=True)  # vpiše se naslednji dan
-
-
-class Place(Base):
-    __tablename__ = "places"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    ime: Mapped[str] = mapped_column(String)
-    tip: Mapped[str] = mapped_column(String)  # vrtec | sola | bolnisnica
-    lat: Mapped[float] = mapped_column(Float)
-    lon: Mapped[float] = mapped_column(Float)
-
-
-class Fact(Base):
-    __tablename__ = "facts"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    besedilo: Mapped[str] = mapped_column(Text)
-    stevilka: Mapped[str | None] = mapped_column(String, nullable=True)
-    vir: Mapped[str] = mapped_column(String)
-
-
 def init_db() -> None:
     Base.metadata.create_all(engine)
-
-
-def get_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

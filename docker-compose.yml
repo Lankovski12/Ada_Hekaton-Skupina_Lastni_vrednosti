@@ -7,7 +7,6 @@ services:
       - "8000:8000"
     volumes:
       - zrak-db:/app/db                    # baza meritev preživi ponovni zagon
-      - ./backend/models:/app/backend/models  # naučen model.joblib brez ponovne gradnje
     restart: unless-stopped
 
 volumes:

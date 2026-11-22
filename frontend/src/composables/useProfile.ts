@@ -1,20 +1,16 @@
-// Profil ostane SAMO na napravi (localStorage; na telefonu kasneje Capacitor Preferences).
+// Profil ostane SAMO na napravi (localStorage).
 // Strežnik nikoli ne izve, kdo ima astmo – pragove izračunamo tukaj.
 import { computed, reactive, watch } from 'vue'
 
 export interface Profile {
-  ime: string
   astma: boolean
-  interesi: string[]
   lokacija: { ime: string; lat: number; lon: number } | null
-  obvestila: boolean
-  tema: 'svetla' | 'temna'
 }
 
 const KEY = 'zrak-profil'
 
 function load(): Profile {
-  const def: Profile = { ime: '', astma: false, interesi: [], lokacija: null, obvestila: false, tema: 'svetla' }
+  const def: Profile = { astma: false, lokacija: null }
   try {
     const raw = localStorage.getItem(KEY)
     return raw ? { ...def, ...JSON.parse(raw) } : def

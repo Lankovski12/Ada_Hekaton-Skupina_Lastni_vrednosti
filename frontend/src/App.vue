@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watchEffect } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppNav from '@/components/AppNav.vue'
 import OzadjeLise from '@/components/OzadjeLise.vue'
@@ -12,10 +12,8 @@ const { profile } = useProfile()
 
 onMounted(() => refresh(profile.lokacija ?? undefined))
 
-// tema: svetla je privzeta, temno vklopiš na strani z nastavitvami (/nastavitve)
-watchEffect(() => {
-  document.documentElement.dataset.theme = profile.tema === 'temna' ? 'dark' : 'light'
-})
+// stran uporablja svetlo temo
+document.documentElement.dataset.theme = 'light'
 
 // domača stran je celozaslonska: brez zgornje navigacije in noge (spodnja navigacija na telefonu ostane)
 const route = useRoute()

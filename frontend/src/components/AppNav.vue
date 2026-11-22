@@ -25,7 +25,7 @@ const links = [
     </div>
   </header>
 
-  <!-- Spodnja navigacija za telefon (Capacitor) -->
+  <!-- Spodnja navigacija na ozkem zaslonu (telefon v brskalniku) -->
   <nav class="mobile" aria-label="Glavna navigacija">
     <RouterLink v-for="l in links" :key="l.to" :to="l.to">
       <span>{{ l.label }}</span>
