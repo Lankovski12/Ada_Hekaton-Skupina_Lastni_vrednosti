@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// Domača stran za starše in otroke: najprej odgovori na vprašanje »Kakšen zrak dihamo danes?«
-// – številka in ocena, en nasvet za starše (kdaj ven, kdaj prezračiti) in eno sporočilo za otroka.
-// Pljuča iz pik dihajo današnji zrak. Okenca so razdeljena v dva stolpca: »Za otroke« in »Za starše«;
-// privzeto so odprta, klik na pljuča jih skrije.
+// Domača stran za starše in otroke: najprej odgovori na vprašanje »Kakšen zrak dihaš zdaj?«
+// (številka, ocena in en nasvet: kdaj ven in kdaj prezračiti), z oznako meritev / model / ocena.
+// Pljuča iz pik dihajo današnji zrak; klik nanje odpre štiri okenca (Igre, Zemljevid, Podatki, Moj zrak).
+// Ko so okenca enkrat odprta, ostanejo odprta tudi ob vrnitvi na to stran (do zaprtja zavihka brskalnika).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import PljucaPike from '@/scenes/PljucaPike.vue'
@@ -30,14 +30,10 @@ const nasvet = computed(() => {
   const stopnja = LEVELS.findIndex((l) => l.key === level.value.key)
   const dan = ure.filter((u) => u.h >= 7 && u.h <= 20)
   const naj = dan.reduce<(typeof dan)[number] | null>((a, b) => (!a || b.pm < a.pm ? b : a), null)
-  if (stopnja <= 1) return { text: level.value.parents, vrsta: null }
-  if (!naj) return { text: level.value.parents, vrsta: null }
-  if (naj === dan[0] && ure[0]?.h === naj.h)
-    return { text: 'Zdaj je najčistejša ura dneva: pravi čas za igro zunaj in za zračenje (5–10 minut na široko).', vrsta }
-  return {
-    text: `Z igro zunaj in zračenjem počakajte do ${hh(naj.h)}, takrat bo zrak najčistejši (okoli ${Math.round(naj.pm)} µg/m³).`,
-    vrsta,
-  }
+  if (stopnja <= 1) return { text: 'Lep čas za ven in zračenje.', vrsta: null }
+  if (!naj) return { text: 'Ven za krajši čas, zračite na kratko.', vrsta: null }
+  if (naj === dan[0] && ure[0]?.h === naj.h) return { text: 'Zdaj je najčistejša ura dneva.', vrsta }
+  return { text: `Najčistejši zrak bo ob ${hh(naj.h)}.`, vrsta }
 })
 
 // okenca: ob prvem obisku zaprta; ko jih odpreš, ostanejo odprta med premikanjem po zavihkih
@@ -55,42 +51,42 @@ const rezerva = computed(() => {
   return stolpec + Math.max(24, w * 0.04) + 28
 })
 
-// okenca: levo za otroke, desno za starše
+// okenca: dve na levi, dve na desni (besedila bomo še spreminjali)
 const okna = [
   {
     to: '/igre',
     kicker: 'Igraj',
     title: 'Igre',
-    text: 'Zmajček, vremenski vedeževalec in pokrovka nad mestom – vse na pravih podatkih o zraku.',
+    text: 'Za otroke: zmajček, vremenski vedeževalec in pokrovka nad mestom.',
     color: 'var(--mint)',
     ikona: 'igre',
     pos: 'l1',
   },
   {
-    to: '/grafi',
-    kicker: 'Razumi',
-    title: 'Zakaj je pozimi smog?',
-    text: 'Kako se megla ujame v kotlini in kaj kaže 10 let meritev. Preberite skupaj.',
-    color: 'var(--brand)',
-    ikona: 'podatki',
+    to: '/zemljevid',
+    kicker: 'Raziskuj',
+    title: 'Zemljevid',
+    text: 'Poišči svojo šolo ali vrtec in poglej, koliko dima iz peči in prometa je v okolici.',
+    color: 'var(--accent)',
+    ikona: 'zemljevid',
     pos: 'l2',
   },
   {
-    to: '/moj-zrak',
-    kicker: 'Načrt dneva',
-    title: 'Kdaj ven, kdaj zračiti',
-    text: 'Za naslednjih 24 ur tam, kjer ste: kdaj na igrišče, kdaj prezračiti, kdaj ostati notri.',
-    color: 'var(--coral)',
-    ikona: 'moj',
+    to: '/grafi',
+    kicker: 'Poglej',
+    title: 'Podatki',
+    text: 'Zakaj je zrak pozimi slab in kaj kaže 10 let meritev ARSO.',
+    color: 'var(--brand)',
+    ikona: 'podatki',
     pos: 'r1',
   },
   {
-    to: '/zemljevid',
-    kicker: 'Šola in vrtec',
-    title: 'Zrak pri šoli',
-    text: 'Poiščite otrokovo šolo ali vrtec: koliko dima je v okolici in kako pogosto je pod meglo.',
-    color: 'var(--accent)',
-    ikona: 'zemljevid',
+    to: '/moj-zrak',
+    kicker: 'Zame',
+    title: 'Moj zrak',
+    text: 'Načrt za 24 ur tam, kjer si: kdaj ven, kdaj prezračiti, kdaj ostati notri.',
+    color: 'var(--coral)',
+    ikona: 'moj',
     pos: 'r2',
   },
 ]
@@ -101,32 +97,30 @@ const okna = [
     <PljucaPike class="scena" :pm25="pm" :color="NEON" :rezerva="rezerva" @klik="odprto = !odprto" />
 
     <header class="naslov">
-      <span class="znamka">Zrak v Ljubljani · za otroke in starše</span>
-      <h1>Kakšen zrak dihamo danes?</h1>
+      <span class="znamka">Zrak, ki ga dihamo · Ljubljana</span>
+      <h1>Kakšen zrak dihaš zdaj?</h1>
+      <!-- trenutna meritev: brez okvirja, ena vrstica stanja in kratek nasvet -->
       <div class="odgovor">
-        <p class="stanje">
+        <p
+          class="stanje"
+          :title="izmerjeno ? 'Meritev ARSO, zadnja ura' : `Običajno ob tej uri (povprečje meritev ${klimaLabel})`"
+        >
           <span class="pika" />
-          <strong class="lvl">{{ level.label }}</strong>
-          <span class="st"><strong>{{ Math.round(pm) }}</strong> µg/m³ PM2.5</span>
+          <span class="lvl">{{ level.label }}</span>
+          <span class="loc" aria-hidden="true">·</span>
+          <span class="st">{{ Math.round(pm) }} <small>µg/m³</small></span>
           <VirZnacka :vrsta="izmerjeno ? 'meritev' : 'ocena'" />
-          <small>{{ izmerjeno ? 'ARSO, zadnja ura' : `običajno ob tej uri (povprečje meritev ${klimaLabel})` }}</small>
         </p>
         <p class="nasvet">
-          <span class="komu">Za starše</span>
-          {{ nasvet.text }} <VirZnacka v-if="nasvet.vrsta" :vrsta="nasvet.vrsta" />
-          <RouterLink to="/moj-zrak" class="vec">Načrt dneva →</RouterLink>
-        </p>
-        <p class="nasvet otroku">
-          <span class="komu">Za otroka</span>
-          Oblaček pravi: <strong>{{ level.kids }}</strong>
+          {{ nasvet.text }}
+          <RouterLink to="/moj-zrak" class="vec">Moj zrak →</RouterLink>
         </p>
       </div>
-      <p v-if="!odprto" class="hint">Klikni na pljuča</p>
+      <p class="hint">{{ odprto ? 'Kam greš naprej?' : 'Klikni na pljuča' }}</p>
     </header>
 
     <nav class="okna" aria-label="Kam naprej">
       <div class="stolpec levo">
-        <span class="skupina">Za otroke</span>
         <RouterLink
           v-for="(o, i) in okna.slice(0, 2)"
           :key="o.to"
@@ -166,7 +160,6 @@ const okna = [
         </RouterLink>
       </div>
       <div class="stolpec desno">
-        <span class="skupina">Za starše</span>
         <RouterLink
           v-for="(o, i) in okna.slice(2)"
           :key="o.to"
@@ -210,33 +203,6 @@ const okna = [
 </template>
 
 <style scoped>
-.komu {
-  display: inline-block;
-  margin-right: 6px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--bg-soft);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  vertical-align: 1px;
-}
-.otroku {
-  margin-top: 6px !important;
-}
-.skupina {
-  font-family: var(--font-head);
-  font-weight: 800;
-  font-size: 1.05rem;
-  color: var(--ink);
-  opacity: 0;
-  transition: opacity 0.4s;
-}
-.odprto .skupina {
-  opacity: 1;
-}
 .landing {
   position: relative;
   height: 100svh;
@@ -274,52 +240,52 @@ const okna = [
 .odgovor {
   pointer-events: auto;
   margin-top: 10px;
-  padding: 10px 18px;
-  max-width: 640px;
-  border-radius: 18px;
-  background: var(--panel);
-  border: 1px solid var(--panel-line);
-  border-left: 5px solid var(--lvl);
-  box-shadow: var(--panel-shadow);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  text-align: left;
+  text-align: center;
 }
 .odgovor p {
   margin: 0;
 }
 .stanje {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
   align-items: center;
-  gap: 4px 10px;
+  gap: 8px;
   color: var(--scene-text);
 }
 .stanje .lvl {
   font-family: var(--font-head);
-  font-size: 1.35rem;
-  color: color-mix(in srgb, var(--lvl) 70%, var(--scene-ink));
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: color-mix(in srgb, var(--lvl) 75%, var(--scene-ink));
 }
-.stanje .st strong {
+.stanje .loc {
+  color: var(--scene-muted);
+}
+.stanje .st {
   font-family: var(--font-head);
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   color: var(--scene-ink);
 }
-.stanje small {
+.stanje .st small {
+  font-family: var(--font-body, inherit);
+  font-size: 0.8rem;
   color: var(--scene-muted);
-  font-size: 0.78rem;
 }
 .nasvet {
-  margin-top: 4px !important;
-  color: var(--scene-ink);
-  font-weight: 700;
-  font-size: 0.95rem;
+  margin-top: 2px !important;
+  color: var(--scene-muted);
+  font-weight: 600;
+  font-size: 0.92rem;
 }
 .vec {
   margin-left: 6px;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--coral) 75%, var(--scene-ink));
+  color: var(--scene-muted);
   font-weight: 800;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+.vec:hover {
+  color: var(--scene-ink);
 }
 .pika {
   display: inline-block;
@@ -510,10 +476,6 @@ h1 {
   .landing {
     height: calc(100svh - 72px); /* spodnja navigacija na telefonu */
   }
-  .odgovor {
-    padding: 8px 12px;
-  }
-  .stanje small,
   .vec {
     display: none;
   }

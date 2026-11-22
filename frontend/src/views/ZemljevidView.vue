@@ -89,10 +89,10 @@ function potrdi() {
 <template>
   <div class="story zemljevid">
     <section class="container mapsec">
-      <span class="kicker">Za starše · šola in vrtec</span>
-      <h1>Kakšen zrak diha vaš otrok v šoli?</h1>
+      <span class="kicker">Zemljevid</span>
+      <h1>Kakšen zrak diha vaš otrok?</h1>
       <p class="lead">
-        Poiščite otrokovo šolo ali vrtec. Pokažemo, koliko dima iz peči in prometa je v okolici, kako pogosto je pozimi pod
+        Poišči svojo šolo ali vrtec. Pokažemo, koliko dima iz peči in prometa je v okolici, kako pogosto je pozimi pod
         plastjo hladnega zraka in kdaj je čas za igro zunaj. Ob vsaki številki piše, ali je izmerjena, izračunana z
         modelom ali ocenjena.
       </p>
