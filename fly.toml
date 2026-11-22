@@ -1,21 +1,34 @@
-# fly.toml app configuration file generated for lastni-vrednosti on 2026-11-22T08:48:14Z
-#
-# See https://docs.fly.io/reference/configuration for information about how to use this file.
-#
+# Nastavitve za fly.io (aplikacija lastni-vrednosti). Objava iz korenske mape projekta:  fly deploy
+# Slika se zgradi iz Dockerfile (Vue frontend + FastAPI zaledje), aplikacija posluša na vratih 8000.
 
 app = 'lastni-vrednosti'
 primary_region = 'ams'
 
 [build]
+
+# baza meritev (SQLite v /app/db) na trajnem disku, da ostane ob vsaki novi objavi
+# disk ustvarite enkrat:  fly volumes create zrak_db --region ams --size 1
+[mounts]
+  source = 'zrak_db'
+  destination = '/app/db'
+
 [http_service]
-  internal_port = 8080
+  internal_port = 8000
   force_https = true
-  auto_stop_machines = 'stop'
+  # strežnik mora ves čas teči: vsako uro pobere meritve ARSO in vreme (sicer se zajem ne izvaja)
+  auto_stop_machines = 'off'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
+  [[http_service.checks]]
+    grace_period = '20s'
+    interval = '30s'
+    timeout = '5s'
+    method = 'GET'
+    path = '/api/health'
+
 [[vm]]
-  memory = '256mb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
