@@ -98,3 +98,20 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## Objava na fly.io
+
+Aplikacija `lastni-vrednosti` teče na fly.io (regija `ams`); nastavitve so v `fly.toml`.
+
+```bash
+# enkrat: namestitev orodja (Linux/Mac), prijava in disk za bazo
+curl -L https://fly.io/install.sh | sh
+fly auth login
+fly volumes create zrak_db --region ams --size 1   # samo prvič, če diska še ni (fly volumes list)
+
+# vsaka objava: najprej najnovejši main, nato deploy iz korenske mape projekta
+git checkout main && git pull --no-rebase origin main
+fly deploy
+```
+
+Preverjanje: `https://lastni-vrednosti.fly.dev/api/health` (`"ima_meritve": true` po prvem urnem zajemu).
