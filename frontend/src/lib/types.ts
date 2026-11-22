@@ -30,6 +30,7 @@ export interface ForecastResponse {
   lon: number
   ure: ForecastHour[]
   najboljsa_ura: string
+  model?: 'cams' | 'klima' | 'model' // klima = povprečje meritev ARSO za ta mesec in uro
 }
 
 export interface SceneHour {
@@ -37,17 +38,12 @@ export interface SceneHour {
   visina_megle_m: number // nadmorska višina zgornjega roba megle / onesnaženja
   pm25: number
   inverzija: boolean
+  megla?: boolean // prava megla (vodne kapljice), ne smog
 }
 
 export interface SceneResponse {
   ure: SceneHour[]
-}
-
-export interface DailyGame {
-  datum: string
-  vprasanje: string
-  moznosti: string[]
-  vceraj?: { vprasanje: string; pravilen_odgovor: string }
+  vir?: 'open-meteo' | 'klima' // klima = običajne razmere iz ARSOhack (ni povezave)
 }
 
 export interface Fact {

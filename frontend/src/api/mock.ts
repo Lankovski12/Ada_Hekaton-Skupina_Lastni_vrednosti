@@ -1,8 +1,16 @@
-// Lažni podatki, ki jih aplikacija uporabi, dokler Python zaledje ne teče.
-// Oblika je ista kot pri pravem API-ju, zato jih kasneje samo izklopimo.
-import type { DailyGame, Fact, ForecastResponse, NowResponse, Place, SceneResponse } from '@/lib/types'
+// Rezervni podatki, kadar zaledje ne odgovori in ni shranjenega odgovora (npr. telefon brez interneta).
+// Nič ni izmišljeno: vse vrednosti so povprečja meritev ARSO za isti mesec in uro (paket ARSOhack,
+// src/data/zgodovina.json) in so v aplikaciji označene kot »običajno«, ne kot meritev.
+// Oblika je ista kot pri pravem API-ju (backend/app/main.py dela enako, ko nima meritev).
+import type { Fact, ForecastResponse, NowResponse, Place, SceneResponse } from '@/lib/types'
+import { klimaLabel, typical } from '@/lib/klima'
+import z from '@/data/zgodovina.json'
 
 const HOUR = 3600_000
+const ARSO_OFFSET_H = 1
+const MEGLA_MIN = 299 + 30 // Bežigrad + 30 m (isto kot v zaledju)
+const MEGLA_MAX = 1200
+const fmt = (n: number) => n.toLocaleString('sl-SI', { maximumFractionDigits: 1 })
 
 function startOfHour(d = new Date()) {
   const c = new Date(d)
@@ -10,36 +18,22 @@ function startOfHour(d = new Date()) {
   return c
 }
 
-/** Tipičen zimski dnevni hod v Ljubljani: zjutraj in zvečer več delcev (kurišča, promet). */
-function typicalPm25(date: Date, seed = 0): number {
-  const h = date.getHours()
-  const evening = Math.exp(-((h - 20) ** 2) / 8) * 30
-  const morning = Math.exp(-((h - 8) ** 2) / 4) * 18
-  const day = Math.floor(date.getTime() / (24 * HOUR))
-  const dayFactor = 0.7 + 0.5 * Math.abs(Math.sin(day * 1.7 + seed))
-  return Math.round((10 + evening + morning) * dayFactor)
-}
-
 export function mockNow(): NowResponse {
-  const now = startOfHour()
-  const base = typicalPm25(now)
-  const postaje = [
-    { id: 'LJ-BEZ', ime: 'Ljubljana Bežigrad', lat: 46.0656, lon: 14.5126, f: 1 },
-    { id: 'LJ-CEL', ime: 'Ljubljana Celovška', lat: 46.0636, lon: 14.4914, f: 1.2 },
-    { id: 'LJ-VIC', ime: 'Ljubljana Vič', lat: 46.0425, lon: 14.4874, f: 0.9 },
-  ]
+  const t = startOfHour()
   return {
-    cas_utc: now.toISOString(),
-    postaje: postaje.map((p) => ({
-      id: p.id,
-      ime: p.ime,
-      lat: p.lat,
-      lon: p.lon,
-      pm25: Math.round(base * p.f),
-      pm10: Math.round(base * p.f * 1.3),
-      vir: 'meritev' as const,
-      cas_utc: now.toISOString(),
-    })),
+    cas_utc: t.toISOString(),
+    postaje: [
+      {
+        id: 'klima',
+        ime: `Ljubljana – običajno ob tej uri (${klimaLabel})`,
+        lat: 46.0655,
+        lon: 14.5127,
+        pm25: typical(t, 'pm25'),
+        pm10: typical(t, 'pm10'),
+        vir: 'ocena',
+        cas_utc: t.toISOString(),
+      },
+    ],
   }
 }
 
@@ -47,58 +41,59 @@ export function mockForecast(h = 48): ForecastResponse {
   const start = startOfHour()
   const ure = Array.from({ length: h }, (_, i) => {
     const t = new Date(start.getTime() + (i + 1) * HOUR)
-    const pm25 = typicalPm25(t)
-    return { cas_utc: t.toISOString(), pm25, pm10: Math.round(pm25 * 1.3) }
+    return { cas_utc: t.toISOString(), pm25: typical(t, 'pm25'), pm10: typical(t, 'pm10') }
   })
-  // najboljša ura podnevi (7–20), ko otroci lahko gredo ven
+  // najboljša ura podnevi (7–20 po lokalnem času ARSO), kot v backend/app/forecast.py
   const day = ure.filter((u) => {
-    const hh = new Date(u.cas_utc).getHours()
+    const hh = (new Date(u.cas_utc).getUTCHours() + ARSO_OFFSET_H) % 24
     return hh >= 7 && hh <= 20
   })
   const best = (day.length ? day : ure).reduce((a, b) => (b.pm25 < a.pm25 ? b : a))
-  return { izdano_utc: start.toISOString(), lat: 46.05, lon: 14.51, ure, najboljsa_ura: best.cas_utc }
+  return { izdano_utc: start.toISOString(), lat: 46.05, lon: 14.51, ure, najboljsa_ura: best.cas_utc, model: 'klima' }
 }
 
 export function mockScene(): SceneResponse {
   const start = startOfHour()
   return {
+    vir: 'klima',
     ure: Array.from({ length: 24 }, (_, i) => {
-      const t = new Date(start.getTime() + i * HOUR)
-      const pm25 = typicalPm25(t)
-      const h = t.getHours()
-      const inverzija = h < 10 || h > 17
+      const t = new Date(start.getTime() + (i + 1) * HOUR)
       return {
         cas_utc: t.toISOString(),
-        pm25,
-        inverzija,
-        visina_megle_m: inverzija ? 330 + pm25 : 600 + (24 - pm25) * 8,
+        pm25: typical(t, 'pm25'),
+        // v vsaj četrtini takih ur (isti mesec in ura) je bila v preteklosti inverzija (Bežigrad – Pasja ravan)
+        inverzija: typical(t, 'inverzija') >= 0.25,
+        visina_megle_m: Math.min(MEGLA_MAX, Math.max(MEGLA_MIN, 299 + typical(t, 'mejnaPlast'))),
       }
     }),
   }
 }
 
-export function mockDailyGame(): DailyGame {
-  return {
-    datum: new Date().toISOString().slice(0, 10),
-    vprasanje: 'Bo jutri ob 8h zrak v Ljubljani boljši ali slabši kot danes?',
-    moznosti: ['Boljši', 'Enak', 'Slabši'],
-    vceraj: { vprasanje: 'Bo danes popoldne megla?', pravilen_odgovor: 'Da' },
-  }
-}
-
 export function mockFacts(): Fact[] {
+  const vir = 'ARSO (ARSOhack)'
+  const { who, inverzija: inv, leta } = z
+  const prvo = leta[0]!
+  const zadnje = leta[leta.length - 1]!
   return [
-    { besedilo: 'Otroci glede na telesno težo vdihnejo več zraka kot odrasli, njihova pljuča pa se razvijajo do najstniških let.', vir: 'WHO' },
-    { besedilo: 'Smernica WHO (2021) za dnevno povprečje PM2.5.', stevilka: '15 µg/m³', vir: 'WHO' },
-    { besedilo: 'Večina delcev PM2.5 v ljubljanski kotlini pozimi prihaja iz kurjenja lesa – tudi v soseski vrtca ali šole.', stevilka: '~ 60 %', vir: 'ARSO (primer – preveri)' },
-    { besedilo: 'Zračenje otroške sobe: na kratko in na široko odprite okno, ko je zrak najčistejši.', vir: 'NIJZ (primer – preveri)' },
+    {
+      besedilo: `Leta ${who.leto} je bilo dnevno povprečje PM2.5 na Bežigradu nad smernico WHO (15 µg/m³) kar ${who.dni} od ${who.izmed} dni.`,
+      stevilka: `${who.dni} dni`,
+      vir: `${vir}; smernica WHO 2021`,
+    },
+    {
+      besedilo: `Ob temperaturni inverziji je pozimi v zraku povprečno ${fmt(inv.z)} µg/m³ PM2.5, brez nje ${fmt(inv.brez)} µg/m³. Inverzija je v ${inv.delezUr} % zimskih ur.`,
+      stevilka: `${fmt(inv.z / inv.brez)}×`,
+      vir,
+    },
+    {
+      besedilo: `Povprečje PM10 na Bežigradu je od leta ${prvo.leto} do ${zadnje.leto} padlo s ${fmt(prvo.pm10)} na ${fmt(zadnje.pm10)} µg/m³.`,
+      stevilka: `−${Math.round((1 - zadnje.pm10 / prvo.pm10) * 100)} %`,
+      vir,
+    },
   ]
 }
 
 export function mockPlaces(): Place[] {
-  return [
-    { ime: 'Vrtec Mladi rod', tip: 'vrtec', lat: 46.045, lon: 14.52 },
-    { ime: 'OŠ Prule', tip: 'sola', lat: 46.043, lon: 14.507 },
-    { ime: 'UKC Ljubljana', tip: 'bolnisnica', lat: 46.0546, lon: 14.5229 },
-  ]
+  // brez zaledja ni seznama; 3D zemljevid ima svoje lokacije v public/assets/map/lokacije.json
+  return []
 }

@@ -15,7 +15,10 @@ function toggleInteres(i: string) {
 <template>
   <section class="container page">
     <h1>Družinski profil</h1>
-    <p class="sub">Izpolnite ga skupaj z otrokom. Tako bodo nasveti za starše in sporočila za otroka bolj osebna.<br />🔒 Vse ostane samo na tej napravi. Strežnik ne ve, kdo ste.</p>
+    <p class="sub">
+      Izpolnite ga skupaj z otrokom: nasveti za starše in sporočila za otroka bodo bolj osebni.<br />
+      Vse ostane samo na tej napravi. Strežnik ne ve, kdo ste.
+    </p>
 
     <div class="card form">
       <label class="field">
@@ -38,6 +41,19 @@ function toggleInteres(i: string) {
         <span>
           <strong>Obvestila za starše</strong><br />
           <small>Opozorilo na telefon, ko se zrak poslabša, in namig, kdaj je najboljši čas za ven (kmalu).</small>
+        </span>
+      </label>
+
+      <label class="switch">
+        <input
+          type="checkbox"
+          :checked="profile.tema === 'temna'"
+          @change="profile.tema = ($event.target as HTMLInputElement).checked ? 'temna' : 'svetla'"
+        />
+        <span class="track" aria-hidden="true"><span class="knob" /></span>
+        <span>
+          <strong>Temna tema</strong><br />
+          <small>Za večerno branje. Privzeta je svetla.</small>
         </span>
       </label>
 

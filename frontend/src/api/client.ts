@@ -2,13 +2,13 @@
 // - Docker: frontend in API sta na istem naslovu -> VITE_API_URL ni potreben.
 // - npm run dev: Vite preusmeri /api na http://localhost:8000 (vite.config.ts).
 // - telefon (Capacitor): nastavi VITE_API_URL na javni naslov zaledja.
-// Če zaledje ne odgovori, vrnemo zadnji shranjen odgovor ali demo podatke,
+// Če zaledje ne odgovori, vrnemo zadnji shranjen odgovor ali povprečja meritev ARSO (api/mock.ts),
 // da aplikacija in igre delujejo tudi brez interneta.
 
 const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '')
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
-export type DataOrigin = 'api' | 'predpomnilnik' | 'demo'
+export type DataOrigin = 'api' | 'predpomnilnik' | 'arhiv ARSO'
 
 export async function getJson<T>(
   path: string,
@@ -35,5 +35,5 @@ export async function getJson<T>(
       }
     }
   }
-  return { data: fallback(), origin: 'demo' }
+  return { data: fallback(), origin: 'arhiv ARSO' }
 }

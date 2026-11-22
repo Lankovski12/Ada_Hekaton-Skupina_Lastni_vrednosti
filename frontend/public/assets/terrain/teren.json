@@ -1,0 +1,37 @@
+{
+  "lon": [
+    14.38,
+    14.66
+  ],
+  "lat": [
+    45.975,
+    46.135
+  ],
+  "lat0": 46.055,
+  "sirina_m": 21630.690443865045,
+  "visina_m": 17811.19999999962,
+  "teren": {
+    "nx": 576,
+    "nz": 480,
+    "enota": "dm",
+    "min_m": 257.0,
+    "max_m": 768.5421371459961
+  },
+  "mreza": {
+    "nx": 96,
+    "nz": 80
+  },
+  "viri": "Copernicus DEM GLO-30; ARSO inventar emisij PM10 (kuri\u0161\u010da, promet); GURS KN (stavbe)",
+  "stavbe": {
+    "stevilo": 58750,
+    "polje": [
+      "x",
+      "z",
+      "sirina_dm",
+      "dolzina_dm",
+      "visina_dm",
+      "kot_cdeg",
+      "tla_dm"
+    ]
+  }
+}

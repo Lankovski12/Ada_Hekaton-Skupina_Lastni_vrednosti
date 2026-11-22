@@ -32,6 +32,7 @@ class ForecastResponse(BaseModel):
     lon: float
     ure: list[ForecastHour]
     najboljsa_ura: str
+    model: Literal["cams", "klima", "model"] = "cams"  # klima = povprečje meritev ARSO za ta mesec in uro
 
 
 class SceneHour(BaseModel):
@@ -39,22 +40,12 @@ class SceneHour(BaseModel):
     visina_megle_m: float
     pm25: float
     inverzija: bool
+    megla: bool = False  # prava megla (vodne kapljice) po Open-Meteo: koda vremena 45/48 ali vidljivost < 1 km
 
 
 class SceneResponse(BaseModel):
     ure: list[SceneHour]
-
-
-class Yesterday(BaseModel):
-    vprasanje: str
-    pravilen_odgovor: str
-
-
-class DailyGameResponse(BaseModel):
-    datum: str
-    vprasanje: str
-    moznosti: list[str]
-    vceraj: Yesterday | None = None
+    vir: Literal["open-meteo", "klima"] = "open-meteo"  # klima = običajne razmere iz ARSOhack (ni povezave)
 
 
 class FactOut(BaseModel):

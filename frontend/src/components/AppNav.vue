@@ -1,36 +1,35 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { useProgressStore } from '@/stores/progress'
 
-const progress = useProgressStore()
+// na domači strani (celozaslonska pljuča) zgornje vrstice ne prikažemo
+defineProps<{ brezGlave?: boolean }>()
 
+// stran je za dve skupini: otroke (igre) in starše (načrt dneva, šola in vrtec); »Zakaj?« je za oba
 const links = [
-  { to: '/', label: 'Domov', icon: '🏠' },
-  { to: '/otroci', label: 'Za otroke', icon: '🎮' },
-  { to: '/starsi', label: 'Za starše', icon: '👨‍👩‍👧' },
-  { to: '/nastavitve', label: 'Družina', icon: '⚙️' },
+  { to: '/', label: 'Domov', short: 'Domov' },
+  { to: '/igre', label: 'Za otroke', short: 'Otroci' },
+  { to: '/moj-zrak', label: 'Za starše', short: 'Starši' },
+  { to: '/zemljevid', label: 'Šola in vrtec', short: 'Šola' },
+  { to: '/grafi', label: 'Zakaj je zrak slab?', short: 'Zakaj?' },
 ]
 </script>
 
 <template>
-  <header class="top">
+  <header v-if="!brezGlave" class="top">
     <div class="container bar">
       <RouterLink to="/" class="logo">
-        <span class="logo-dot" aria-hidden="true">☁️</span>
         <span>Zrak, ki ga dihamo</span>
       </RouterLink>
       <nav class="desktop">
         <RouterLink v-for="l in links" :key="l.to" :to="l.to">{{ l.label }}</RouterLink>
       </nav>
-      <span class="points" title="Zvezdice, ki jih otrok zbere v igrah">⭐ {{ progress.tocke }}</span>
     </div>
   </header>
 
   <!-- Spodnja navigacija za telefon (Capacitor) -->
   <nav class="mobile" aria-label="Glavna navigacija">
     <RouterLink v-for="l in links" :key="l.to" :to="l.to">
-      <span class="ico" aria-hidden="true">{{ l.icon }}</span>
-      <span>{{ l.label }}</span>
+      <span>{{ l.short }}</span>
     </RouterLink>
   </nav>
 </template>
@@ -41,7 +40,7 @@ const links = [
   top: 0;
   z-index: 20;
   backdrop-filter: blur(12px);
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
   border-bottom: 1px solid var(--line);
 }
 .bar {
@@ -61,9 +60,6 @@ const links = [
   text-decoration: none;
   white-space: nowrap;
 }
-.logo-dot {
-  font-size: 1.5rem;
-}
 .desktop {
   display: flex;
   gap: 4px;
@@ -73,19 +69,20 @@ const links = [
   padding: 8px 14px;
   border-radius: 999px;
   color: var(--ink-soft);
-  font-weight: 700;
-  text-decoration: none;
-}
-.desktop a.router-link-exact-active {
-  background: var(--bg-soft);
-  color: var(--ink);
-}
-.points {
   font-weight: 800;
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.desktop a:hover {
   background: var(--bg-soft);
-  border-radius: 999px;
-  padding: 6px 12px;
-  white-space: nowrap;
+  transform: translateY(-1px);
+}
+.desktop a.router-link-active:not([href='/']),
+.desktop a.router-link-exact-active {
+  background: var(--ink);
+  color: var(--bg);
 }
 .mobile {
   display: none;
@@ -94,9 +91,6 @@ const links = [
 @media (max-width: 720px) {
   .desktop {
     display: none;
-  }
-  .points {
-    margin-left: auto;
   }
   .logo span:last-child {
     font-size: 1.05rem;
@@ -108,7 +102,7 @@ const links = [
     right: 0;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     background: var(--card);
     border-top: 1px solid var(--line);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
@@ -118,8 +112,8 @@ const links = [
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 6px 0;
-    font-size: 0.75rem;
+    padding: 10px 0;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--ink-soft);
     text-decoration: none;
@@ -128,9 +122,6 @@ const links = [
   .mobile a.router-link-exact-active {
     color: var(--brand);
     background: var(--bg-soft);
-  }
-  .ico {
-    font-size: 1.4rem;
   }
 }
 </style>

@@ -8,12 +8,13 @@ export interface Profile {
   interesi: string[]
   lokacija: { ime: string; lat: number; lon: number } | null
   obvestila: boolean
+  tema: 'svetla' | 'temna'
 }
 
 const KEY = 'zrak-profil'
 
 function load(): Profile {
-  const def: Profile = { ime: '', astma: false, interesi: [], lokacija: null, obvestila: false }
+  const def: Profile = { ime: '', astma: false, interesi: [], lokacija: null, obvestila: false, tema: 'svetla' }
   try {
     const raw = localStorage.getItem(KEY)
     return raw ? { ...def, ...JSON.parse(raw) } : def

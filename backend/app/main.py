@@ -7,7 +7,7 @@ import csv
 import logging
 import threading
 from contextlib import asynccontextmanager
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime
 from functools import lru_cache
 
 from fastapi import FastAPI, Query
@@ -17,26 +17,26 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from . import forecast as fc
+from . import klima
 from .config import (
     CORS_ORIGINS,
     FRONTEND_DIST,
     INGEST_MINUTE,
     INGEST_ON_STARTUP,
+    LJ_ALT,
     LJ_STATIONS,
     SCHEDULER_ENABLED,
     STATIC_DATA_DIR,
 )
-from .db import Measurement, SessionLocal, Station, init_db
+from .db import Measurement, SessionLocal, Station, Weather, init_db
 from .ingest import run_hourly
 from .schemas import (
-    DailyGameResponse,
     FactOut,
     ForecastResponse,
     NowResponse,
     PlaceOut,
     SceneResponse,
     StationNow,
-    Yesterday,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -47,8 +47,8 @@ log = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     init_db()
     if INGEST_ON_STARTUP:
-        # v ozadju, da strežnik takoj odgovarja
-        threading.Thread(target=run_hourly, daemon=True).start()
+        # v ozadju, da strežnik takoj odgovarja; najprej dopolni zadnje dni iz zajema organizatorjev
+        threading.Thread(target=run_hourly, daemon=True).start()  # ob prvem zagonu dopolni tudi zgodovino ARSO
     scheduler = None
     if SCHEDULER_ENABLED:
         from apscheduler.schedulers.background import BackgroundScheduler
@@ -72,21 +72,19 @@ def health():
     return {"ok": True, "model": fc.load_model() is not None, "ima_meritve": n is not None}
 
 
-def _demo_now() -> NowResponse:
+def _typical_now() -> NowResponse:
+    """Ni meritev (zaledje brez interneta): povprečje meritev ARSO za ta mesec in uro, jasno označeno (vir='ocena')."""
     t = fc.start_of_hour()
-    base = fc.typical_pm25(t)
-    demo = [("E403", "LJ Bežigrad", 46.0655, 14.5127, 1.0), ("E405", "LJ Celovška", 46.0636, 14.4914, 1.2),
-            ("E404", "LJ Vič", 46.0425, 14.4874, 0.9)]
+    pm25, pm10 = fc.typical(t)
     return NowResponse(cas_utc=t.isoformat(), postaje=[
-        StationNow(id=i, ime=n, lat=la, lon=lo, pm25=round(base * f), pm10=round(base * f * 1.3), vir="model",
-                   cas_utc=t.isoformat())
-        for i, n, la, lo, f in demo
+        StationNow(id="klima", ime=f"Ljubljana – običajno ob tej uri ({klima.label()})", lat=46.0655, lon=14.5127,
+                   pm25=pm25, pm10=pm10, vir="ocena", cas_utc=t.isoformat())
     ])
 
 
 @app.get("/api/now", response_model=NowResponse)
 def now(lat: float = Query(46.05), lon: float = Query(14.51)):
-    """Zadnja meritev ARSO za ljubljanske postaje. Če meritev še ni, demo vrednosti (vir='model')."""
+    """Zadnja meritev ARSO za ljubljanske postaje. Če meritev še ni, povprečje meritev za ta mesec in uro (vir='ocena')."""
     # TODO: najbližje postaje glede na lat/lon (zdaj vedno Ljubljana)
     postaje = []
     with SessionLocal() as db:
@@ -108,50 +106,106 @@ def now(lat: float = Query(46.05), lon: float = Query(14.51)):
             postaje.append(StationNow(id=sid, ime=st.ime, lat=st.lat, lon=st.lon, pm25=vals.get("pm25"),
                                       pm10=vals.get("pm10"), vir="meritev", cas_utc=cas))
     if not postaje:
-        return _demo_now()
+        return _typical_now()
     return NowResponse(cas_utc=max(p.cas_utc for p in postaje), postaje=postaje)
 
 
 @app.get("/api/forecast", response_model=ForecastResponse)
 def forecast(lat: float = 46.05, lon: float = 14.51, h: int = Query(48, ge=1, le=48)):
-    ure, _model = fc.predict(lat, lon, h)
+    ure, model = fc.predict(lat, lon, h)
     return ForecastResponse(izdano_utc=datetime.now(UTC).isoformat(), lat=lat, lon=lon, ure=ure,
-                            najboljsa_ura=fc.best_hour(ure))
+                            najboljsa_ura=fc.best_hour(ure), model=model)
+
+
+MEGLA_MIN, MEGLA_MAX = LJ_ALT + 30, 1200  # meje prikaza v Kotlina.vue (dno kotline ~300 m, hribi ~1000 m)
 
 
 @app.get("/api/scene", response_model=SceneResponse)
 def scene():
-    """Podatki za kotlino: višina megle in PM2.5 po urah (naslednjih 24 ur)."""
+    """Kotlina za naslednjih 24 ur: PM2.5 iz napovedi, inverzija in višina mejne plasti iz Open-Meteo.
+
+    inverzija = na Pasji ravni (1019 m) topleje kot na Bežigradu; vrh megle = Bežigrad + višina mejne plasti.
+    Brez povezave: običajne razmere za ta mesec in uro iz ARSOhack (vir='klima').
+    """
     ure, _ = fc.predict(46.05, 14.51, 24)
-    out = []
-    for u in ure:
-        t = datetime.fromisoformat(u["cas_utc"])
-        local_h = (t.hour + 1) % 24
-        inv = local_h < 10 or local_h > 17  # TODO: iz vremena (višina mejne plasti / razlika dolina–hrib)
-        pm = u["pm25"]
-        out.append({"cas_utc": u["cas_utc"], "pm25": pm, "inverzija": inv,
-                    "visina_megle_m": 330 + pm if inv else 600 + max(0, 24 - pm) * 8})
-    return SceneResponse(ure=out)
+    times = [datetime.fromisoformat(u["cas_utc"]).replace(tzinfo=None) for u in ure]
+    with SessionLocal() as db:
+        weather = {w.time_utc: w for w in db.scalars(select(Weather).where(Weather.time_utc.in_(times)))}
+    out, vse_vreme = [], True
+    for u, t in zip(ure, times):
+        w = weather.get(t)
+        inv = w.inverzija if w else None
+        blh = w.visina_mejne_plasti if w else None
+        if inv is None or blh is None:
+            vse_vreme = False
+            # v vsaj četrtini takih ur (isti mesec in ura) je bila v preteklosti inverzija
+            inv = (klima.typical(t, "inverzija") or 0) >= 0.25 if inv is None else inv
+            blh = klima.typical(t, "mejnaPlast") if blh is None else blh
+        visina = min(MEGLA_MAX, max(MEGLA_MIN, LJ_ALT + (blh or 0)))
+        out.append({"cas_utc": u["cas_utc"], "pm25": u["pm25"], "inverzija": bool(inv), "visina_megle_m": visina})
+    return SceneResponse(ure=out, vir="open-meteo" if vse_vreme else "klima")
 
 
-@app.get("/api/daily-game", response_model=DailyGameResponse)
-def daily_game():
-    return DailyGameResponse(
-        datum=date.today().isoformat(),
-        vprasanje="Bo jutri ob 8h zrak v Ljubljani boljši ali slabši kot danes?",
-        moznosti=["Boljši", "Enak", "Slabši"],
-        vceraj=Yesterday(vprasanje="Bo danes popoldne megla?", pravilen_odgovor="Da"),
-    )
+@app.get("/api/vceraj")
+def vceraj():
+    """Včerajšnji dan za igro Vremenski vedeževalec (meritve ARSO + vreme Open-Meteo).
+    404, če meritev za včeraj še ni dovolj – igra takrat vzame dan iz arhiva."""
+    from fastapi import HTTPException
+
+    from .daily import yesterday
+
+    d = yesterday()
+    if d is None:
+        raise HTTPException(404, "Za včeraj še ni dovolj meritev.")
+    return d
+
+
+@app.get("/api/pokrovka")
+def pokrovka():
+    """Včerajšnji jutranji temperaturi v dolini in na Pasji ravni za igro Naredi pokrovko (404 = igra vzame arhiv)."""
+    from fastapi import HTTPException
+
+    from .pokrovka import vceraj as pokrovka_vceraj
+
+    d = pokrovka_vceraj()
+    if d is None:
+        raise HTTPException(404, "Podatkov za včeraj ni.")
+    return d
+
+
+def _fmt(x: float) -> str:
+    return f"{x:.1f}".replace(".", ",").replace(",0", "")
 
 
 @app.get("/api/facts", response_model=list[FactOut])
 def facts():
-    return [
-        FactOut(besedilo="Otroci glede na telesno težo vdihnejo več zraka kot odrasli, njihova pljuča pa se razvijajo "
-                         "do najstniških let.", vir="WHO"),
-        FactOut(besedilo="Smernica WHO (2021) za dnevno povprečje PM2.5.", stevilka="15 µg/m³", vir="WHO"),
-        FactOut(besedilo="Ob temperaturni inverziji ostane onesnažen zrak ujet v kotlini kot pod pokrovko.", vir="ARSO"),
-    ]
+    """Zanimivosti, izračunane iz meritev ARSO (ARSOhack) in trenutne meritve."""
+    z = klima.data()
+    vir = "ARSO (ARSOhack)"
+    out = []
+    n = now(46.05, 14.51)
+    meritve = [p.pm25 for p in n.postaje if p.vir == "meritev" and p.pm25 is not None]
+    obicajno = klima.typical(datetime.fromisoformat(n.cas_utc), "pm25")  # ob uri meritve
+    if meritve and obicajno:
+        zdaj = sum(meritve) / len(meritve)
+        primerjava = "manj" if zdaj < obicajno else "več"
+        out.append(FactOut(besedilo=f"Zdaj je v zraku {_fmt(zdaj)} µg/m³ PM2.5, kar je {primerjava} kot običajno "
+                                    f"ob tej uri v tem mesecu ({_fmt(obicajno)} µg/m³, {klima.label()}).",
+                           stevilka=f"{_fmt(zdaj)} µg/m³", vir="ARSO"))
+    who = z["who"]
+    out.append(FactOut(besedilo=f"Leta {who['leto']} je bilo dnevno povprečje PM2.5 na Bežigradu nad smernico WHO "
+                                f"(15 µg/m³) kar {who['dni']} od {who['izmed']} dni.",
+                       stevilka=f"{who['dni']} dni", vir=f"{vir}; smernica WHO 2021"))
+    inv = z["inverzija"]
+    out.append(FactOut(besedilo=f"Ob temperaturni inverziji je pozimi v zraku povprečno {_fmt(inv['z'])} µg/m³ PM2.5, "
+                                f"brez nje {_fmt(inv['brez'])} µg/m³. Inverzija je v {inv['delezUr']} % zimskih ur.",
+                       stevilka=f"{_fmt(inv['z'] / inv['brez'])}×", vir=vir))
+    leta = z["leta"]
+    padec = round((1 - leta[-1]["pm10"] / leta[0]["pm10"]) * 100)
+    out.append(FactOut(besedilo=f"Povprečje PM10 na Bežigradu je od leta {leta[0]['leto']} do {leta[-1]['leto']} "
+                                f"padlo s {_fmt(leta[0]['pm10'])} na {_fmt(leta[-1]['pm10'])} µg/m³.",
+                       stevilka=f"−{padec} %", vir=vir))
+    return out
 
 
 TIP = {"vrtec": "vrtec", "sola": "sola", "bolnisnica": "bolnisnica", "zdravstveni_dom": "zdravstveni_dom",
@@ -170,7 +224,7 @@ def _places() -> list[PlaceOut]:
 
 
 @app.get("/api/places", response_model=list[PlaceOut])
-def places(tip: str | None = None, limit: int = Query(50, le=1000)):
+def places(tip: str | None = None, limit: int = Query(1000, le=1000)):
     """Vrtci, šole, bolnišnice … iz OpenStreetMap (© OpenStreetMap contributors, ODbL)."""
     rows = [p for p in _places() if tip is None or p.tip == tip]
     return rows[:limit]
@@ -185,4 +239,5 @@ if FRONTEND_DIST.exists():
         f = FRONTEND_DIST / full_path
         if full_path and f.is_file() and FRONTEND_DIST in f.resolve().parents:
             return FileResponse(f)
-        return FileResponse(FRONTEND_DIST / "index.html")  # Vue router
+        # index.html se ne sme shraniti v brskalniku: po novi gradnji imajo datoteke v /assets nova imena
+        return FileResponse(FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})  # Vue router
