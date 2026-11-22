@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Stran z igrami – zgrajena kot domača stran: na sredini velik Oblaček (z očmi sledi miški),
-// klik nanj odpre tri okenca z igrami (dve levo, ena desno). Okenca ostanejo odprta med zavihki.
+// Stran z igrami – zgrajena kot domača stran: na sredini velik Oblaček (z očmi sledi miški, ob kliku poskoči),
+// ob njem so vedno vidna tri enako velika okenca z igrami (dve levo, ena desno).
+// Pri vsaki igri piše rekord (Zmajček) ali koliko dni zapored se otrok vrača (Vedeževalec, Pokrovka).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import AirBuddy from '@/components/AirBuddy.vue'
@@ -8,25 +9,17 @@ import { useAirData } from '@/composables/useAirData'
 import { levelFor } from '@/lib/airQuality'
 import { typicalPm25 } from '@/lib/klima'
 import { useProgressStore } from '@/stores/progress'
-import GameIcon from '@/games/skupno/GameIcon.vue'
-import { igreOdprte } from '@/games/skupno/okna'
-import { skupajZvezdic } from '@/games/daily/napredek'
+import PixelIkona from '@/games/skupno/PixelIkona.vue'
+import { napredek } from '@/games/daily/napredek'
+import { dniZapored, nizIgre, trenutniNiz } from '@/games/skupno/niz'
 
 const progress = useProgressStore()
 const { currentPm25 } = useAirData()
 const pm = computed(() => currentPm25.value ?? typicalPm25())
 const level = computed(() => levelFor(pm.value))
 
-const odprto = igreOdprte
-
-function zvezdicePokrovka(): number {
-  try {
-    return JSON.parse(localStorage.getItem('zrak-pokrovka') ?? '{}').zvezdice ?? 0
-  } catch {
-    return 0
-  }
-}
-const vseZvezdice = computed(() => skupajZvezdic() + zvezdicePokrovka())
+// okenca so vedno odprta (prej jih je odprl klik na Oblačka)
+const odprto = true
 
 // velikost Oblačka glede na zaslon (pri odprtih okencih nekoliko manjši, da je prostor ob straneh)
 const w = ref(typeof window !== 'undefined' ? window.innerWidth : 1200)
@@ -39,11 +32,11 @@ onMounted(() => window.addEventListener('resize', onResize))
 onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 const velikost = computed(() => {
   if (w.value <= 720) return Math.min(240, w.value * 0.6)
-  const prostor = odprto.value ? w.value - 2 * (Math.min(300, Math.max(230, w.value * 0.24)) + 60) : w.value * 0.5
+  const prostor = w.value - 2 * (Math.min(300, Math.max(230, w.value * 0.24)) + 60)
   return Math.max(200, Math.min(420, prostor, h.value * 0.5))
 })
 
-type Ikona = 'zmaj' | 'vprasaj' | 'pokrovka' | 'oblak'
+type Ikona = 'zmaj' | 'krogla' | 'pokrovka'
 interface Okno {
   to: string
   kicker: string
@@ -64,7 +57,7 @@ const okna: Okno[] = [
     text: 'Leti nad 3D Ljubljano in odpihni smog. Oblaček prinese dež, dimnikom se izogni.',
     color: 'var(--mint)',
     ikona: 'zmaj',
-    stat: () => `rekord ${progress.najboljse.zmaj ?? 0} %`,
+    stat: () => `tvoj rekord: ${progress.najboljse.zmaj ?? 0} %`,
     ready: true,
   },
   {
@@ -73,8 +66,8 @@ const okna: Okno[] = [
     title: 'Vremenski vedeževalec',
     text: 'Vsak dan novo vprašanje o včerajšnjem zraku: zemljevid, drsnik, ura, detektiv.',
     color: 'var(--lilac)',
-    ikona: 'vprasaj',
-    stat: () => `${skupajZvezdic()} zvezdic`,
+    ikona: 'krogla',
+    stat: () => dniZapored(trenutniNiz(napredek.niz, napredek.zadnjiDan)),
     ready: true,
   },
   {
@@ -84,7 +77,7 @@ const okna: Okno[] = [
     text: 'Spreminjaj temperaturo v dolini in na hribu in ujemi včerajšnjo pokrovko.',
     color: 'var(--accent)',
     ikona: 'pokrovka',
-    stat: () => `${zvezdicePokrovka()} zvezdic`,
+    stat: () => dniZapored(nizIgre('pokrovka')),
     ready: true,
   },
 ]
@@ -95,18 +88,14 @@ const desno = okna.slice(2)
 <template>
   <div class="landing" :class="{ odprto }" :style="{ '--lvl': level.color }">
     <header class="naslov">
-      <span class="badge">
-        <span class="pika" />
-        Tvoje zvezdice: <strong>{{ vseZvezdice }}</strong> · Zmajček rekord: <strong>{{ progress.najboljse.zmaj ?? 0 }} %</strong>
-      </span>
       <h1>Igre</h1>
-      <p class="hint">{{ odprto ? 'Katero igro boš igral?' : 'Klikni na Oblačka' }}</p>
+      <p class="hint">Katero igro boš igral?</p>
     </header>
 
-    <button class="oblacek" :aria-label="odprto ? 'Zapri igre' : 'Pokaži igre'" :aria-expanded="odprto" @click="odprto = !odprto">
+    <div class="oblacek">
       <AirBuddy :mood="level.mood * 0.6" color="#7cc8ff" :size="velikost" />
       <span class="senca" aria-hidden="true" />
-    </button>
+    </div>
 
     <nav class="okna" aria-label="Igre">
       <div v-for="(stolpec, si) in [levo, desno]" :key="si" class="stolpec" :class="si === 0 ? 'levo' : 'desno'">
@@ -121,7 +110,7 @@ const desno = okna.slice(2)
           :tabindex="odprto && o.ready ? 0 : -1"
           :aria-hidden="!odprto"
         >
-          <span class="ikona" aria-hidden="true"><GameIcon :name="o.ikona" :size="36" /></span>
+          <span class="ikona" aria-hidden="true"><PixelIkona :name="o.ikona" :size="40" /></span>
           <span class="k">{{ o.kicker }}</span>
           <strong>{{ o.title }}</strong>
           <span class="t">{{ o.text }}</span>
@@ -273,7 +262,10 @@ h1 {
   row-gap: 2px;
   align-items: center;
   padding: 16px 20px;
-  min-height: 178px;
+  height: 226px; /* vsa okenca enako velika */
+  box-sizing: border-box;
+  align-content: start;
+  grid-template-rows: auto auto 1fr auto;
   border-radius: var(--radius);
   background: var(--panel);
   border: 2px solid color-mix(in srgb, var(--c) 55%, transparent);
@@ -358,6 +350,7 @@ h1 {
 }
 .noga {
   grid-column: 1 / -1;
+  align-self: end;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -390,7 +383,7 @@ h1 {
     gap: 12px;
   }
   .okno {
-    min-height: 0;
+    height: 178px;
     padding: 10px 14px;
   }
   .okno .t {
@@ -435,7 +428,8 @@ h1 {
   .levo .okno,
   .desno .okno {
     grid-template-columns: auto 1fr auto;
-    min-height: 0;
+    height: 58px;
+    align-content: center;
     padding: 6px 12px;
     transform: translateY(16px);
   }
@@ -452,15 +446,21 @@ h1 {
     border-radius: 12px;
   }
   .ikona :deep(svg) {
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
   }
   .okno strong {
     font-size: 1.1rem;
   }
   .noga {
     grid-column: auto;
+    grid-row: auto;
     margin: 0;
+  }
+  .okno,
+  .levo .okno,
+  .desno .okno {
+    grid-template-rows: none;
   }
   .odprto .okno {
     transform: none;

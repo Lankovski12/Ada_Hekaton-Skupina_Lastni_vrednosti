@@ -45,7 +45,3 @@ export function zabeleziDnevno(datumVprasanja: string, zvezdice: number) {
   napredek.niz = napredek.zadnjiDan === vceraj ? napredek.niz + 1 : napredek.zadnjiDan === d ? napredek.niz : 1
   napredek.zadnjiDan = d
 }
-
-export function skupajZvezdic(): number {
-  return Object.values(napredek.odgovori).reduce((a, b) => a + b, 0) + napredek.zvezdiceVaja
-}

@@ -9,7 +9,8 @@ import Confetti from '../skupno/Confetti.vue'
 import GameIcon from '../skupno/GameIcon.vue'
 import { sound } from '../skupno/sound'
 import { datumSl, nakljucenDan, naloziArhiv, naloziVceraj, type Dan } from './dan'
-import { napredek, skupajZvezdic, zabeleziDnevno } from './napredek'
+import { napredek, zabeleziDnevno } from './napredek'
+import { dniZapored, trenutniNiz } from '../skupno/niz'
 import { mozna, VRSTE, vrstaZaDan, type Rezultat, type Vrsta } from './vrste'
 import Barvanje from './naloge/Barvanje.vue'
 import Detektiv from './naloge/Detektiv.vue'
@@ -42,7 +43,6 @@ const dnevniDan = shallowRef<Dan | null>(null)
 
 const vrstaIme = computed(() => VRSTE.find((v) => v.id === vrsta.value)?.ime ?? '')
 const zeOdgovorjeno = computed(() => (dnevniDan.value ? napredek.odgovori[dnevniDan.value.datum] : undefined))
-const zvezdic = computed(() => skupajZvezdic())
 
 // za predstavitev in teste: /igre/daily?vrsta=zemljevid&datum=2026-11-20 (vaja z izbrano nalogo in dnem)
 const route = useRoute()
@@ -134,8 +134,7 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Odlično, pravi vede
           <span class="kicker">Igra · vsak dan novo vprašanje</span>
           <h1>Vremenski vedeževalec</h1>
           <div class="chips">
-            <span class="chip fire"><b>{{ napredek.niz }}</b> {{ napredek.niz === 1 ? 'dan' : napredek.niz === 2 ? 'dneva' : napredek.niz < 5 ? 'dnevi' : 'dni' }} zapored</span>
-            <span class="chip star"><GameIcon name="zvezda" :size="18" /> <b>{{ zvezdic }}</b></span>
+            <span class="chip fire">{{ dniZapored(trenutniNiz(napredek.niz, napredek.zadnjiDan)) }}</span>
             <span class="chip">{{ nacin === 'vaja' ? 'Vaja' : 'Vprašanje dneva' }} · {{ vrstaIme }}</span>
           </div>
         </div>

@@ -9,6 +9,7 @@ import Confetti from '../skupno/Confetti.vue'
 import GameIcon from '../skupno/GameIcon.vue'
 import { sound } from '../skupno/sound'
 import { NAJVEC, visinaPokrovke, zvezdiceZa } from './fizika'
+import { dniZapored, nizIgre, zabeleziDan } from '../skupno/niz'
 import { datumSl, nakljucnoJutro, naloziArhiv, naloziVceraj, type Jutro } from './podatki'
 import Scena from './Scena.vue'
 import Zgodba from './Zgodba.vue'
@@ -41,6 +42,7 @@ const tH = ref(0)
 const preverjeno = ref(false)
 const zvezdiceStopnje = ref<number[]>([])
 const konfeti = ref(0)
+const niz = ref(nizIgre('pokrovka')) // koliko dni zapored se otrok vrača k igri
 const zvok = ref(sound.enabled)
 
 const pravaPokrovka = computed(() => (jutro.value ? visinaPokrovke(jutro.value.t_dolina, jutro.value.t_hrib) : 0))
@@ -107,8 +109,8 @@ function naslednja() {
     sound.pop()
     zacniStopnjo(stopnja.value + 1)
   } else {
-    shranjeno.zvezdice += skupaj.value
-    shrani()
+    zabeleziDan('pokrovka')
+    niz.value = nizIgre('pokrovka')
     sound.end(skupaj.value >= 6)
     if (skupaj.value >= 6) konfeti.value++
     stanje.value = 'konec'
@@ -172,7 +174,7 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Natančno!']
           <span class="kicker">Igra · inverzija</span>
           <h1>Naredi pokrovko</h1>
         </div>
-        <span class="chip"><GameIcon name="zvezda" :size="18" /> {{ shranjeno.zvezdice + (stanje === 'igra' ? skupaj : 0) }}</span>
+        <span class="chip">{{ dniZapored(niz) }}</span>
         <button class="sound" :aria-label="zvok ? 'Izklopi zvok' : 'Vklopi zvok'" @click="preklopiZvok">
           <GameIcon :name="zvok ? 'zvok' : 'tiho'" :size="22" />
         </button>
@@ -256,7 +258,7 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Natančno!']
         <div class="stars big">
           <GameIcon v-for="n in 3" :key="n" name="zvezda" :size="72" class="s" :class="{ on: n <= Math.round(skupaj / 3) }" :style="{ animationDelay: `${n * 0.2}s` }" />
         </div>
-        <h2>{{ skupaj }} od 9 zvezdic</h2>
+        <h2>{{ skupaj >= 7 ? 'Odlično opravljeno!' : skupaj >= 4 ? 'Dobro opravljeno!' : 'Bravo, da si poskusil!' }}</h2>
         <div class="bubble">
           <AirBuddy :mood="0" color="#9b6bff" :size="80" />
           <p>

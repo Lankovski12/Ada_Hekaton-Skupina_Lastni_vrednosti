@@ -19,13 +19,12 @@ function potrdi() {
   const diff = Math.abs(ugib.value - prav.value)
   const t = (pct: number, min: number) => Math.max(min, prav.value * pct)
   const zvezdice = diff <= t(0.1, 3) ? 3 : diff <= t(0.25, 7) ? 2 : diff <= t(0.45, 12) ? 1 : 0
-  const krat = prav.value / 15
   emit('konec', {
     zvezdice,
     razlaga:
       `Včeraj je bilo v Ljubljani povprečno ${prav.value} µg/m³ drobnih delcev, ti si rekel ${ugib.value}. ` +
-      (krat > 1.1
-        ? `To je ${krat.toFixed(1).replace('.', ',')}-krat več, kot priporoča Svetovna zdravstvena organizacija (15).`
+      (prav.value > 15
+        ? 'To je več, kot je še zdravo: Svetovna zdravstvena organizacija priporoča največ 15.'
         : 'To je pod priporočilom Svetovne zdravstvene organizacije (15), zrak je bil čist.'),
   })
 }

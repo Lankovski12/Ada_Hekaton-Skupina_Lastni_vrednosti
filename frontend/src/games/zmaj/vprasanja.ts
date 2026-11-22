@@ -50,16 +50,15 @@ function v(vprasanje: string, pravilen: string, napacni: string[], razlaga: stri
 /** Tri vprašanja za eno igro: prvo je vedno o dnevu, ki ga igraš. */
 export function sestaviVprasanja(dan: DanZaVprasanja): Vprasanje[] {
   const pm = Math.round(dan.pm25)
-  const krat = Math.max(1, Math.round(pm / WHO))
   const kdaj = dan.datum ? 'Ta dan je bilo' : 'Danes je'
 
   const oDnevu: Vprasanje =
     pm > WHO
       ? v(
-          `${kdaj} v zraku ${pm} µg/m³ drobnih delcev. Svetovna zdravstvena organizacija priporoča največ ${WHO}. Kolikokrat preveč je to?`,
-          `Približno ${krat}-krat`,
-          [`Približno ${krat + 3}-krat`, krat > 2 ? 'Približno 2-krat' : 'Približno 10-krat'],
-          `${pm} deljeno s ${WHO} je približno ${krat}. Toliko več delcev je bilo v zraku, kot je še zdravo.`,
+          `${kdaj} v zraku ${pm} µg/m³ drobnih delcev. Svetovna zdravstvena organizacija priporoča največ ${WHO}. Je zrak ta dan zdrav za dolgo igro zunaj?`,
+          'Ne, delcev je preveč',
+          ['Da, zrak je čist', 'Tega se ne da izmeriti'],
+          `${pm} je več kot ${WHO}, zato je bilo v zraku več delcev, kot je še zdravo. Takrat je bolje krajša igra zunaj.`,
         )
       : v(
           `${kdaj} v zraku ${pm} µg/m³ drobnih delcev. Priporočilo Svetovne zdravstvene organizacije je največ ${WHO}. Je zrak ta dan zdrav za igro zunaj?`,
