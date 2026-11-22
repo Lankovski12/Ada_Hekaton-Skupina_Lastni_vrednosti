@@ -3,7 +3,7 @@ import { useProfile } from '@/composables/useProfile'
 
 const { profile } = useProfile()
 
-const interesi = ['nogomet', 'kolesarjenje', 'sprehodi', 'igrišče', 'tek']
+const interesi = ['igrišče', 'nogomet', 'kolesarjenje', 'sprehodi', 'tek', 'pot v šolo peš']
 
 function toggleInteres(i: string) {
   const idx = profile.interesi.indexOf(i)
@@ -14,12 +14,15 @@ function toggleInteres(i: string) {
 
 <template>
   <section class="container page">
-    <h1>Profil</h1>
-    <p class="sub">Vse nastavitve ostanejo samo na tej napravi. Strežnik ne ve, kdo si.</p>
+    <h1>Družinski profil</h1>
+    <p class="sub">
+      Izpolnite ga skupaj z otrokom: nasveti za starše in sporočila za otroka bodo bolj osebni.<br />
+      Vse ostane samo na tej napravi. Strežnik ne ve, kdo ste.
+    </p>
 
     <div class="card form">
       <label class="field">
-        <span>Ime (neobvezno)</span>
+        <span>Ime otroka (neobvezno)</span>
         <input v-model="profile.ime" type="text" placeholder="npr. Maja" />
       </label>
 
@@ -27,8 +30,8 @@ function toggleInteres(i: string) {
         <input v-model="profile.astma" type="checkbox" />
         <span class="track" aria-hidden="true"><span class="knob" /></span>
         <span>
-          <strong>Astma ali občutljiva pljuča</strong><br />
-          <small>Opozorila dobiš prej (strožje meje).</small>
+          <strong>Otrok ima astmo ali občutljiva pljuča</strong><br />
+          <small>Opozorila dobite prej, ker upoštevamo strožje meje.</small>
         </span>
       </label>
 
@@ -36,8 +39,8 @@ function toggleInteres(i: string) {
         <input v-model="profile.obvestila" type="checkbox" />
         <span class="track" aria-hidden="true"><span class="knob" /></span>
         <span>
-          <strong>Obvestila</strong><br />
-          <small>Na telefonu prek Capacitor Local Notifications (pride kasneje).</small>
+          <strong>Obvestila za starše</strong><br />
+          <small>Opozorilo na telefon, ko se zrak poslabša, in namig, kdaj je najboljši čas za ven (kmalu).</small>
         </span>
       </label>
 
@@ -55,7 +58,7 @@ function toggleInteres(i: string) {
       </label>
 
       <div class="field">
-        <span>Kaj rad počneš zunaj?</span>
+        <span>Kaj otrok najraje počne zunaj?</span>
         <div class="chips">
           <button
             v-for="i in interesi"

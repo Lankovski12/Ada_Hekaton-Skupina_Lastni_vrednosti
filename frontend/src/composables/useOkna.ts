@@ -1,6 +1,5 @@
-// Ali so okenca na domači strani odprta. Stanje je v pomnilniku aplikacije:
-// ostane, ko se premikaš med zavihki, ob osvežitvi ali novem obisku strani pa se ponastavi
-// (takrat je treba spet klikniti na pljuča).
+// Ali so okenca na domači strani odprta. Privzeto so odprta, da starši in otroci takoj vidijo,
+// kaj stran ponuja; klik na pljuča jih skrije. Stanje ostane, ko se premikaš med zavihki.
 import { ref } from 'vue'
 
-export const oknaOdprta = ref(false)
+export const oknaOdprta = ref(true)

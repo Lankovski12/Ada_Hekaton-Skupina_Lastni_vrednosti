@@ -18,10 +18,11 @@ onBeforeUnmount(() => (document.body.style.overflow = ''))
   <div class="story grafi">
     <!-- uvod -->
     <header class="intro">
-      <span class="kicker">Podatki · zgodbe iz naših meritev</span>
-      <h1>Kaj nam povedo meritve?</h1>
+      <span class="kicker">Za otroke in starše · preberite skupaj</span>
+      <h1>Zakaj je zrak pozimi slab?</h1>
       <p>
-        Drsi navzdol in poglej, kdaj in zakaj je zrak v Ljubljani slab.
+        Drsi navzdol in poglej, kako se megla ujame v kotlini in kaj kaže deset let meritev ARSO. Vsak korak je
+        kratek, da ga lahko skupaj preberete in se pogovorite.
       </p>
       <span class="scroll-hint" aria-hidden="true">↓</span>
     </header>

@@ -4,12 +4,13 @@ import { RouterLink } from 'vue-router'
 // na domači strani (celozaslonska pljuča) zgornje vrstice ne prikažemo
 defineProps<{ brezGlave?: boolean }>()
 
+// stran je za dve skupini: otroke (igre) in starše (načrt dneva, šola in vrtec); »Zakaj?« je za oba
 const links = [
-  { to: '/', label: 'Domov' },
-  { to: '/igre', label: 'Igre' },
-  { to: '/zemljevid', label: 'Zemljevid' },
-  { to: '/grafi', label: 'Podatki' },
-  { to: '/moj-zrak', label: 'Moj zrak' },
+  { to: '/', label: 'Domov', short: 'Domov' },
+  { to: '/igre', label: 'Za otroke', short: 'Otroci' },
+  { to: '/moj-zrak', label: 'Za starše', short: 'Starši' },
+  { to: '/zemljevid', label: 'Šola in vrtec', short: 'Šola' },
+  { to: '/grafi', label: 'Zakaj je zrak slab?', short: 'Zakaj?' },
 ]
 </script>
 
@@ -28,7 +29,7 @@ const links = [
   <!-- Spodnja navigacija za telefon (Capacitor) -->
   <nav class="mobile" aria-label="Glavna navigacija">
     <RouterLink v-for="l in links" :key="l.to" :to="l.to">
-      <span>{{ l.label }}</span>
+      <span>{{ l.short }}</span>
     </RouterLink>
   </nav>
 </template>

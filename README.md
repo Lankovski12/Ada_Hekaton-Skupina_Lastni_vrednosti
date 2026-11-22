@@ -5,7 +5,17 @@ Repozitoriji namenjen projektu, ki je nastal na Ada hekatonu. Avtorja projekta s
 
 Spletna + mobilna aplikacija (ista Vue koda, na telefon s Capacitorjem) in Python zaledje (FastAPI),
 ki vsako uro prebere meritve ARSO in vreme ter napove PM2.5 za 1–48 ur.
-Otroci dobijo igre na pravih podatkih, starši napoved in nasvete. Profil (astma) ostane na napravi.
+Stran je za dve skupini:
+
+| Zavihek | Za koga | Kaj |
+|---|---|---|
+| Domov | oba | kakšen je zrak zdaj, en nasvet za starše in eno sporočilo za otroka |
+| Za otroke (`/igre`) | otroci | igre na pravih podatkih (Zmajček, Vremenski vedeževalec, Naredi pokrovko) |
+| Za starše (`/moj-zrak`) | starši | načrt dneva: kdaj na igrišče, kdaj prezračiti, kdaj igra v hiši |
+| Šola in vrtec (`/zemljevid`) | starši | zrak v okolici otrokove šole ali vrtca |
+| Zakaj je zrak slab? (`/grafi`) | oba, za skupno branje | kotlina, inverzija in 10 let meritev ARSO |
+
+Družinski profil (ime otroka, astma) ostane samo na napravi.
 
 Podatki hekatona: https://github.com/vidacex/ARSOhack (glej `data/README.md`).
 
