@@ -340,10 +340,10 @@ function play() {
       <div class="card menu">
         <RouterLink to="/igre" class="back">Nazaj na igre</RouterLink>
         <span class="kicker">Igra · 3D Ljubljana</span>
-        <h1 class="title">Zmajček <span>čisti nebo</span></h1>
+        <h1 class="title">Zmajček <span>čisti Ljubljano</span></h1>
 
         <p v-if="zgodovina" class="intro">
-          Danes je zrak čist! Zato letiš nad <strong>resničnim smogom</strong> iz preteklosti.
+          Danes je zrak čist! Zato letiš nad <strong>smogom</strong> iz preteklosti.
         </p>
 
         <div class="tiles">
@@ -386,11 +386,11 @@ function play() {
         <p v-else-if="!pravi" class="demo">Demo podatki: zaledje ali ARSO trenutno ni dosegljiv.</p>
 
         <div class="legend">
-          <div><GameIcon name="smog" :size="40" /><span><strong>Smog</strong> odpihni z levim gumbom</span></div>
-          <div><GameIcon name="oblak" :size="40" /><span><strong>Oblaček</strong> prinese dež: +{{ Math.round(DEZ.bonus * 100) }} %</span></div>
-          <div><GameIcon name="obroc" :size="40" /><span><strong>Obroč vetra</strong>: hitrost!</span></div>
-          <div><GameIcon name="dimnik" :size="40" /><span><strong>Dimnik</strong>: pazi, −{{ Math.round(DIM.kazen * 100) }} %</span></div>
-          <div><GameIcon name="vprasaj" :size="40" /><span><strong>Vprašaj</strong>: odgovori, +{{ VPRASANJA.bonusCas }} s</span></div>
+          <div><GameIcon name="smog" :size="40" /><span><strong>Smog:</strong> odpihni z levim gumbom</span></div>
+          <div><GameIcon name="oblak" :size="40" /><span><strong>Oblaček:</strong> prinese dež, +{{ Math.round(DEZ.bonus * 100) }} %</span></div>
+          <div><GameIcon name="obroc" :size="40" /><span><strong>Obroč vetra:</strong> dodatna hitrost</span></div>
+          <div><GameIcon name="dimnik" :size="40" /><span><strong>Dimnik:</strong> doda smog, −{{ Math.round(DIM.kazen * 100) }} %</span></div>
+          <div><GameIcon name="vprasaj" :size="40" /><span><strong>Vprašaj:</strong> odgovori pravilno in pridobi +{{ VPRASANJA.bonusCas }} s</span></div>
         </div>
 
         <button class="big-btn green pulse" @click="play">Poleti!</button>
