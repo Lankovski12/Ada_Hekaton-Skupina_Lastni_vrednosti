@@ -350,6 +350,13 @@ const zracenje = computed(() => {
   }
 })
 
+// tri odločitve v eni kartici
+const odlocitve = computed(() => [
+  { id: 'ven', vprasanje: 'Lahko grem ven?', ...ven.value },
+  { id: 'sport', vprasanje: 'Lahko športam zunaj?', ...sport.value },
+  { id: 'zrac', vprasanje: 'Naj prezračim?', ...zracenje.value },
+])
+
 // --- načrt za danes: časovna okna ---
 function okno(sredina: (typeof ure.value)[number] | null, prag: number, od: number, doUre: number, najvec: number) {
   if (!sredina) return null
@@ -365,10 +372,6 @@ function okno(sredina: (typeof ure.value)[number] | null, prag: number, od: numb
 }
 const oknoVen = computed(() => okno(najVen.value, 1.2, 7, 21, 4))
 const oknoZrac = computed(() => okno(najZrac.value, 1.1, 6, 22, 2))
-const kategorija = (l: { key: string }) => {
-  const s = LEVELS.findIndex((x) => x.key === l.key)
-  return s <= 1 ? 'dobro' : s === 2 ? 'zmerno' : 'slabo'
-}
 
 // --- graf 24 ur ---
 const izbrana = ref<number | null>(null)
@@ -504,9 +507,9 @@ const ZANIMIVOST: Record<string, string> = {
       Izbrana lokacija je zunaj ljubljanske kotline. Prikazani so podatki za Ljubljano, ki so najbližji.
     </p>
 
-    <!-- stanje zdaj + odločitve -->
-    <div class="zgoraj">
-      <article class="card zdaj">
+    <!-- stanje zdaj in odločitve v eni kartici -->
+    <article class="card zdaj">
+      <div class="stanje">
         <span class="mali">{{ postaja?.ocena ? 'Običajno ob tej uri' : 'Zdaj' }} · {{ postaja ? (postaja.ocena ? 'Ljubljana' : `postaja ${postaja.ime}`) : 'Ljubljana' }}<template v-if="postaja && !postaja.ocena"> ({{ km(postaja.d) }})</template></span>
         <div class="vrednost">
           <strong>{{ pmZdaj }}</strong>
@@ -519,68 +522,19 @@ const ZANIMIVOST: Record<string, string> = {
           <input v-model="profile.astma" type="checkbox" />
           <span>Otrok ima astmo ali občutljiva pljuča – strožje meje</span>
         </label>
-      </article>
-
-      <article class="card odlocitev" :class="ven.ok">
-        <span class="mali">Lahko grem ven?</span>
-        <h2>{{ ven.naslov }}</h2>
-        <p>{{ ven.text }}</p>
-      </article>
-
-      <article class="card odlocitev" :class="sport.ok">
-        <span class="mali">Lahko športam zunaj?</span>
-        <h2>{{ sport.naslov }}</h2>
-        <p>{{ sport.text }}</p>
-      </article>
-
-      <article class="card odlocitev" :class="zracenje.ok">
-        <span class="mali">Naj prezračim?</span>
-        <h2>{{ zracenje.naslov }}</h2>
-        <p>{{ zracenje.text }}</p>
-      </article>
-    </div>
-
-    <!-- načrt za danes -->
-    <article class="card nacrt">
-      <h2>Načrt za naslednjih 24 ur <VirZnacka :vrsta="jeNapoved ? 'model' : 'ocena'" /></h2>
-      <div class="pas-dneva" @pointerleave="skrijNamig">
-        <span
-          v-for="(u, i) in ure"
-          :key="u.cas"
-          class="seg"
-          :class="[kategorija(u.lvl), { izbran: izbrana === i }]"
-          :aria-label="`${hh(u.h)}: ${Math.round(u.pm)} µg/m³, ${u.lvl.label}`"
-          @pointerenter="pokaziNamig(i, $event)"
-          @pointerdown="pokaziNamig(i, $event)"
-        />
       </div>
-      <!-- ure: vsaka oznaka je na sredini svojega kvadratka -->
-      <div class="pas-ure" aria-hidden="true">
-        <span v-for="u in ure" :key="u.cas"><b v-if="u.h % 3 === 0">{{ u.h }}h</b></span>
-      </div>
-      <ul class="okna">
-        <li v-if="oknoVen" class="ven">
-          <span class="cas">{{ hh(oknoVen.od) }}–{{ hh(oknoVen.do) }}</span>
-          <span><strong>Najboljši čas za ven.</strong> Primerno za igrišče, šport in sprehod z otrokom.</span>
-        </li>
-        <li v-if="oknoZrac" class="zrac">
-          <span class="cas">{{ hh(oknoZrac.od) }}–{{ hh(oknoZrac.do) }}</span>
-          <span><strong>Prezračite stanovanje.</strong> Okna na široko za 5–10 minut, nato jih zaprite.</span>
-        </li>
-        <li v-if="najslabse" class="notri">
-          <span class="cas">{{ hh(najslabse.od) }}–{{ hh(najslabse.do) }}</span>
-          <span><strong>Okna zaprta, igra v hiši.</strong> Najslabši zrak v naslednjih 24 urah (okoli {{ najslabse.pm }} µg/m³).</span>
+      <ul class="odlocitve">
+        <li v-for="o in odlocitve" :key="o.id" :class="o.ok">
+          <span class="mali">{{ o.vprasanje }}</span>
+          <strong>{{ o.naslov }}</strong>
+          <p>{{ o.text }}</p>
         </li>
       </ul>
-      <p class="legenda-pas">
-        <span class="seg dobro" /> dober zrak <span class="seg zmerno" /> zmerno <span class="seg slabo" /> slab zrak
-        <template v-if="profile.astma"> · upoštevane so strožje meje za občutljive</template>
-      </p>
     </article>
 
     <!-- graf 24 ur -->
     <article class="card graf">
-      <h2>Koliko delcev bo v zraku v naslednjih 24 urah?</h2>
+      <h2>Napoved za naslednjih 24 ur <VirZnacka :vrsta="jeNapoved ? 'model' : 'ocena'" /></h2>
       <p class="povzetek">
         <template v-if="primerjava">Zrak bo {{ primerjava }}.</template>
         <template v-else>Napoved trenutno ni na voljo, zato graf kaže, kakšen je zrak ob teh urah običajno.</template>
@@ -630,9 +584,24 @@ const ZANIMIVOST: Record<string, string> = {
         </div>
       </div>
 
+      <ul class="okna">
+        <li v-if="oknoVen" class="ven">
+          <span class="cas">{{ hh(oknoVen.od) }}–{{ hh(oknoVen.do) }}</span>
+          <span><strong>Najboljši čas za ven.</strong> Primerno za igrišče, šport in sprehod z otrokom.</span>
+        </li>
+        <li v-if="oknoZrac" class="zrac">
+          <span class="cas">{{ hh(oknoZrac.od) }}–{{ hh(oknoZrac.do) }}</span>
+          <span><strong>Prezračite stanovanje.</strong> Okna na široko za 5–10 minut, nato jih zaprite.</span>
+        </li>
+        <li v-if="najslabse" class="notri">
+          <span class="cas">{{ hh(najslabse.od) }}–{{ hh(najslabse.do) }}</span>
+          <span><strong>Okna zaprta, igra v hiši.</strong> Najslabši zrak v naslednjih 24 urah (okoli {{ najslabse.pm }} µg/m³).</span>
+        </li>
+      </ul>
       <div class="legenda">
         <span><i class="lg-st" /> {{ jeNapoved ? 'napoved' : 'običajna vrednost' }} za vsako uro (barva = kakovost zraka)</span>
         <span v-if="jeNapoved"><i class="lg-crta" /> običajno ob tej uri v tem mesecu</span>
+        <span v-if="profile.astma">upoštevane so strožje meje za občutljive</span>
       </div>
       <p class="vir">
         <template v-if="jeNapoved">
@@ -692,23 +661,19 @@ const ZANIMIVOST: Record<string, string> = {
   padding-top: 28px;
 }
 .glava {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
+  display: block;
 }
 h1 {
   font-size: clamp(2rem, 5vw, 3rem);
   margin: 4px 0 0;
 }
+/* gumba v vrsti pod naslovom */
 .lokacija {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
   gap: 10px;
-  max-width: 640px;
+  margin-top: 12px;
 }
 .chip {
   padding: 8px 14px;
@@ -744,6 +709,7 @@ h1 {
 .iskalnik {
   position: relative;
   flex: 1 1 100%;
+  max-width: 560px;
 }
 .iskalnik > svg {
   position: absolute;
@@ -819,15 +785,56 @@ h1 {
   font-weight: 700;
 }
 
-/* zgoraj: stanje in odločitvi */
-.zgoraj {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1fr;
-  gap: 18px;
-  margin-bottom: 18px;
-}
+/* zgoraj: stanje zdaj (levo) in tri odločitve (desno) v eni kartici */
 .zdaj {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 1.6fr;
+  gap: 28px;
+  margin-bottom: 18px;
   border: 2px solid color-mix(in srgb, var(--lvl) 55%, var(--line));
+}
+.odlocitve {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  align-content: center;
+}
+.odlocitve li {
+  --o: var(--aq-1);
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  align-items: baseline;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border-left: 5px solid var(--o);
+  background: color-mix(in srgb, var(--o) 9%, var(--card));
+}
+.odlocitve li.mogoce {
+  --o: var(--aq-3);
+}
+.odlocitve li.ne {
+  --o: var(--aq-5);
+}
+.odlocitve .mali {
+  grid-column: 1;
+}
+.odlocitve strong {
+  grid-column: 1;
+  font-family: var(--font-head);
+  font-size: 1.3rem;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--o) 65%, var(--ink));
+}
+.odlocitve p {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  margin: 0;
+  font-weight: 600;
 }
 .vrednost {
   display: flex;
@@ -870,27 +877,6 @@ h1 {
   margin-top: 3px;
   accent-color: var(--brand);
 }
-.odlocitev {
-  --o: var(--aq-1);
-  position: relative;
-  border: 2px solid color-mix(in srgb, var(--o) 55%, var(--line));
-  background: linear-gradient(160deg, color-mix(in srgb, var(--o) 14%, var(--card)), var(--card) 60%);
-}
-.odlocitev.mogoce {
-  --o: var(--aq-3);
-}
-.odlocitev.ne {
-  --o: var(--aq-5);
-}
-.odlocitev h2 {
-  font-size: 1.7rem;
-  margin: 6px 0;
-  color: color-mix(in srgb, var(--o) 65%, var(--ink));
-}
-.odlocitev p {
-  margin: 0;
-  font-weight: 600;
-}
 
 /* od kod je podatek */
 .izvor {
@@ -898,46 +884,8 @@ h1 {
   font-size: 0.8rem;
   color: var(--ink-soft);
 }
-/* načrt za danes */
-.nacrt {
-  margin-bottom: 18px;
-}
-.nacrt h2 {
-  font-size: 1.5rem;
-  margin: 0 0 12px;
-}
-.pas-dneva {
-  display: flex;
-  gap: 2px;
-  height: 22px;
-}
-.seg {
-  flex: 1;
-  border-radius: 4px;
-}
-.seg.dobro {
-  background: var(--aq-1);
-}
-.seg.zmerno {
-  background: var(--aq-3);
-}
-.seg.slabo {
-  background: var(--aq-5);
-}
-.seg {
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-.seg.izbran {
-  transform: scaleY(1.35);
-}
-/* ure pod kvadratki in stolpci: oznaka na sredini svojega stolpca (lahko sega čez rob) */
-.pas-ure {
-  display: flex;
-  gap: 2px;
-  margin-top: 4px;
-}
-.pas-ure span,
+
+/* ure pod stolpci: oznaka na sredini svojega stolpca (lahko sega čez rob) */
 .g-ure span {
   flex: 1;
   min-width: 0;
@@ -949,7 +897,6 @@ h1 {
   color: var(--ink-soft);
   white-space: nowrap;
 }
-.pas-ure b,
 .g-ure b {
   font-weight: 700;
 }
@@ -1009,7 +956,7 @@ h1 {
 }
 .okna {
   list-style: none;
-  margin: 16px 0 0;
+  margin: 22px 0 0;
   padding: 0;
   display: grid;
   gap: 10px;
@@ -1036,21 +983,6 @@ h1 {
   font-family: var(--font-head);
   font-size: 1.25rem;
   color: color-mix(in srgb, var(--o) 70%, var(--ink));
-}
-.legenda-pas {
-  margin: 12px 0 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--ink-soft);
-}
-.legenda-pas .seg {
-  display: inline-block;
-  width: 14px;
-  height: 10px;
-  margin: 0 4px 0 8px;
-}
-.legenda-pas .seg:first-child {
-  margin-left: 0;
 }
 
 /* graf */
@@ -1273,14 +1205,28 @@ h1 {
 }
 
 @media (max-width: 1100px) {
-  .zgoraj {
-    grid-template-columns: repeat(2, 1fr);
+  .odlocitve li {
+    grid-template-columns: 1fr;
+  }
+  .odlocitve p {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 2px;
   }
 }
 @media (max-width: 900px) {
-  .zgoraj,
+  .zdaj,
   .spodaj {
     grid-template-columns: 1fr;
+  }
+  /* telefon: lokacija v svoji vrstici, gumba drug ob drugem */
+  .lokacija .chip {
+    flex-basis: 100%;
+  }
+  .lokacija .btn {
+    flex: 1;
+    padding-left: 10px;
+    padding-right: 10px;
   }
   .g {
     grid-template-rows: 190px auto;
