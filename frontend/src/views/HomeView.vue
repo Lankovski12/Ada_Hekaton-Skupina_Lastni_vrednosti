@@ -57,7 +57,7 @@ const okna = [
     to: '/igre',
     kicker: 'Igraj',
     title: 'Igre',
-    text: 'Za otroke: zmajček, vremenski vedeževalec in pokrovka nad mestom.',
+    text: 'Pomagaj zmajčku očistiti Ljubljano in preveri svoje znanje',
     color: 'var(--mint)',
     ikona: 'igre',
     pos: 'l1',
@@ -66,7 +66,7 @@ const okna = [
     to: '/zemljevid',
     kicker: 'Raziskuj',
     title: 'Zemljevid',
-    text: 'Poišči svojo šolo ali vrtec in poglej, koliko dima iz peči in prometa je v okolici.',
+    text: 'Razišči zemljevid in si oglej malo drugačno Ljubljano',
     color: 'var(--accent)',
     ikona: 'zemljevid',
     pos: 'l2',
@@ -75,7 +75,7 @@ const okna = [
     to: '/grafi',
     kicker: 'Poglej',
     title: 'Podatki',
-    text: 'Zakaj je zrak pozimi slab in kaj kaže 10 let meritev ARSO.',
+    text: 'Zakaj nastane megle in kaj kaže 10 let meritev ARSO.',
     color: 'var(--brand)',
     ikona: 'podatki',
     pos: 'r1',
@@ -84,7 +84,7 @@ const okna = [
     to: '/moj-zrak',
     kicker: 'Zame',
     title: 'Moj zrak',
-    text: 'Načrt za 24 ur tam, kjer si: kdaj ven, kdaj prezračiti, kdaj ostati notri.',
+    text: 'Poglej si kakšen zrak dihaš sedaj',
     color: 'var(--coral)',
     ikona: 'moj',
     pos: 'r2',
@@ -98,7 +98,7 @@ const okna = [
 
     <header class="naslov">
       <span class="znamka">Zrak, ki ga dihamo · Ljubljana</span>
-      <h1>Kakšen zrak dihaš zdaj?</h1>
+      <h1>Zrak, ki ga dihamo</h1>
       <!-- trenutna meritev: brez okvirja, ena vrstica stanja in kratek nasvet -->
       <div class="odgovor">
         <p
@@ -116,7 +116,7 @@ const okna = [
           <RouterLink to="/moj-zrak" class="vec">Moj zrak →</RouterLink>
         </p>
       </div>
-      <p class="hint">{{ odprto ? 'Kam greš naprej?' : 'Klikni na pljuča' }}</p>
+      <p class="hint">{{ odprto ? '' : 'Klikni na pljuča' }}</p>
     </header>
 
     <nav class="okna" aria-label="Kam naprej">
