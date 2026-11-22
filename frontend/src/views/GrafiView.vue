@@ -32,7 +32,7 @@ onBeforeUnmount(() => (document.body.style.overflow = ''))
     <!-- konec strani: kviz v oknu -->
     <section class="vabilo">
       <span class="kicker">Zdaj pa ti</span>
-      <h2>Koliko si si zapomnil?</h2>
+      <h2>Ali veš kakšen zrak dihaš?</h2>
       <p>Osem kratkih vprašanj o zraku v Ljubljani. Po vsakem odgovoru se kartica obrne in pokaže, kako je v resnici.</p>
       <button class="btn go" @click="kviz = true">Reši kviz <span aria-hidden="true">→</span></button>
     </section>

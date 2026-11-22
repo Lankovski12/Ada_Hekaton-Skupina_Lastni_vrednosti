@@ -54,7 +54,7 @@ const steps = computed(() => {
       hour: clear,
     },
     {
-      kicker: 'Zdaj ti',
+      kicker: 'Zdaj pa ti',
       title: 'Predvajaj dan',
       text: 'Pritisni gumb ali povleci drsnik in opazuj, kako se megla čez dan spušča in dviga.',
       hour: -1, // uro izbiraš sam

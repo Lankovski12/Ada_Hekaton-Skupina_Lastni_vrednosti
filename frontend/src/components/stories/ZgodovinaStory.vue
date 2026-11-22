@@ -81,7 +81,7 @@ const steps: Step[] = [
   {
     kicker: 'Po mesecih',
     title: `Pozimi ${fmt(maxMesec.pm25 / minMesec.pm25)}× več delcev`,
-    text: `Ko je zrak najslabši (${maxMesec.mesec}), je v njem povprečno ${fmt(maxMesec.pm25)} µg/m³ PM2.5, ko je najboljši (${minMesec.mesec}), le ${fmt(minMesec.pm25)}. Pozimi kurimo, mrzel zrak pa se pogosto ujame v kotlini.`,
+    text: `Ko je zrak najslabši, je v njem povprečno ${fmt(maxMesec.pm25)} µg/m³ PM2.5, ko je najboljši, le ${fmt(minMesec.pm25)}. Pozimi kurimo, mrzel zrak pa se pogosto ujame v kotlini.`,
     nasvet: `V Ljubljani je ${fmtInt(NAPRAVE_TRDNO)} kurilnih naprav na drva, pelete ali premog – le slaba petina od ${fmtInt(NAPRAVE)} vseh, a vsa mala kurišča skupaj izpustijo okoli ${fmtInt(Math.round(KURISCA_T))} ton delcev PM10 na leto, približno ${KG_NA_NAPRAVO} kg na peč na drva. Zato ima zamenjava ene same stare peči velik učinek.`,
     nasvetVir: 'ocena',
     color: 'var(--aq-5)',
@@ -102,7 +102,7 @@ const steps: Step[] = [
   {
     kicker: 'Inverzija v številkah',
     title: `${fmt(inv.z / inv.brez)}× več delcev`,
-    text: `Ko je na Pasji ravni (1019 m) topleje kot v mestu, je pozimi v zraku povprečno ${fmt(inv.z)} µg/m³ PM2.5. Brez inverzije ${fmt(inv.brez)}. Inverzija je kar v ${inv.delezUr} % zimskih ur.`,
+    text: `Ko je na Pasji ravni (1019 m) topleje kot v mestu, je pozimi v zraku povprečno ${fmt(inv.z)} µg/m³ PM2.5. Brez inverzije pa ${fmt(inv.brez)}. Inverzija je kar v ${inv.delezUr} % zimskih ur.`,
     nasvet: 'Model ARSO (GRAL) kaže, da je prispevek kurišč k onesnaženju premo sorazmeren izpustom: polovica manj dima iz dimnikov pomeni polovico manj delcev od kurišč v zraku. Ob inverziji šteje vsak dimnik, zato je takrat vredno kuriti manj ali uporabiti drug način ogrevanja.',
     nasvetVir: 'model',
     color: 'var(--aq-5)',

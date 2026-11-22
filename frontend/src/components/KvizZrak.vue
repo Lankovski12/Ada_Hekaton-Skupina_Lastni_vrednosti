@@ -281,7 +281,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
 <template>
   <section class="dejstva" aria-label="Kviz o zraku">
     <header class="glava">
-      <h2>Kviz: koliko si si zapomnil?</h2>
+      <h2>Kviz: Ali veš kakšen zrak dihaš?</h2>
       <p>{{ kartice.length }} vprašanj iz naših meritev. Klikni odgovor, kartica se obrne. Listaj s puščicami ali potegni kartico.</p>
       <div class="zbirka" role="tablist" aria-label="Vprašanja">
         <button
