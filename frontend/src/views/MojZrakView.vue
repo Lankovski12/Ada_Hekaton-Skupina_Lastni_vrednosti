@@ -310,15 +310,6 @@ function najmanj(od: number, doUre: number) {
 }
 const najVen = computed(() => najmanj(7, 20)) // podnevi
 const najZrac = computed(() => najmanj(6, 22)) // ko smo budni
-const najslabse = computed(() => {
-  const u = ure.value
-  let best = -1, max = -Infinity
-  for (let i = 0; i + 3 <= u.length; i++) {
-    const avg = (u[i]!.pm + u[i + 1]!.pm + u[i + 2]!.pm) / 3
-    if (avg > max) (max = avg), (best = i)
-  }
-  return best < 0 ? null : { od: u[best]!.h, do: (u[best]!.h + 3) % 24, i: best, pm: Math.round(max) }
-})
 const hh = (h: number) => `${String(h).padStart(2, '0')}:00`
 
 const ven = computed(() => {
@@ -356,22 +347,6 @@ const odlocitve = computed(() => [
   { id: 'sport', vprasanje: 'Lahko športam zunaj?', ...sport.value },
   { id: 'zrac', vprasanje: 'Naj prezračim?', ...zracenje.value },
 ])
-
-// --- načrt za danes: časovna okna ---
-function okno(sredina: (typeof ure.value)[number] | null, prag: number, od: number, doUre: number, najvec: number) {
-  if (!sredina) return null
-  const u = ure.value
-  let a = u.findIndex((x) => x.cas === sredina.cas)
-  let b = a
-  const ok = (x: (typeof u)[number] | undefined) => !!x && x.h >= od && x.h <= doUre && x.pm <= sredina.pm * prag
-  while (b - a + 1 < najvec && (ok(u[a - 1]) || ok(u[b + 1]))) {
-    if (ok(u[a - 1]) && (!ok(u[b + 1]) || u[a - 1]!.pm <= u[b + 1]!.pm)) a--
-    else b++
-  }
-  return { od: u[a]!.h, do: (u[b]!.h + 1) % 24, pm: Math.round(sredina.pm), i0: a, i1: b }
-}
-const oknoVen = computed(() => okno(najVen.value, 1.2, 7, 21, 4))
-const oknoZrac = computed(() => okno(najZrac.value, 1.1, 6, 22, 2))
 
 // --- graf 24 ur ---
 const izbrana = ref<number | null>(null)
@@ -584,20 +559,6 @@ const ZANIMIVOST: Record<string, string> = {
         </div>
       </div>
 
-      <ul class="okna">
-        <li v-if="oknoVen" class="ven">
-          <span class="cas">{{ hh(oknoVen.od) }}–{{ hh(oknoVen.do) }}</span>
-          <span><strong>Najboljši čas za ven.</strong> Primerno za igrišče, šport in sprehod z otrokom.</span>
-        </li>
-        <li v-if="oknoZrac" class="zrac">
-          <span class="cas">{{ hh(oknoZrac.od) }}–{{ hh(oknoZrac.do) }}</span>
-          <span><strong>Prezračite stanovanje.</strong> Okna na široko za 5–10 minut, nato jih zaprite.</span>
-        </li>
-        <li v-if="najslabse" class="notri">
-          <span class="cas">{{ hh(najslabse.od) }}–{{ hh(najslabse.do) }}</span>
-          <span><strong>Okna zaprta, igra v hiši.</strong> Najslabši zrak v naslednjih 24 urah (okoli {{ najslabse.pm }} µg/m³).</span>
-        </li>
-      </ul>
       <div class="legenda">
         <span><i class="lg-st" /> {{ jeNapoved ? 'napoved' : 'običajna vrednost' }} za vsako uro (barva = kakovost zraka)</span>
         <span v-if="jeNapoved"><i class="lg-crta" /> običajno ob tej uri v tem mesecu</span>
@@ -953,36 +914,6 @@ h1 {
   margin: 6px 0 0;
   color: var(--ink-soft);
 }
-.okna {
-  list-style: none;
-  margin: 22px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-}
-.okna li {
-  --o: var(--aq-1);
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  border-left: 5px solid var(--o);
-  background: color-mix(in srgb, var(--o) 9%, var(--card));
-}
-.okna li.zrac {
-  --o: var(--brand);
-}
-.okna li.notri {
-  --o: var(--aq-5);
-}
-.okna .cas {
-  flex: none;
-  min-width: 118px;
-  font-family: var(--font-head);
-  font-size: 1.25rem;
-  color: color-mix(in srgb, var(--o) 70%, var(--ink));
-}
 
 /* graf */
 .graf h2 {
@@ -1256,10 +1187,6 @@ h1 {
 }
 .oznaka b {
     font-size: 0.8rem;
-  }
-  .okna li {
-    flex-direction: column;
-    gap: 2px;
   }
 
 }
