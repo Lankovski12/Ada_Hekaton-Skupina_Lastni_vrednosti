@@ -5,7 +5,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import AirBuddy from '@/components/AirBuddy.vue'
 import { useAirData } from '@/composables/useAirData'
-import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
 import { typicalPm25 } from '@/lib/klima'
 import { useProgressStore } from '@/stores/progress'
@@ -16,9 +15,7 @@ import { skupajZvezdic } from '@/games/daily/napredek'
 const progress = useProgressStore()
 const { currentPm25 } = useAirData()
 const pm = computed(() => currentPm25.value ?? typicalPm25())
-const { profile } = useProfile()
 const level = computed(() => levelFor(pm.value))
-const pozdrav = computed(() => (profile.ime.trim() ? `Živjo, ${profile.ime.trim()}!` : 'Živjo!'))
 
 const odprto = igreOdprte
 
@@ -102,9 +99,8 @@ const desno = okna.slice(2)
         <span class="pika" />
         Tvoje zvezdice: <strong>{{ vseZvezdice }}</strong> · Zmajček rekord: <strong>{{ progress.najboljse.zmaj ?? 0 }} %</strong>
       </span>
-      <h1>{{ pozdrav }}</h1>
-      <p class="pravi">Oblaček pravi: <strong>{{ level.kids }}</strong></p>
-      <p class="hint">{{ odprto ? 'Izberi igro – vse so iz pravih meritev zraka.' : 'Klikni na Oblačka' }}</p>
+      <h1>Igre</h1>
+      <p class="hint">{{ odprto ? 'Katero igro boš igral?' : 'Klikni na Oblačka' }}</p>
     </header>
 
     <button class="oblacek" :aria-label="odprto ? 'Zapri igre' : 'Pokaži igre'" :aria-expanded="odprto" @click="odprto = !odprto">
@@ -141,15 +137,6 @@ const desno = okna.slice(2)
 </template>
 
 <style scoped>
-.pravi {
-  margin: 4px 0 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--ink);
-}
-.pravi strong {
-  color: color-mix(in srgb, var(--lvl) 70%, var(--ink));
-}
 .landing {
   position: relative;
   height: calc(100svh - 64px); /* zgornja navigacija */
