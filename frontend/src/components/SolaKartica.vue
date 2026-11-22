@@ -152,11 +152,11 @@ const nasveti = computed(() => {
       <section class="tile">
         <h3>Pod pokrovko?</h3>
         <p class="stevilka">
-          <strong>{{ sola.podMeglo != null ? pct(sola.podMeglo) : '–' }}</strong> zimskih jutr
+          <strong>{{ sola.podMeglo != null ? pct(sola.podMeglo) : '–' }}</strong> zimskih juter
         </p>
         <p>
           {{ kdo === 'vrtec' ? 'Vrtec' : 'Šola' }} je {{ sola.nadDnom > 0 ? `${sola.nadDnom} m nad` : 'na' }} dnom kotline. Toliko
-          zimskih jutr (november–februar, {{ meta.zimskihJuter }} jutr od 2016) je bil{{ kdo === 'vrtec' ? '' : 'a' }} pod plastjo
+          zimskih juter (november–februar, {{ meta.zimskihJuter }} juter od 2016) je bil{{ kdo === 'vrtec' ? '' : 'a' }} pod plastjo
           hladnega zraka, v kateri se ujame dim.
         </p>
         <p class="vir"><VirZnacka vrsta="ocena" /> višina plasti iz jutranje radiosondaže ARSO/NOAA, lega iz reliefa (Copernicus DEM).</p>
