@@ -29,15 +29,10 @@ const nasvet = computed(() => {
   const stopnja = LEVELS.findIndex((l) => l.key === level.value.key)
   const dan = ure.filter((u) => u.h >= 7 && u.h <= 20)
   const naj = dan.reduce<(typeof dan)[number] | null>((a, b) => (!a || b.pm < a.pm ? b : a), null)
-  if (stopnja <= 1)
-    return { text: 'Zrak je dober: lahko greste ven, tudi na igro in šport. Prezračite kadarkoli.', vrsta: null }
-  if (!naj) return { text: 'Ven pojdite raje za krajši čas in prezračite na kratko.', vrsta: null }
-  if (naj === dan[0] && ure[0]?.h === naj.h)
-    return { text: 'Zdaj je najčistejša ura dneva: pravi čas za sprehod in za zračenje (5–10 minut na široko).', vrsta }
-  return {
-    text: `Za ven in zračenje počakajte do ${hh(naj.h)}, takrat bo zrak najčistejši (okoli ${Math.round(naj.pm)} µg/m³).`,
-    vrsta,
-  }
+  if (stopnja <= 1) return { text: 'Lep čas za ven in zračenje.', vrsta: null }
+  if (!naj) return { text: 'Ven za krajši čas, zračite na kratko.', vrsta: null }
+  if (naj === dan[0] && ure[0]?.h === naj.h) return { text: 'Zdaj je najčistejša ura dneva.', vrsta }
+  return { text: `Najčistejši zrak bo ob ${hh(naj.h)}.`, vrsta }
 })
 
 // okenca: ob prvem obisku zaprta; ko jih odpreš, ostanejo odprta med premikanjem po zavihkih
@@ -110,7 +105,7 @@ const okna = [
     to: '/igre',
     kicker: 'Igraj',
     title: 'Igre',
-    text: 'Za otroke: zmajček, vremenski vedeževalec in pokrovka nad mestom.',
+    text: 'Pomagaj zmajčku očistiti Ljubljano in preveri svoje znanje',
     color: 'var(--mint)',
     ikona: 'igre',
     pos: 'l1',
@@ -119,7 +114,7 @@ const okna = [
     to: '/zemljevid',
     kicker: 'Raziskuj',
     title: 'Zemljevid',
-    text: 'Poišči svojo šolo ali vrtec in poglej, koliko dima iz peči in prometa je v okolici.',
+    text: 'Razišči zemljevid in si oglej malo drugačno Ljubljano',
     color: 'var(--accent)',
     ikona: 'zemljevid',
     pos: 'l2',
@@ -128,7 +123,7 @@ const okna = [
     to: '/grafi',
     kicker: 'Poglej',
     title: 'Podatki',
-    text: 'Zakaj je zrak pozimi slab in kaj kaže 10 let meritev ARSO.',
+    text: 'Zakaj nastane megle in kaj kaže 10 let meritev ARSO.',
     color: 'var(--brand)',
     ikona: 'podatki',
     pos: 'r1',
@@ -137,7 +132,7 @@ const okna = [
     to: '/moj-zrak',
     kicker: 'Zame',
     title: 'Moj zrak',
-    text: 'Načrt za 24 ur tam, kjer si: kdaj ven, kdaj prezračiti, kdaj ostati notri.',
+    text: 'Poglej si kakšen zrak dihaš sedaj',
     color: 'var(--coral)',
     ikona: 'moj',
     pos: 'r2',
@@ -157,36 +152,41 @@ const okna = [
       <span v-for="i in 3" :key="i" class="krpa" :class="`k${i + 3}`" />
     </div>
 
-    <header class="naslov">
-      <span class="znamka">Zrak, ki ga dihamo · Ljubljana</span>
-      <h1>Kakšen zrak dihaš zdaj?</h1>
-      <div class="odgovor">
-        <p class="stanje">
-          <span class="pika" />
-          <strong class="lvl">{{ level.label }}</strong>
-          <span class="st"><strong>{{ Math.round(pm) }}</strong> µg/m³ PM2.5</span>
-          <VirZnacka :vrsta="izmerjeno ? 'meritev' : 'ocena'" />
-          <small>{{ izmerjeno ? 'ARSO, zadnja ura' : `običajno ob tej uri (povprečje meritev ${klimaLabel})` }}</small>
+    <!-- pod pljuči: gumb za smog in napis, kateri resnični dan kaže -->
+    <div class="smog-ctrl">
+      <Transition name="napis">
+        <p v-if="smog > 0.6 && slabDan" class="smog-napis">
+          Tak zrak je Ljubljana dihala {{ slabDatum }}: {{ Math.round(slabDan.pm25) }} µg/m³ PM2.5
+          <VirZnacka vrsta="meritev" />
         </p>
-        <p class="nasvet">
-          {{ nasvet.text }} <VirZnacka v-if="nasvet.vrsta" :vrsta="nasvet.vrsta" />
-          <RouterLink to="/moj-zrak" class="vec">Načrt za tvojo lokacijo →</RouterLink>
-        </p>
-      </div>
+      </Transition>
       <button class="smog-gumb" :class="{ on: smogVklopljen }" :aria-pressed="smogVklopljen" @click="preklopiSmog">
-        <svg viewBox="0 0 16 12" shape-rendering="crispEdges" aria-hidden="true">
-          <rect x="3" y="1" width="5" height="1" /><rect x="2" y="2" width="8" height="1" /><rect x="9" y="2" width="3" height="1" />
-          <rect x="1" y="3" width="12" height="2" /><rect x="0" y="5" width="15" height="1" />
-          <rect x="1" y="7" width="9" height="1" class="s" /><rect x="11" y="7" width="4" height="1" class="s" />
-          <rect x="3" y="9" width="11" height="1" class="s" /><rect x="0" y="9" width="2" height="1" class="s" />
-        </svg>
+        <span class="tocka" aria-hidden="true" />
         {{ smogVklopljen ? 'Očisti zrak' : 'Dodaj smog' }}
       </button>
-      <p v-if="smog > 0.6 && slabDan" class="smog-napis">
-        Tak zrak je Ljubljana dihala {{ slabDatum }}: {{ Math.round(slabDan.pm25) }} µg/m³ PM2.5
-        <VirZnacka vrsta="meritev" />. Vsak vdih prinese delce globoko v pljuča.
-      </p>
-      <p v-else class="hint">{{ odprto ? 'Kam greš naprej?' : 'Klikni na pljuča' }}</p>
+    </div>
+
+    <header class="naslov">
+      <span class="znamka">Zrak, ki ga dihamo · Ljubljana</span>
+      <h1>Zrak, ki ga dihamo</h1>
+      <!-- trenutna meritev: brez okvirja, ena vrstica stanja in kratek nasvet -->
+      <div class="odgovor">
+        <p
+          class="stanje"
+          :title="izmerjeno ? 'Meritev ARSO, zadnja ura' : `Običajno ob tej uri (povprečje meritev ${klimaLabel})`"
+        >
+          <span class="pika" />
+          <span class="lvl">{{ level.label }}</span>
+          <span class="loc" aria-hidden="true">·</span>
+          <span class="st">{{ Math.round(pm) }} <small>µg/m³</small></span>
+          <VirZnacka :vrsta="izmerjeno ? 'meritev' : 'ocena'" />
+        </p>
+        <p class="nasvet">
+          {{ nasvet.text }}
+          <RouterLink to="/moj-zrak" class="vec">Moj zrak →</RouterLink>
+        </p>
+      </div>
+      <p class="hint">{{ odprto ? '' : 'Klikni na pljuča' }}</p>
     </header>
 
     <nav class="okna" aria-label="Kam naprej">
@@ -310,52 +310,52 @@ const okna = [
 .odgovor {
   pointer-events: auto;
   margin-top: 10px;
-  padding: 10px 18px;
-  max-width: 640px;
-  border-radius: 18px;
-  background: var(--panel);
-  border: 1px solid var(--panel-line);
-  border-left: 5px solid var(--lvl);
-  box-shadow: var(--panel-shadow);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  text-align: left;
+  text-align: center;
 }
 .odgovor p {
   margin: 0;
 }
 .stanje {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
   align-items: center;
-  gap: 4px 10px;
+  gap: 8px;
   color: var(--scene-text);
 }
 .stanje .lvl {
   font-family: var(--font-head);
-  font-size: 1.35rem;
-  color: color-mix(in srgb, var(--lvl) 70%, var(--scene-ink));
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: color-mix(in srgb, var(--lvl) 75%, var(--scene-ink));
 }
-.stanje .st strong {
+.stanje .loc {
+  color: var(--scene-muted);
+}
+.stanje .st {
   font-family: var(--font-head);
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   color: var(--scene-ink);
 }
-.stanje small {
+.stanje .st small {
+  font-family: var(--font-body, inherit);
+  font-size: 0.8rem;
   color: var(--scene-muted);
-  font-size: 0.78rem;
 }
 .nasvet {
-  margin-top: 4px !important;
-  color: var(--scene-ink);
-  font-weight: 700;
-  font-size: 0.95rem;
+  margin-top: 2px !important;
+  color: var(--scene-muted);
+  font-weight: 600;
+  font-size: 0.92rem;
 }
 .vec {
   margin-left: 6px;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--coral) 75%, var(--scene-ink));
+  color: var(--scene-muted);
   font-weight: 800;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+.vec:hover {
+  color: var(--scene-ink);
 }
 .pika {
   display: inline-block;
@@ -376,55 +376,88 @@ h1 {
   font-size: clamp(2rem, 4.6vw, 3.4rem);
   margin: 0;
 }
+.smog-ctrl {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(18px, 3vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  pointer-events: none;
+}
 .smog-gumb {
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 7px 16px;
+  gap: 10px;
+  padding: 9px 20px;
   border-radius: 999px;
-  border: 2px solid #8a7a66;
+  border: 1px solid var(--panel-line);
   background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: var(--scene-ink);
   font: inherit;
-  font-weight: 800;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  box-shadow: 0 4px 0 color-mix(in srgb, #8a7a66 45%, transparent);
-  transition: transform 0.15s, background 0.2s;
+  box-shadow: 0 8px 24px -14px rgba(31, 45, 77, 0.45);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease,
+    background-color 0.6s ease,
+    color 0.6s ease,
+    border-color 0.6s ease;
 }
 .smog-gumb:hover {
   transform: translateY(-2px);
+  box-shadow: 0 12px 28px -14px rgba(31, 45, 77, 0.55);
 }
 .smog-gumb:active {
-  transform: translateY(2px);
+  transform: translateY(0) scale(0.98);
+}
+.smog-gumb .tocka {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #b5a68f;
+  box-shadow: 0 0 0 4px color-mix(in srgb, #b5a68f 25%, transparent);
+  transition: background-color 0.6s ease, box-shadow 0.6s ease;
 }
 .smog-gumb.on {
-  background: #5b4a3a;
-  border-color: #3d3128;
+  background: color-mix(in srgb, #5b4a3a 88%, transparent);
+  border-color: transparent;
   color: #fff;
 }
-.smog-gumb svg {
-  width: 24px;
-  height: 18px;
-  fill: #9aa5b1;
-}
-.smog-gumb svg .s {
-  fill: #8a7a66;
-}
-.smog-gumb.on svg {
-  fill: #d5dde5;
+.smog-gumb.on .tocka {
+  background: #8ccf3f;
+  box-shadow: 0 0 0 4px rgba(140, 207, 63, 0.25);
 }
 .smog-napis {
   max-width: 560px;
-  margin: 8px 0 0;
-  padding: 6px 14px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  margin: 0;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: var(--scene-ink);
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.napis-enter-active,
+.napis-leave-active {
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.napis-enter-from,
+.napis-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 /* --- smog: plast se dviga od dna zaslona, krpe megle se počasi premikajo --- */
@@ -656,10 +689,6 @@ h1 {
   .landing {
     height: calc(100svh - 72px); /* spodnja navigacija na telefonu */
   }
-  .odgovor {
-    padding: 8px 12px;
-  }
-  .stanje small,
   .vec {
     display: none;
   }
@@ -667,12 +696,18 @@ h1 {
     font-size: 0.85rem;
   }
   .smog-napis {
-    font-size: 0.78rem;
-    padding: 4px 10px;
+    font-size: 0.75rem;
+    padding: 4px 12px;
+    border-radius: 14px;
   }
   .smog-gumb {
-    margin-top: 8px;
-    padding: 5px 14px;
+    padding: 7px 16px;
+    font-size: 0.85rem;
+  }
+  /* na telefonu so okenca spodaj – takrat gumb umaknemo */
+  .odprto .smog-ctrl {
+    opacity: 0;
+    visibility: hidden;
   }
   .okna {
     top: auto;

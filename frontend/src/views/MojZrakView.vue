@@ -7,6 +7,7 @@
 // - iz ARSOhack: nadmorska višina (relief) in ali si ob inverziji pod meglo, kakšen je običajno ta mesec
 // Pri vsaki številki piše, ali je meritev, napoved modela ali ocena iz starih meritev.
 import { computed, onMounted, ref, shallowRef } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { LEVELS, levelFor } from '@/lib/airQuality'
@@ -54,7 +55,7 @@ async function uporabiLokacijo() {
   if (!window.isSecureContext) {
     status.value = 'napaka'
     napaka.value =
-      'Brskalnik da lokacijo samo varni strani (naslov z https:// ali localhost). Odpri stran prek takega naslova. Do takrat je prikazan center Ljubljane.'
+      'Brskalnik da lokacijo samo varni strani (naslov z https:// ali localhost). Odprite stran prek takega naslova. Do takrat je prikazan center Ljubljane.'
     return
   }
   status.value = 'iscem'
@@ -82,10 +83,10 @@ async function uporabiLokacijo() {
   status.value = 'napaka'
   napaka.value =
     err?.code === 1
-      ? 'Dostop do lokacije je zavrnjen. Klikni ikono levo od naslova strani v brskalniku, pri »Lokacija« izberi »Dovoli« in nato »Poišči znova«.'
+      ? 'Dostop do lokacije je zavrnjen. Kliknite ikono levo od naslova strani v brskalniku, pri »Lokacija« izberite »Dovoli« in nato »Poišči znova«.'
       : err?.code === 3
-        ? 'Iskanje lokacije je trajalo predolgo. Preveri povezavo in poskusi znova.'
-        : 'Brskalnik ne ve, kje si. Preveri, da so lokacijske storitve vklopljene v sistemu za ta brskalnik (Windows: Nastavitve → Zasebnost → Lokacija; macOS: Sistemske nastavitve → Zasebnost → Lokacijske storitve) in poskusi znova.'
+        ? 'Iskanje lokacije je trajalo predolgo. Preverite povezavo in poskusite znova.'
+        : 'Brskalnik ne ve, kje ste. Preverite, da so lokacijske storitve vklopljene v sistemu za ta brskalnik (Windows: Nastavitve → Zasebnost → Lokacija; macOS: Sistemske nastavitve → Zasebnost → Lokacijske storitve) in poskusite znova.'
 }
 function pozabiLokacijo() {
   profile.lokacija = null
@@ -117,7 +118,7 @@ onMounted(async () => {
   if (zavrnjeno) {
     status.value = 'napaka'
     napaka.value =
-      'Dostop do lokacije je v tem brskalniku zavrnjen. Klikni ikono levo od naslova strani, pri »Lokacija« izberi »Dovoli« in nato »Poišči znova«.'
+      'Dostop do lokacije je v tem brskalniku zavrnjen. Kliknite ikono levo od naslova strani, pri »Lokacija« izberite »Dovoli« in nato »Poišči znova«.'
   } else {
     uporabiLokacijo()
   }
@@ -164,20 +165,14 @@ const postaja = computed(() => {
 const pmZdaj = computed(() => Math.round(postaja.value?.pm ?? forecast.value?.ure[0]?.pm25 ?? typical(new Date(), 'pm25')))
 const lvl = computed(() => levelFor(pmZdaj.value, sensitivity.value))
 const stopnja = computed(() => LEVELS.findIndex((l) => l.key === lvl.value.key))
-// nasvet za odrasle (namesto otroških besedil)
-const NASVET: Record<string, string> = {
-  odlicno: 'Zrak je čist. Primeren za vse dejavnosti na prostem, tudi za šport.',
-  dobro: 'Zrak je dober. Brez skrbi pojdi ven, tudi na tek ali kolo.',
-  zmerno: 'Za večino ljudi je v redu. Občutljivi naj skrajšajo daljši napor na prostem.',
-  slabo: 'Omeji daljši in napornejši čas zunaj. Občutljivi naj raje ostanejo notri.',
-  zeloSlabo: 'Ostani notri in zapri okna. Ven le, kadar je nujno.',
-  izjemnoSlabo: 'Zrak je zelo onesnažen. Ostani notri, okna naj bodo zaprta.',
-}
+// nasvet za starše – isto besedilo kot na domači strani (lib/airQuality.ts)
+const NASVET: Record<string, string> = Object.fromEntries(LEVELS.map((l) => [l.key, l.parents]))
+const otrok = computed(() => profile.ime.trim() || 'otrok')
 // od kod je številka zgoraj
 const virZdaj = computed(() => {
   const t = now.value?.cas_utc ? new Date(now.value.cas_utc).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) : ''
   if (postaja.value && !postaja.value.ocena)
-    return { vrsta: 'meritev' as const, text: `Meritev ARSO${t ? ` ob ${t}` : ''}, postaja ${postaja.value.ime} (${km(postaja.value.d)} od tebe)` }
+    return { vrsta: 'meritev' as const, text: `Meritev ARSO${t ? ` ob ${t}` : ''}, postaja ${postaja.value.ime} (${km(postaja.value.d)} od vas)` }
   return { vrsta: 'ocena' as const, text: `povprečje starih meritev ARSO (Bežigrad ${z.pm25Od}–${z.zadnjeLeto}) za ta mesec in uro – žive meritve trenutno niso na voljo` }
 })
 
@@ -211,23 +206,23 @@ const hh = (h: number) => `${String(h).padStart(2, '0')}:00`
 
 const ven = computed(() => {
   const s = stopnja.value
-  if (s <= 1) return { ok: 'da', naslov: 'Da, zrak je dober', text: 'Primerno za sprehod, šport in kolesarjenje.' }
+  if (s <= 1) return { ok: 'da', naslov: 'Da, na igrišče!', text: 'Primerno za igrišče, nogomet, kolo in sprehod.' }
   if (s === 2)
-    return { ok: 'mogoce', naslov: 'Lahko, a brez napora', text: `Krajši sprehod je v redu. Za tek ali daljši napor počakaj${najVen.value ? ` do ${hh(najVen.value.h)}` : ' na čistejšo uro'}.` }
+    return { ok: 'mogoce', naslov: 'Lahko, a mirneje', text: `Krajša igra zunaj je v redu. Za tek in divjanje počakajte${najVen.value ? ` do ${hh(najVen.value.h)}` : ' na čistejšo uro'}.` }
   return {
     ok: 'ne',
-    naslov: 'Raje počakaj',
+    naslov: 'Raje igra v hiši',
     text: najVen.value ? `Ven le, kadar je nujno. Boljši zrak bo okoli ${hh(najVen.value.h)} (${Math.round(najVen.value.pm)} µg/m³).` : 'Ven le, kadar je nujno.',
   }
 })
 const zracenje = computed(() => {
   const n = najZrac.value
   if (stopnja.value <= 1 || (n && pmZdaj.value <= n.pm * 1.15))
-    return { ok: 'da', naslov: 'Da, prezrači zdaj', text: 'Okna odpri na široko za 5–10 minut, nato jih zapri.' }
+    return { ok: 'da', naslov: 'Da, prezračite zdaj', text: 'Okna odprite na široko za 5–10 minut, nato jih zaprite.' }
   return {
     ok: stopnja.value >= 3 ? 'ne' : 'mogoce',
-    naslov: 'Počakaj z zračenjem',
-    text: n ? `Zrak bo najčistejši okoli ${hh(n.h)} (${Math.round(n.pm)} µg/m³). Takrat okna odpri na široko za 5–10 minut.` : 'Počakaj na čistejšo uro.',
+    naslov: 'Počakajte z zračenjem',
+    text: n ? `Zrak bo najčistejši okoli ${hh(n.h)} (${Math.round(n.pm)} µg/m³). Takrat okna odprite na široko za 5–10 minut.` : 'Počakajte na čistejšo uro.',
   }
 })
 
@@ -309,13 +304,13 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
     <!-- glava z lokacijo -->
     <header class="glava">
       <div>
-        <span class="kicker">Moj zrak</span>
-        <h1>Kakšen zrak diham jaz?</h1>
+        <span class="kicker">Za starše · načrt dneva</span>
+        <h1>Kdaj lahko {{ otrok }} gre ven?</h1>
       </div>
       <div class="lokacija">
         <span class="chip">
           <svg class="pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.4 7-11.5a7 7 0 0 0-14 0C5 14.6 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.4" /></svg>
-          {{ status === 'iscem' ? 'Iščem tvojo lokacijo …' : loc.ime }}
+          {{ status === 'iscem' ? 'Iščem vašo lokacijo …' : loc.ime }}
           <small v-if="mojaLokacija">· {{ km(odCentra) }} od centra</small>
         </span>
         <button class="btn" :disabled="status === 'iscem'" @click="uporabiLokacijo">
@@ -326,9 +321,12 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
     </header>
     <p v-if="status === 'napaka'" class="opozorilo">{{ napaka }}</p>
     <p v-if="izvenLj" class="opozorilo">
-      Tvoja lokacija je zunaj ljubljanske kotline. Prikazani so podatki za Ljubljano, ki so najbližji.
+      Vaša lokacija je zunaj ljubljanske kotline. Prikazani so podatki za Ljubljano, ki so najbližji.
     </p>
-    <p class="zasebnost">Lokacija ostane samo na tvoji napravi – strežnik je ne shrani.</p>
+    <p class="zasebnost">
+      Lokacija ostane samo na vaši napravi – strežnik je ne shrani.
+      <RouterLink to="/nastavitve">Družinski profil (ime otroka, astma) →</RouterLink>
+    </p>
 
     <!-- stanje zdaj + odločitve -->
     <div class="zgoraj">
@@ -343,18 +341,18 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
         <p class="izvor"><VirZnacka :vrsta="virZdaj.vrsta" /> {{ virZdaj.text }}</p>
         <label class="obcutljiv">
           <input v-model="profile.astma" type="checkbox" />
-          <span>Sem občutljiv/a (astma, bolezni srca ali pljuč) – strožje meje</span>
+          <span>Otrok ima astmo ali občutljiva pljuča – strožje meje</span>
         </label>
       </article>
 
       <article class="card odlocitev" :class="ven.ok">
-        <span class="mali">Ali naj grem ven?</span>
+        <span class="mali">Gremo lahko ven?</span>
         <h2>{{ ven.naslov }}</h2>
         <p>{{ ven.text }}</p>
       </article>
 
       <article class="card odlocitev" :class="zracenje.ok">
-        <span class="mali">Ali naj prezračim?</span>
+        <span class="mali">Naj prezračim stanovanje?</span>
         <h2>{{ zracenje.naslov }}</h2>
         <p>{{ zracenje.text }}</p>
       </article>
@@ -378,15 +376,15 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
       <ul class="okna">
         <li v-if="oknoVen" class="ven">
           <span class="cas">{{ hh(oknoVen.od) }}–{{ hh(oknoVen.do) }}</span>
-          <span><strong>Najboljši čas za ven.</strong> Primerno za sprehod, šport in opravke zunaj.</span>
+          <span><strong>Najboljši čas za ven.</strong> Primerno za igrišče, šport in sprehod z otrokom.</span>
         </li>
         <li v-if="oknoZrac" class="zrac">
           <span class="cas">{{ hh(oknoZrac.od) }}–{{ hh(oknoZrac.do) }}</span>
-          <span><strong>Prezrači stanovanje.</strong> Okna na široko za 5–10 minut, nato jih zapri.</span>
+          <span><strong>Prezračite stanovanje.</strong> Okna na široko za 5–10 minut, nato jih zaprite.</span>
         </li>
         <li v-if="najslabse" class="notri">
           <span class="cas">{{ hh(najslabse.od) }}–{{ hh(najslabse.do) }}</span>
-          <span><strong>Okna zaprta, raje ostani notri.</strong> Najslabši zrak v naslednjih 24 urah (okoli {{ najslabse.pm }} µg/m³).</span>
+          <span><strong>Okna zaprta, igra v hiši.</strong> Najslabši zrak v naslednjih 24 urah (okoli {{ najslabse.pm }} µg/m³).</span>
         </li>
       </ul>
       <p class="legenda-pas">
@@ -410,7 +408,7 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
           <span class="lvl" :style="{ background: izbranaUra.lvl.color }">{{ izbranaUra.lvl.label }}</span>
           <span v-if="jeNapoved" class="sivo"> · običajno ob tej uri {{ Math.round(izbranaUra.obicajno) }} µg/m³</span>
         </template>
-        <span v-else class="sivo">Pokaži ali tapni stolpec, da vidiš posamezno uro.</span>
+        <span v-else class="sivo">Pokažite ali tapnite stolpec, da vidite posamezno uro.</span>
       </div>
 
       <div class="g">
@@ -474,13 +472,13 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
     <!-- lokacija: višina, megla, bližina -->
     <div class="spodaj">
       <article v-if="visina" class="card info">
-        <h3>Tvoja lokacija je {{ visina.m }} m nad morjem</h3>
+        <h3>Vaša lokacija je {{ visina.m }} m nad morjem</h3>
         <p>
           To je <strong>{{ visina.nadDnom > 0 ? `${visina.nadDnom} m nad` : 'na' }} dnom kotline</strong>.
-          <template v-if="megla?.inv && megla.pod">Zdaj je inverzija in hladen, onesnažen zrak sega do približno {{ megla.vrh }} m – <strong>si pod to plastjo</strong>.</template>
+          <template v-if="megla?.inv && megla.pod">Zdaj je inverzija in hladen, onesnažen zrak sega do približno {{ megla.vrh }} m – <strong>ste pod to plastjo</strong>.</template>
           <template v-else-if="megla?.inv">Zdaj je inverzija, a plast hladnega zraka (do približno {{ megla.vrh }} m) je pod tabo.</template>
           <template v-else>Zdaj ni inverzije, zrak se meša.</template>
-          <template v-if="visina.nadDnom < 60"> Pozimi ob inverziji je tvoje območje med prvimi, kjer se ujame megla.</template>
+          <template v-if="visina.nadDnom < 60"> Pozimi ob inverziji je vaše območje med prvimi, kjer se ujame megla.</template>
         </p>
         <p class="izvor"><VirZnacka vrsta="ocena" /> višina iz reliefa Copernicus DEM (paket ARSOhack); plast megle: <VirZnacka :vrsta="scene?.vir === 'klima' ? 'ocena' : 'model'" /> {{ scene?.vir === 'klima' ? 'iz povprečja preteklih let' : 'vremenski model Open-Meteo' }}</p>
       </article>
@@ -490,7 +488,7 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
         <h3>{{ MESECI[new Date().getMonth()]![0]!.toUpperCase() + MESECI[new Date().getMonth()]!.slice(1) }} je običajno {{ fmt(mesec.pm) }} µg/m³</h3>
         <p>
           Po 10 letih meritev je to {{ mesec.vrstni }}. najslabši mesec v letu.
-          <template v-if="mesec.vrstni <= 4">Pozimi kurimo in zrak se pogosto ujame v kotlini – zato je toliko bolj pomembno, kdaj greš ven in kdaj zračiš.</template>
+          <template v-if="mesec.vrstni <= 4">Pozimi kurimo in zrak se pogosto ujame v kotlini – zato je toliko bolj pomembno, kdaj greste z otrokom ven in kdaj zračite.</template>
           <template v-else>To je eden boljših mesecev – dobra priložnost za čas na prostem.</template>
         </p>
         <p class="izvor"><VirZnacka vrsta="meritev" /> povprečje meritev ARSO na Bežigradu {{ z.pm25Od }}–{{ z.zadnjeLeto }}</p>

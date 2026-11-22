@@ -90,11 +90,12 @@ function potrdi() {
   <div class="story zemljevid">
     <section class="container mapsec">
       <span class="kicker">Zemljevid</span>
-      <h1>Kakšen zrak diha tvoj otrok v šoli?</h1>
+      <h1>Kakšen zrak diha vaš otrok?</h1>
       <p class="lead">
-        Poišči svojo šolo ali vrtec. Pokažemo, koliko dima iz peči in prometa je v okolici, kako pogosto je pozimi pod
-        plastjo hladnega zraka in kdaj je čas za igro zunaj. Ob vsaki številki piše, ali je izmerjena, izračunana z
-        modelom ali ocenjena.
+        Na zemljevidu so poudarjeni vrtci, šole, bolnišnice, zdravstveni domovi in domovi za starejše, ker so tam ljudje,
+        ki jim onesnažen zrak najbolj škodi: otroci, ki dihajo hitreje in imajo pljuča še v razvoju, starejši in bolniki.
+        Tam preživijo večji del dneva in si kraja ne morejo izbrati. Večina teh ustanov leži na dnu kotline, kjer se
+        pozimi ob inverziji ujame hladen, onesnažen zrak. Premakni drsnik megle in poglej, koliko jih ostane pod njo.
       </p>
 
       <div class="iskalnik" :class="{ odprt: odprt && zadetki.length }">
