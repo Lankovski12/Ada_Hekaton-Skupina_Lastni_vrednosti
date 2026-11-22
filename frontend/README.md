@@ -12,9 +12,9 @@ Brez zaledja aplikacija uporablja demo podatke (`src/api/mock.ts`). Za vse skupa
 ```
 src/
   api/          client.ts (fetch + predpomnilnik), mock.ts (demo podatki)
-  components/   AppNav, AirBuddy (maskota), ForecastStrip
+  components/   AppNav, AirBuddy (maskota), VirZnacka (meritev/model/ocena), SolaKartica
   composables/  useAirData.ts (en vir podatkov), useProfile.ts (astma, lokalno)
-  games/        vsaka igra v svoji mapi: zmaj/, daily/, ujemanje/
+  games/        vsaka igra v svoji mapi: zmaj/, daily/, pokrovka/ (skupno/ za zvoke in ikone)
   lib/          types.ts (= odgovori API), airQuality.ts (razredi, barve)
   scenes/       DataSculpture.vue (oblak delcev), Kotlina.vue (kotlina z meglo; kasneje TresJS 3D)
   stores/       progress.ts (točke v igrah, lokalno)

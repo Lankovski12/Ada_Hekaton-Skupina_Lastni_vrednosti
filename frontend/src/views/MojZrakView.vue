@@ -13,6 +13,7 @@ import { LEVELS, levelFor } from '@/lib/airQuality'
 import { typical } from '@/lib/klima'
 import { razdalja, wgs84ToD96 } from '@/lib/geo'
 import z from '@/data/zgodovina.json'
+import VirZnacka from '@/components/VirZnacka.vue'
 
 const { now, forecast, scene, refresh } = useAirData()
 const { profile, sensitivity } = useProfile()
@@ -176,8 +177,8 @@ const NASVET: Record<string, string> = {
 const virZdaj = computed(() => {
   const t = now.value?.cas_utc ? new Date(now.value.cas_utc).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) : ''
   if (postaja.value && !postaja.value.ocena)
-    return { vrsta: 'meritev', text: `Meritev ARSO${t ? ` ob ${t}` : ''}, postaja ${postaja.value.ime} (${km(postaja.value.d)} od tebe)` }
-  return { vrsta: 'ocena', text: `povprečje starih meritev ARSO (Bežigrad ${z.pm25Od}–${z.zadnjeLeto}) za ta mesec in uro – žive meritve trenutno niso na voljo` }
+    return { vrsta: 'meritev' as const, text: `Meritev ARSO${t ? ` ob ${t}` : ''}, postaja ${postaja.value.ime} (${km(postaja.value.d)} od tebe)` }
+  return { vrsta: 'ocena' as const, text: `povprečje starih meritev ARSO (Bežigrad ${z.pm25Od}–${z.zadnjeLeto}) za ta mesec in uro – žive meritve trenutno niso na voljo` }
 })
 
 // --- naslednjih 24 ur ---
@@ -339,7 +340,7 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
         </div>
         <span class="znacka" :style="{ background: lvl.color }">{{ lvl.label }}</span>
         <p class="kids">{{ NASVET[lvl.key] }}</p>
-        <p class="izvor"><span class="vrsta" :class="virZdaj.vrsta">{{ virZdaj.vrsta }}</span> {{ virZdaj.text }}</p>
+        <p class="izvor"><VirZnacka :vrsta="virZdaj.vrsta" /> {{ virZdaj.text }}</p>
         <label class="obcutljiv">
           <input v-model="profile.astma" type="checkbox" />
           <span>Sem občutljiv/a (astma, bolezni srca ali pljuč) – strožje meje</span>
@@ -361,7 +362,7 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
 
     <!-- načrt za danes -->
     <article class="card nacrt">
-      <h2>Načrt za naslednjih 24 ur</h2>
+      <h2>Načrt za naslednjih 24 ur <VirZnacka :vrsta="jeNapoved ? 'model' : 'ocena'" /></h2>
       <div class="pas-dneva" aria-hidden="true">
         <span
           v-for="u in ure"
@@ -458,11 +459,13 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
       </div>
       <p class="vir">
         <template v-if="jeNapoved">
-          Stolpci so <strong>napoved</strong> modela CAMS (evropski program Copernicus, prek Open-Meteo) za Ljubljano – izračun, ne meritev.
-          Črtkana črta je <strong>povprečje starih meritev</strong> ARSO na Bežigradu {{ z.pm25Od }}–{{ z.zadnjeLeto }} za isti mesec in uro.
+          <VirZnacka vrsta="model" /> Stolpci so napoved modela CAMS (evropski program Copernicus, prek Open-Meteo) za Ljubljano – izračun, ne meritev.
+          ARSO je izmeril, da je CAMS pozimi 2025/26 na Bežigradu delce precenil za okoli 70 %, zato je napoved bolj zanesljiva za
+          potek dneva (kdaj bo bolje in kdaj slabše) kot za točno število.
+          <br /><VirZnacka vrsta="meritev" /> Črtkana črta je povprečje meritev ARSO na Bežigradu {{ z.pm25Od }}–{{ z.zadnjeLeto }} za isti mesec in uro.
         </template>
         <template v-else>
-          Napoved trenutno ni na voljo. Stolpci zato kažejo <strong>povprečje starih meritev</strong> ARSO na Bežigradu
+          <VirZnacka vrsta="ocena" /> Napoved trenutno ni na voljo. Stolpci zato kažejo povprečje meritev ARSO na Bežigradu
           {{ z.pm25Od }}–{{ z.zadnjeLeto }} za isti mesec in uro – to ni napoved za danes.
         </template>
       </p>
@@ -479,7 +482,7 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
           <template v-else>Zdaj ni inverzije, zrak se meša.</template>
           <template v-if="visina.nadDnom < 60"> Pozimi ob inverziji je tvoje območje med prvimi, kjer se ujame megla.</template>
         </p>
-        <p class="izvor"><span class="vrsta stari">relief</span> Copernicus DEM (paket ARSOhack); megla: {{ scene?.vir === 'klima' ? 'ocena iz starih meritev' : 'vremenski podatki Open-Meteo' }}</p>
+        <p class="izvor"><VirZnacka vrsta="ocena" /> višina iz reliefa Copernicus DEM (paket ARSOhack); plast megle: <VirZnacka :vrsta="scene?.vir === 'klima' ? 'ocena' : 'model'" /> {{ scene?.vir === 'klima' ? 'iz povprečja preteklih let' : 'vremenski model Open-Meteo' }}</p>
       </article>
 
 
@@ -490,7 +493,7 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
           <template v-if="mesec.vrstni <= 4">Pozimi kurimo in zrak se pogosto ujame v kotlini – zato je toliko bolj pomembno, kdaj greš ven in kdaj zračiš.</template>
           <template v-else>To je eden boljših mesecev – dobra priložnost za čas na prostem.</template>
         </p>
-        <p class="izvor"><span class="vrsta stari">stari podatki</span> povprečje meritev ARSO na Bežigradu {{ z.pm25Od }}–{{ z.zadnjeLeto }}</p>
+        <p class="izvor"><VirZnacka vrsta="meritev" /> povprečje meritev ARSO na Bežigradu {{ z.pm25Od }}–{{ z.zadnjeLeto }}</p>
       </article>
     </div>
   </section>
@@ -643,30 +646,6 @@ h1 {
   font-size: 0.8rem;
   color: var(--ink-soft);
 }
-.vrsta {
-  display: inline-block;
-  margin-right: 4px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  vertical-align: 1px;
-  background: var(--bg-soft);
-  color: var(--ink);
-}
-.vrsta.meritev {
-  background: color-mix(in srgb, var(--aq-1) 22%, transparent);
-}
-.vrsta.napoved {
-  background: color-mix(in srgb, var(--brand) 20%, transparent);
-}
-.vrsta.ocena,
-.vrsta.stari {
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
-}
-
 /* načrt za danes */
 .nacrt {
   margin-bottom: 18px;

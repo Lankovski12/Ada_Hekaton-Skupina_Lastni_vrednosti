@@ -6,6 +6,7 @@ import { computed, ref } from 'vue'
 import ScrollStory from '@/components/ScrollStory.vue'
 import { levelFor } from '@/lib/airQuality'
 import z from '@/data/zgodovina.json'
+import VirZnacka from '@/components/VirZnacka.vue'
 
 interface Bar {
   label: string
@@ -27,6 +28,7 @@ interface Step {
   title: string
   text: string
   nasvet?: string // »Kaj lahko narediš?« – kaj prinese sprememba navad ali nova naprava
+  nasvetVir?: 'meritev' | 'model' | 'ocena' // če nasvet navaja svojo številko
   color: string
   unit: string
   kind: 'bars' | 'calendar' | 'big'
@@ -81,6 +83,7 @@ const steps: Step[] = [
     title: `Pozimi ${fmt(maxMesec.pm25 / minMesec.pm25)}× več delcev`,
     text: `Ko je zrak najslabši (${maxMesec.mesec}), je v njem povprečno ${fmt(maxMesec.pm25)} µg/m³ PM2.5, ko je najboljši (${minMesec.mesec}), le ${fmt(minMesec.pm25)}. Pozimi kurimo, mrzel zrak pa se pogosto ujame v kotlini.`,
     nasvet: `V Ljubljani je ${fmtInt(NAPRAVE_TRDNO)} kurilnih naprav na drva, pelete ali premog – le slaba petina od ${fmtInt(NAPRAVE)} vseh, a vsa mala kurišča skupaj izpustijo okoli ${fmtInt(Math.round(KURISCA_T))} ton delcev PM10 na leto, približno ${KG_NA_NAPRAVO} kg na peč na drva. Zato ima zamenjava ene same stare peči velik učinek.`,
+    nasvetVir: 'ocena',
     color: 'var(--aq-5)',
     unit: `PM2.5 na Bežigradu · povprečje po mesecih ${z.pm25Od}–${z.zadnjeLeto} (µg/m³)`,
     kind: 'bars',
@@ -101,6 +104,7 @@ const steps: Step[] = [
     title: `${fmt(inv.z / inv.brez)}× več delcev`,
     text: `Ko je na Pasji ravni (1019 m) topleje kot v mestu, je pozimi v zraku povprečno ${fmt(inv.z)} µg/m³ PM2.5. Brez inverzije ${fmt(inv.brez)}. Inverzija je kar v ${inv.delezUr} % zimskih ur.`,
     nasvet: 'Model ARSO (GRAL) kaže, da je prispevek kurišč k onesnaženju premo sorazmeren izpustom: polovica manj dima iz dimnikov pomeni polovico manj delcev od kurišč v zraku. Ob inverziji šteje vsak dimnik, zato je takrat vredno kuriti manj ali uporabiti drug način ogrevanja.',
+    nasvetVir: 'model',
     color: 'var(--aq-5)',
     unit: 'PM2.5 na Bežigradu pozimi (µg/m³)',
     kind: 'bars',
@@ -123,6 +127,7 @@ const steps: Step[] = [
     title: 'Povsod podobno',
     text: `${postaje.seznam.map((p) => `${p.ime} ${fmt(p.pm25)}`).join(', ')} µg/m³ PM2.5 (${postaje.od}–${postaje.do}). Delci se razlezejo po vsej kotlini, zato šteje, kaj počnemo v celem mestu.`,
     nasvet: 'Model ARSO kaže, da imajo v središču mesta najmanj kurišč, a se dim tam najbolj pozna, ker je gosto pozidano in slabo prevetreno. Vsaka sprememba – tudi na obrobju – zato pomaga vsem. Za kratke poti po mestu pojdi peš, s kolesom ali avtobusom.',
+    nasvetVir: 'model',
     color: 'var(--aq-3)',
     unit: `PM2.5 · povprečje ${postaje.od}–${postaje.do} (µg/m³)`,
     kind: 'bars',
@@ -176,7 +181,7 @@ const dayColor = (v: number | null) => (v == null ? 'transparent' : v > 15 ? lev
             <span class="lim">dnevna meja EU: 50</span>
           </div>
 
-          <p class="source">Vir: {{ z.vir }}</p>
+          <p class="source"><VirZnacka vrsta="meritev" /> {{ z.vir }}</p>
         </figure>
       </div>
     </template>
@@ -184,7 +189,10 @@ const dayColor = (v: number | null) => (v == null ? 'transparent' : v > 15 ? lev
     <template #step="{ i }">
       <h2>{{ steps[i]!.title }}</h2>
       <p>{{ steps[i]!.text }}</p>
-      <p v-if="steps[i]!.nasvet" class="nasvet"><strong>Kaj lahko narediš?</strong> {{ steps[i]!.nasvet }}</p>
+      <p v-if="steps[i]!.nasvet" class="nasvet">
+        <strong>Kaj lahko narediš?</strong> {{ steps[i]!.nasvet }}
+        <VirZnacka v-if="steps[i]!.nasvetVir" :vrsta="steps[i]!.nasvetVir!" />
+      </p>
     </template>
   </ScrollStory>
 </template>

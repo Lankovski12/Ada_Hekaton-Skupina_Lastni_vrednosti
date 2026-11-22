@@ -7,6 +7,7 @@ import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
 import { klimaLabel, typicalPm25 } from '@/lib/klima'
+import VirZnacka from '@/components/VirZnacka.vue'
 
 const { scene, currentPm25 } = useAirData()
 const { sensitivity } = useProfile()
@@ -95,7 +96,7 @@ onBeforeUnmount(() => window.clearInterval(timer))
         <span class="num">{{ ure[hour] ? Math.round(ure[hour]!.pm25) : '–' }}</span>
         <span class="unit">µg/m³ PM2.5</span>
         <span class="lvl">{{ clock }} · {{ ure[hour]?.inverzija ? 'inverzija – zrak je ujet' : 'zrak se meša' }}</span>
-        <span class="lvl src">{{
+        <span class="lvl src"><VirZnacka :vrsta="scene.vir === 'klima' ? 'ocena' : 'model'" /> {{
           scene.vir === 'klima'
             ? `običajne razmere (${klimaLabel})`
             : 'vreme: Open-Meteo (Bežigrad in Pasja ravan)'
@@ -108,7 +109,7 @@ onBeforeUnmount(() => window.clearInterval(timer))
       <p>{{ steps[i]!.text }}</p>
       <div v-if="steps[i]!.hour < 0" class="slider">
         <button class="btn play" :aria-pressed="playing" @click="playing = !playing">
-          {{ playing ? '⏸ Ustavi' : '▶ Predvajaj dan' }}
+          {{ playing ? 'Ustavi' : 'Predvajaj dan' }}
         </button>
         <input v-model.number="hour" type="range" min="0" :max="ure.length - 1" aria-label="Ura" />
         <span>{{ clock }} · {{ ure[hour] ? Math.round(ure[hour]!.pm25) : '–' }} µg/m³ · {{ level.kids }}</span>

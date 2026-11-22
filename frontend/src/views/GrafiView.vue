@@ -1,9 +1,8 @@
 <script setup lang="ts">
-// Zavihek »Podatki« (grafi): drseče zgodbe iz naših podatkov – kotlina, 10 let meritev ARSO in napoved.
-// Kasneje jih bomo spreminjali in delali bolj interaktivne.
+// Zavihek »Podatki«: zakaj je zrak pozimi slab (kotlina) in kaj kaže 10 let meritev ARSO, na koncu kviz.
+// Napoved za naslednje ure je samo na strani »Moj zrak«, da se ne ponavlja.
 import KotlinaStory from '@/components/stories/KotlinaStory.vue'
 import ZgodovinaStory from '@/components/stories/ZgodovinaStory.vue'
-import NapovedStory from '@/components/stories/NapovedStory.vue'
 import { defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue'
 
 // kviz se odpre v oknu na koncu strani (naloži se šele, ko ga odpreš)
@@ -29,7 +28,6 @@ onBeforeUnmount(() => (document.body.style.overflow = ''))
 
     <KotlinaStory />
     <ZgodovinaStory />
-    <NapovedStory />
 
     <!-- konec strani: kviz v oknu -->
     <section class="vabilo">

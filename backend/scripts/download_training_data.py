@@ -33,6 +33,10 @@ FILES = [
     "04_prostor/kn_stavbe.gpkg",
     "04_prostor/osm_obcutljive_lokacije.geojson",
     "04_prostor/mol_meja.geojson",
+    # izberi svojo šolo (scripts/zemljevid_sole.py): model ARSO GRAL 15 m in četrtne skupnosti
+    "02_modeli/gral/gral_kurisca_statistika_15m.tif",
+    "02_modeli/gral/gral_promet_statistika_15m.tif",
+    "04_prostor/mol_cetrtne_skupnosti.geojson",
 ]
 
 

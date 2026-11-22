@@ -1,17 +1,19 @@
 <script setup lang="ts">
-// Domača stran: pljuča iz pik, ki dihajo današnji zrak. Klik na pljuča odpre tri okenca:
-// Igre in Zemljevid na eni strani, Podatki (grafi) na drugi.
+// Domača stran za starše in otroke: najprej odgovori na vprašanje »Kakšen zrak dihaš zdaj?«
+// (številka, ocena in en nasvet: kdaj ven in kdaj prezračiti), z oznako meritev / model / ocena.
+// Pljuča iz pik dihajo današnji zrak; klik nanje odpre štiri okenca (Igre, Zemljevid, Podatki, Moj zrak).
 // Ko so okenca enkrat odprta, ostanejo odprta tudi ob vrnitvi na to stran (do zaprtja zavihka brskalnika).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import PljucaPike from '@/scenes/PljucaPike.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
-import { levelFor } from '@/lib/airQuality'
-import { typicalPm25 } from '@/lib/klima'
+import { LEVELS, levelFor } from '@/lib/airQuality'
+import { klimaLabel, typicalPm25 } from '@/lib/klima'
 import { oknaOdprta } from '@/composables/useOkna'
+import VirZnacka from '@/components/VirZnacka.vue'
 
-const { currentPm25, now } = useAirData()
+const { currentPm25, now, forecast } = useAirData()
 const { sensitivity } = useProfile()
 
 const pm = computed(() => currentPm25.value ?? typicalPm25())
@@ -19,6 +21,25 @@ const pm = computed(() => currentPm25.value ?? typicalPm25())
 const NEON = '#4e9f35'
 const level = computed(() => levelFor(pm.value, sensitivity.value))
 const izmerjeno = computed(() => now.value?.postaje.some((p) => p.vir === 'meritev') ?? false)
+
+// en nasvet: kdaj je danes (podnevi, 7–20 h) zrak najčistejši – iz napovedi modela CAMS ali iz povprečja meritev
+const hh = (h: number) => `${String(h).padStart(2, '0')}:00`
+const nasvet = computed(() => {
+  const ure = (forecast.value?.ure ?? []).slice(0, 24).map((u) => ({ h: new Date(u.cas_utc).getHours(), pm: u.pm25 }))
+  const vrsta: 'model' | 'ocena' = forecast.value?.model === 'klima' || !forecast.value ? 'ocena' : 'model'
+  const stopnja = LEVELS.findIndex((l) => l.key === level.value.key)
+  const dan = ure.filter((u) => u.h >= 7 && u.h <= 20)
+  const naj = dan.reduce<(typeof dan)[number] | null>((a, b) => (!a || b.pm < a.pm ? b : a), null)
+  if (stopnja <= 1)
+    return { text: 'Zrak je dober: lahko greste ven, tudi na igro in šport. Prezračite kadarkoli.', vrsta: null }
+  if (!naj) return { text: 'Ven pojdite raje za krajši čas in prezračite na kratko.', vrsta: null }
+  if (naj === dan[0] && ure[0]?.h === naj.h)
+    return { text: 'Zdaj je najčistejša ura dneva: pravi čas za sprehod in za zračenje (5–10 minut na široko).', vrsta }
+  return {
+    text: `Za ven in zračenje počakajte do ${hh(naj.h)}, takrat bo zrak najčistejši (okoli ${Math.round(naj.pm)} µg/m³).`,
+    vrsta,
+  }
+})
 
 // okenca: ob prvem obisku zaprta; ko jih odpreš, ostanejo odprta med premikanjem po zavihkih
 const odprto = oknaOdprta
@@ -41,7 +62,7 @@ const okna = [
     to: '/igre',
     kicker: 'Igraj',
     title: 'Igre',
-    text: 'Pomagaj zmajčku očistiti nebo in preizkusi svoje znanje.',
+    text: 'Za otroke: zmajček, vremenski vedeževalec in pokrovka nad mestom.',
     color: 'var(--mint)',
     ikona: 'igre',
     pos: 'l1',
@@ -50,7 +71,7 @@ const okna = [
     to: '/zemljevid',
     kicker: 'Raziskuj',
     title: 'Zemljevid',
-    text: 'Zemljevid Ljubljane: kje so vrtci, šole in bolnišnice, ko se v kotlini ujame megla.',
+    text: 'Poišči svojo šolo ali vrtec in poglej, koliko dima iz peči in prometa je v okolici.',
     color: 'var(--accent)',
     ikona: 'zemljevid',
     pos: 'l2',
@@ -59,7 +80,7 @@ const okna = [
     to: '/grafi',
     kicker: 'Poglej',
     title: 'Podatki',
-    text: 'Kaj kažejo meritve ARSO: kaj nam povedo meritve in kaj se dogaja z našim  zrakom.',
+    text: 'Zakaj je zrak pozimi slab in kaj kaže 10 let meritev ARSO.',
     color: 'var(--brand)',
     ikona: 'podatki',
     pos: 'r1',
@@ -68,7 +89,7 @@ const okna = [
     to: '/moj-zrak',
     kicker: 'Zame',
     title: 'Moj zrak',
-    text: 'Zrak tam, kjer si: ali je zdaj pametno iti ven ali prezračiti?',
+    text: 'Načrt za 24 ur tam, kjer si: kdaj ven, kdaj prezračiti, kdaj ostati notri.',
     color: 'var(--coral)',
     ikona: 'moj',
     pos: 'r2',
@@ -81,12 +102,21 @@ const okna = [
     <PljucaPike class="scena" :pm25="pm" :color="NEON" :rezerva="rezerva" @klik="odprto = !odprto" />
 
     <header class="naslov">
-      <span class="badge">
-        <span class="pika" />
-        Ljubljana {{ izmerjeno ? 'zdaj' : 'običajno ob tej uri' }} · <strong>{{ Math.round(pm) }}</strong> µg/m³ PM2.5 ·
-        {{ level.label }}
-      </span>
-      <h1>Zrak, ki ga dihamo</h1>
+      <span class="znamka">Zrak, ki ga dihamo · Ljubljana</span>
+      <h1>Kakšen zrak dihaš zdaj?</h1>
+      <div class="odgovor">
+        <p class="stanje">
+          <span class="pika" />
+          <strong class="lvl">{{ level.label }}</strong>
+          <span class="st"><strong>{{ Math.round(pm) }}</strong> µg/m³ PM2.5</span>
+          <VirZnacka :vrsta="izmerjeno ? 'meritev' : 'ocena'" />
+          <small>{{ izmerjeno ? 'ARSO, zadnja ura' : `običajno ob tej uri (povprečje meritev ${klimaLabel})` }}</small>
+        </p>
+        <p class="nasvet">
+          {{ nasvet.text }} <VirZnacka v-if="nasvet.vrsta" :vrsta="nasvet.vrsta" />
+          <RouterLink to="/moj-zrak" class="vec">Načrt za tvojo lokacijo →</RouterLink>
+        </p>
+      </div>
       <p class="hint">{{ odprto ? 'Kam greš naprej?' : 'Klikni na pljuča' }}</p>
     </header>
 
@@ -200,27 +230,69 @@ const okna = [
   pointer-events: none;
   padding: 0 16px;
 }
-.badge {
-  display: inline-block;
-  padding: 5px 14px;
-  border-radius: 999px;
+.znamka {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--scene-muted);
+  margin-bottom: 4px;
+}
+.odgovor {
+  pointer-events: auto;
+  margin-top: 10px;
+  padding: 10px 18px;
+  max-width: 640px;
+  border-radius: 18px;
   background: var(--panel);
   border: 1px solid var(--panel-line);
+  border-left: 5px solid var(--lvl);
   box-shadow: var(--panel-shadow);
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--scene-text);
-  margin-bottom: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  text-align: left;
 }
-.badge strong {
-  color: color-mix(in srgb, var(--lvl) 75%, var(--scene-ink));
+.odgovor p {
+  margin: 0;
+}
+.stanje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--scene-text);
+}
+.stanje .lvl {
+  font-family: var(--font-head);
+  font-size: 1.35rem;
+  color: color-mix(in srgb, var(--lvl) 70%, var(--scene-ink));
+}
+.stanje .st strong {
+  font-family: var(--font-head);
+  font-size: 1.35rem;
+  color: var(--scene-ink);
+}
+.stanje small {
+  color: var(--scene-muted);
+  font-size: 0.78rem;
+}
+.nasvet {
+  margin-top: 4px !important;
+  color: var(--scene-ink);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.vec {
+  margin-left: 6px;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--coral) 75%, var(--scene-ink));
+  font-weight: 800;
 }
 .pika {
   display: inline-block;
-  vertical-align: -1px;
-  margin-right: 6px;
-  width: 10px;
-  height: 10px;
+  flex: none;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--lvl);
   box-shadow: 0 0 0 0 var(--lvl);
@@ -232,7 +304,7 @@ const okna = [
   }
 }
 h1 {
-  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  font-size: clamp(2rem, 4.6vw, 3.4rem);
   margin: 0;
 }
 .hint {
@@ -252,7 +324,7 @@ h1 {
   position: absolute;
   left: 0;
   right: 0;
-  top: 200px; /* pod naslovom */
+  top: 290px; /* pod naslovom in odgovorom */
   bottom: 24px;
   display: flex;
   justify-content: space-between;
@@ -383,7 +455,7 @@ h1 {
 /* nizek zaslon: manjša okenca, da gresta leva eno pod drugo */
 @media (max-height: 760px) and (min-width: 721px) {
   .okna {
-    top: 170px;
+    top: 250px;
   }
   .stolpec {
     gap: 14px;
@@ -405,9 +477,15 @@ h1 {
   .landing {
     height: calc(100svh - 72px); /* spodnja navigacija na telefonu */
   }
-  .badge {
-    font-size: 0.75rem;
-    max-width: 100%;
+  .odgovor {
+    padding: 8px 12px;
+  }
+  .stanje small,
+  .vec {
+    display: none;
+  }
+  .nasvet {
+    font-size: 0.85rem;
   }
   .okna {
     top: auto;

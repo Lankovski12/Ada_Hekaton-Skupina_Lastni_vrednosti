@@ -207,7 +207,7 @@ function frame(ms: number) {
   Rzdaj = Rzdaj ? Rzdaj + (Rcilj - Rzdaj) * 0.08 : Rcilj
   const R = Rzdaj
   const ox = w / 2
-  const oy = wide ? h * 0.6 : h * 0.43
+  const oy = wide ? h * 0.6 : h * 0.5
   const fov = 3.6
 
   // temna tema: temno ozadje s sledjo in svetleče pike; svetla: prosojno platno (vidi se igrivo ozadje strani)

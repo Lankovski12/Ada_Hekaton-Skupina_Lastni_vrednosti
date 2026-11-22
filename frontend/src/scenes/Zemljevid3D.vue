@@ -11,6 +11,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { useAirData } from '@/composables/useAirData'
 import { levelFor, type AirLevel } from '@/lib/airQuality'
+import VirZnacka from '@/components/VirZnacka.vue'
 
 interface Teren {
   vir: string
@@ -67,6 +68,9 @@ const S = 1 / 100 // 1 enota = 100 m
 const VZ = 2.5 // povečanje višin, da se relief lepo vidi
 
 const { now, scene: sceneData, currentPm25 } = useAirData()
+
+// izbrana šola ali vrtec (izbira je na strani Zemljevid): kamera prileti tja, na mestu se prižge svetilnik
+const props = defineProps<{ izbrana?: { ime: string; x: number; y: number } | null }>()
 
 const host = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
@@ -211,6 +215,10 @@ const pins: { mesh: THREE.InstancedMesh; items: Lokacija[]; kat: string; pos: TH
 const buildingMats: Record<number, THREE.MeshLambertMaterial> = {}
 let pinScale = 1
 let fly: { from: THREE.Vector3; to: THREE.Vector3; tFrom: THREE.Vector3; tTo: THREE.Vector3; t0: number } | null = null
+let visinaV: ((x: number, y: number) => number) | null = null // višina v sceni za točko (x, y v m)
+let svetilnik: THREE.Group | undefined
+const svetilnikTop = new THREE.Vector3()
+const oznakaSole = ref<{ x: number; y: number; vis: boolean } | null>(null)
 // merilne postaje ARSO: prosojna kupola nad postajo, večja in v barvi kakovosti zraka, ko je PM2.5 višji
 interface Postaja {
   id: string
@@ -283,6 +291,7 @@ async function build() {
     return (v(r, c) * (1 - dc) + v(r, c + 1) * dc) * (1 - dr) + (v(r + 1, c) * (1 - dc) + v(r + 1, c + 1) * dc) * dr
   }
   const Y = (z: number) => (z - t.dno) * VZ * S // višina v sceni
+  visinaV = (x: number, y: number) => Y(zAt(x, y))
 
   // --- osnova ---
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -422,6 +431,25 @@ async function build() {
     scene.add(kupola)
     pillars.push({ id: p.id, ime: p.ime, ground, top: new THREE.Vector3(), pm: null, unit: '', kupola })
   }
+  // --- svetilnik nad izbrano šolo (skrit, dokler ni izbrana) ---
+  {
+    svetilnik = new THREE.Group()
+    const zarek = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.3, 9, 12, 1, true),
+      new THREE.MeshBasicMaterial({ color: '#e5484d', transparent: true, opacity: 0.55, depthWrite: false }),
+    )
+    zarek.position.y = 4.5
+    const obroc = new THREE.Mesh(
+      new THREE.RingGeometry(1.6, 2.2, 32),
+      new THREE.MeshBasicMaterial({ color: '#e5484d', transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }),
+    )
+    obroc.rotation.x = -Math.PI / 2
+    obroc.position.y = 0.3
+    obroc.name = 'obroc'
+    svetilnik.add(zarek, obroc)
+    svetilnik.visible = false
+    scene.add(svetilnik)
+  }
   updatePillars()
   updateFog()
   setPinScale(1)
@@ -438,6 +466,7 @@ async function build() {
   controls.autoRotate = true
   controls.autoRotateSpeed = 0.35
   setActive(false)
+  if (props.izbrana) pokaziSolo() // šola je bila izbrana, preden se je zemljevid naložil
 
   renderer.domElement.addEventListener('pointermove', onPointer)
   renderer.domElement.addEventListener('pointerdown', onPointer)
@@ -557,6 +586,27 @@ watch(izbran, (z) => {
   updatePillars()
   updateFog()
 })
+/** prelet do izbrane šole in svetilnik nad njo */
+function pokaziSolo() {
+  const s = props.izbrana
+  if (!svetilnik || !visinaV) return
+  if (!s) {
+    svetilnik.visible = false
+    oznakaSole.value = null
+    return
+  }
+  const g = new THREE.Vector3(s.x * S, visinaV(s.x, s.y), -s.y * S)
+  svetilnik.position.copy(g)
+  svetilnik.visible = true
+  svetilnikTop.set(g.x, g.y + 10, g.z)
+  live.value = false
+  dan.value = null
+  setActive(false)
+  if (controls) controls.autoRotate = false
+  flyTo(new THREE.Vector3(g.x - 22, g.y + 30, g.z + 38), g)
+}
+watch(() => props.izbrana, pokaziSolo)
+
 function flyTo(pos: THREE.Vector3, target: THREE.Vector3) {
   if (!camera || !controls) return
   fly = { from: camera.position.clone(), to: pos, tFrom: controls.target.clone(), tTo: target, t0: performance.now() }
@@ -622,7 +672,10 @@ function onPointer(e: PointerEvent) {
 
 function loop() {
   raf = requestAnimationFrame(loop)
-  if (!visible || !renderer || !scene || !camera || !controls) return
+  if (!visible || !renderer || !scene || !camera || !controls) {
+    if (fly) fly.t0 = performance.now() // prelet se začne, ko zemljevid pride v pogled
+    return
+  }
   if (fly) {
     const k = Math.min(1, (performance.now() - fly.t0) / 1400)
     const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2
@@ -635,8 +688,15 @@ function loop() {
   const s = Math.min(1, Math.max(0.22, camera.position.distanceTo(controls.target) / 190))
   if (Math.abs(s - pinScale) > 0.03) setPinScale(s)
   renderer.render(scene, camera)
-  // oznake postaj
+  // utripajoč obroč svetilnika in oznaka z imenom šole
   const el = host.value!
+  if (svetilnik?.visible && props.izbrana) {
+    const k = 1 + 0.25 * Math.sin(performance.now() / 300)
+    svetilnik.getObjectByName('obroc')?.scale.set(k, k, k)
+    const v = svetilnikTop.clone().project(camera)
+    oznakaSole.value = { x: ((v.x + 1) / 2) * el.clientWidth, y: ((1 - v.y) / 2) * el.clientHeight, vis: v.z < 1 }
+  }
+  // oznake postaj
   labels.value = pillars.map((p) => {
     const v = p.top.clone().project(camera!)
     return {
@@ -693,6 +753,16 @@ onBeforeUnmount(() => {
         {{ l.ime }} <strong>{{ l.pm ?? '–' }}</strong><small v-if="l.unit"> {{ l.unit }}</small>
       </div>
 
+      <!-- izbrana šola -->
+      <div
+        v-if="izbrana && oznakaSole"
+        v-show="oznakaSole.vis"
+        class="station sola"
+        :style="{ left: `${oznakaSole.x}px`, top: `${oznakaSole.y}px`, '--c': '#e5484d' }"
+      >
+        {{ izbrana.ime }}
+      </div>
+
       <!-- legenda / filter -->
       <div class="legend">
         <button
@@ -725,13 +795,14 @@ onBeforeUnmount(() => {
       <!-- trenutno stanje -->
       <div v-if="live && zdaj" class="now" :style="{ '--c': zdaj.lvl.color }">
         <span class="k">Ljubljana zdaj · {{ String(zdaj.ura).padStart(2, '0') }}:00</span>
-        <span class="v"><strong>{{ zdaj.pm }}</strong> µg/m³ PM2.5 · {{ zdaj.lvl.label }}</span>
+        <span class="v"><strong>{{ zdaj.pm }}</strong> µg/m³ PM2.5 · {{ zdaj.lvl.label }} <VirZnacka :vrsta="currentPm25 != null ? 'meritev' : 'ocena'" /></span>
         <span>
           {{
             zdaj.inv
               ? `Inverzija: hladen zrak je ujet do približno ${fog} m nad dnom kotline.`
               : 'Zrak se meša, megle na dnu kotline ni.'
           }}
+          <VirZnacka :vrsta="sceneData?.vir === 'klima' ? 'ocena' : 'model'" />
         </span>
         <span class="kids">{{ zdaj.lvl.kids }}</span>
       </div>
@@ -789,9 +860,10 @@ onBeforeUnmount(() => {
           </div>
           <span class="date">{{ izbranDatum }}</span>
           <template v-if="izbran && izbran.val != null">
-            <span class="v"><strong>{{ izbran.val }}</strong> µg/m³ {{ izbran.unit }} · {{ izbran.lvl.label }}</span>
+            <span class="v"><strong>{{ izbran.val }}</strong> µg/m³ {{ izbran.unit }} · {{ izbran.lvl.label }} <VirZnacka vrsta="meritev" /></span>
             <span v-if="izbran.megla && izbran.megla > 0">
               Zjutraj je bil hladen zrak ujet do približno {{ izbran.megla }} m nad dnom kotline<template v-if="izbran.invUr != null">, inverzija je trajala {{ izbran.invUr }} od 24 ur</template>.
+              <VirZnacka vrsta="meritev" /> radiosondaža
             </span>
             <span v-else-if="izbran.megla === 0">
               Zjutraj ni bilo prizemne inverzije, zrak se je mešal<template v-if="izbran.invUr">, inverzija čez dan {{ izbran.invUr }} ur</template>.
@@ -821,7 +893,7 @@ onBeforeUnmount(() => {
           <template v-for="(info, k, i) in KAT" :key="k">
             <span v-if="counts[k]?.pod">{{ i ? ' · ' : '' }}{{ counts[k]?.pod }} {{ info.mn }}</span>
           </template>
-          <small> (ocena iz reliefa)</small>
+          <VirZnacka vrsta="ocena" /> <small>iz reliefa</small>
         </p>
       </div>
 
@@ -829,9 +901,9 @@ onBeforeUnmount(() => {
       <div v-if="tip" class="tip" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
         <strong>{{ tip.l.ime ?? 'Brez imena' }}</strong>
         <span>{{ KAT_IME[tip.l.kat] }}<template v-if="tip.l.naslov"> · {{ tip.l.naslov }}</template></span>
-        <span>{{ tip.l.z }} m n. v. · {{ tip.l.nadDnom }} m nad dnom kotline</span>
+        <span>{{ tip.l.z }} m n. v. · {{ tip.l.nadDnom }} m nad dnom kotline <VirZnacka vrsta="ocena" /></span>
         <span :class="tip.l.nadDnom <= fog ? 'under' : 'over'">
-          {{ tip.l.nadDnom <= fog ? '🌫️ pod meglo' : '☀️ nad meglo' }}
+          {{ tip.l.nadDnom <= fog ? 'pod meglo' : 'nad meglo' }}
         </span>
       </div>
     </template>
@@ -1145,6 +1217,13 @@ onBeforeUnmount(() => {
 }
 .station strong {
   color: var(--c);
+}
+.station.sola {
+  padding: 5px 12px;
+  border-width: 2px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  z-index: 2;
 }
 .tip {
   position: absolute;

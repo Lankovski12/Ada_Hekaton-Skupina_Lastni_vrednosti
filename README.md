@@ -28,12 +28,14 @@ zaledje prebere žive meritve ARSO ter vreme in napoved CAMS (Open-Meteo). Brez 
 | vreme, višina mejne plasti, inverzija | Open-Meteo (živo): Bežigrad + Pasja ravan 1019 m, inverzija = na hribu topleje kot v mestu | vsako uro |
 | napoved PM2.5 za 48 h | CAMS prek Open-Meteo, kasneje naš model | vsako uro |
 | igra »Vremenski vedeževalec« – včerajšnji rezultat | meritve ARSO Bežigrad ob 8h (iz baze) | vsako uro |
-| zgodbe v Blogih, »Ali ste vedeli?«, primeri na domači strani | `zgodovina.json` iz ARSOhack (`scripts/blog_statistika.py`) | statično |
+| zgodbe na strani Podatki in kviz | `zgodovina.json` iz ARSOhack (`scripts/blog_statistika.py`) | statično |
 | rezerva brez interneta | povprečje meritev ARSO za isti mesec in uro (`zgodovina.json` → `klima`), označeno kot »običajno« | statično |
 | vrtci, šole, bolnišnice | `backend/data/osm_obcutljive_lokacije.csv` (iz ARSOhack, v gitu) | statično |
 | 3D zemljevid | DEM, kataster stavb, OSM iz ARSOhack (`scripts/zemljevid_3d.py`) | statično |
+| »Izberi svojo šolo« na zemljevidu | model ARSO GRAL 15 m (kurišča, promet relativno), radiosondaža, relief, četrtne skupnosti iz ARSOhack (`scripts/zemljevid_sole.py`) | statično |
 | zgodovina 2016–2026 | ARSOhack (`scripts/download_training_data.py`) | enkrat |
 
+Vsaka številka v aplikaciji ima oznako MERITEV, MODEL ali OCENA (komponenta `VirZnacka`).
 Nikjer ni izmišljenih številk: če žive meritve ali napovedi ni, aplikacija pokaže povprečje meritev ARSO
 za ta mesec in uro in to jasno napiše. Po novih podatkih ARSOhack osveži statistike:
 

@@ -4,6 +4,7 @@
 // Klikni odgovor – kartica se obrne in pokaže pravilen odgovor z animiranim grafom.
 // Listaš s puščicami, potegom levo/desno ali tipkami ← →. Na koncu: rezultat in sporočilo.
 // Številke izračuna backend/scripts/blog_statistika.py → src/data/zgodovina.json.
+import VirZnacka from '@/components/VirZnacka.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 const emit = defineEmits<{ zapri: [] }>()
@@ -412,7 +413,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
                       <span class="rekord" :style="{ '--w': `${Math.min(100, (stetje / z.rekord.pm10) * 100)}%` }" />
                     </div>
                   </div>
-                  <p class="vir">Vir: {{ z.vir }}</p>
+                  <p class="vir"><VirZnacka vrsta="meritev" /> {{ z.vir }}</p>
                 </figure>
               </div>
             </div>

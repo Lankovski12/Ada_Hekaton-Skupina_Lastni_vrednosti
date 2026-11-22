@@ -112,13 +112,13 @@ const chimneys = [3, 9, 15, 22, 28].map((i) => buildings[i]!)
 
     <div v-if="!bare" class="hud">
       <span class="pill">{{ String(clock).padStart(2, '0') }}:00</span>
-      <span class="pill" v-if="hour.inverzija">🌫️ inverzija – zrak je ujet</span>
-      <span class="pill" v-else>🌬️ zrak se meša</span>
+      <span class="pill" v-if="hour.inverzija">inverzija – zrak je ujet</span>
+      <span class="pill" v-else>zrak se meša</span>
       <span class="pill" :style="{ background: level.color, color: '#fff' }">{{ hour.pm25 }} µg/m³</span>
     </div>
 
     <div v-if="controls" class="controls">
-      <button class="btn" @click="toggle" :aria-pressed="playing">{{ playing ? '⏸ Ustavi' : '▶ Predvajaj dan' }}</button>
+      <button class="btn" @click="toggle" :aria-pressed="playing">{{ playing ? 'Ustavi' : 'Predvajaj dan' }}</button>
       <input v-model.number="idx" type="range" min="0" :max="scene.ure.length - 1" aria-label="Ura" />
     </div>
   </div>

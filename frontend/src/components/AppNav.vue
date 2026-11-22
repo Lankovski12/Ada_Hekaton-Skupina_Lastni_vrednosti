@@ -5,7 +5,7 @@ import { RouterLink } from 'vue-router'
 defineProps<{ brezGlave?: boolean }>()
 
 const links = [
-  { to: '/', label: 'Domov', icon: '🏠' },
+  { to: '/', label: 'Domov' },
   { to: '/igre', label: 'Igre' },
   { to: '/zemljevid', label: 'Zemljevid' },
   { to: '/grafi', label: 'Podatki' },
@@ -28,7 +28,6 @@ const links = [
   <!-- Spodnja navigacija za telefon (Capacitor) -->
   <nav class="mobile" aria-label="Glavna navigacija">
     <RouterLink v-for="l in links" :key="l.to" :to="l.to">
-      <span class="ico" aria-hidden="true">{{ l.icon }}</span>
       <span>{{ l.label }}</span>
     </RouterLink>
   </nav>
@@ -112,8 +111,8 @@ const links = [
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 6px 0;
-    font-size: 0.75rem;
+    padding: 10px 0;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--ink-soft);
     text-decoration: none;
@@ -122,9 +121,6 @@ const links = [
   .mobile a.router-link-exact-active {
     color: var(--brand);
     background: var(--bg-soft);
-  }
-  .ico {
-    font-size: 1.4rem;
   }
 }
 </style>

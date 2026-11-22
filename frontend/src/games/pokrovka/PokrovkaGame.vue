@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Igra »Naredi pokrovko«: z dvema drsnikoma (temperatura v dolini in na hribu) zadeni včerajšnjo pokrovko.
 // Tri stopnje: 1) dolina je dana, 2) obe temperaturi, 3) brez cilja, samo namigi. Prej (neobvezno) zgodba o inverziji.
+import VirZnacka from '@/components/VirZnacka.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AirBuddy from '@/components/AirBuddy.vue'
@@ -270,8 +271,9 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Natančno!']
       </div>
 
       <p class="credits">
-        Temperature: {{ vaja || izArhiva ? 'arhiv meritev ARSO' : `${jutro?.vir}, včeraj ob 7h` }} ·
-        Pokrovka: poenostavljen izračun, preverjen z radiosondažo ARSO
+        <VirZnacka :vrsta="vaja || izArhiva ? 'meritev' : 'model'" /> Temperature:
+        {{ vaja || izArhiva ? 'arhiv meritev ARSO' : `${jutro?.vir}, včeraj ob 7h` }} ·
+        <VirZnacka vrsta="ocena" /> Pokrovka: poenostavljen izračun, preverjen z radiosondažo ARSO
       </p>
     </div>
   </div>

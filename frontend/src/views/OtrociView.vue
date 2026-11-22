@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Stran z igrami – zgrajena kot domača stran: na sredini velik Oblaček (z očmi sledi miški),
-// klik nanj odpre štiri okenca z igrami (dve levo, dve desno). Okenca ostanejo odprta med zavihki.
+// klik nanj odpre tri okenca z igrami (dve levo, ena desno). Okenca ostanejo odprta med zavihki.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import AirBuddy from '@/components/AirBuddy.vue'
@@ -55,7 +55,7 @@ interface Okno {
   ready: boolean
 }
 
-// dve levo, dve desno
+// dve levo, ena desno
 const okna: Okno[] = [
   {
     to: '/igre/zmaj',
@@ -86,16 +86,6 @@ const okna: Okno[] = [
     ikona: 'pokrovka',
     stat: () => `${zvezdicePokrovka()} zvezdic`,
     ready: true,
-  },
-  {
-    to: '/igre/ujemanje',
-    kicker: 'Kmalu',
-    title: 'Ujemanje megle',
-    text: 'Kako se v kotlini dela megla in kaj je smog.',
-    color: 'var(--brand)',
-    ikona: 'oblak',
-    stat: () => '',
-    ready: false,
   },
 ]
 const levo = okna.slice(0, 2)

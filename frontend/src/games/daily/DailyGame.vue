@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Vremenski vedeževalec: vsak dan eno vprašanje o včerajšnjem zraku (7 vrst nalog), odgovor takoj.
 // Podatki: /api/vceraj (meritve ARSO) ali, če jih še ni, dan iz arhiva. Vaja: naključni dnevi iz arhiva.
+import VirZnacka from '@/components/VirZnacka.vue'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, type Component } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AirBuddy from '@/components/AirBuddy.vue'
@@ -149,7 +150,7 @@ const sporocila = ['Ojej, tokrat ne!', 'Blizu!', 'Dobro!', 'Odlično, pravi vede
       <template v-else-if="dan">
         <p class="about">
           Vprašanje o dnevu: <strong>{{ datumSl(dan.datum) }}</strong>
-          <span class="src">{{ dan.vir }}</span>
+          <span class="src"><VirZnacka vrsta="meritev" /> {{ dan.vir }}</span>
         </p>
         <p v-if="nacin === 'dnevno' && izArhiva" class="note">Za včeraj še ni dovolj meritev, zato je vprašanje o dnevu iz arhiva.</p>
 

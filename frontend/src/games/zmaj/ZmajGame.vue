@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import VirZnacka from '@/components/VirZnacka.vue'
 // 3D igra: zmajček leti nad Ljubljano s smogom (danes ali resničen slab dan) in ga odpihuje.
 // Vsa 3D logika je v ./engine, tukaj so meniji, HUD, sporočila in vprašanja (v otroškem slogu).
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
@@ -27,6 +28,11 @@ const prazenHud = (): HudState => ({ casDo: GAME.trajanje, ocisceno: 0, piha: fa
 const hud = ref<HudState>(prazenHud())
 const rezultat = ref(0)
 const zvok = ref(sound.enabled)
+
+// oznaka vira: zgodovinski dan in živa meritev sta meritev, sicer ocena (povprečje ali ročno nastavljeno)
+const virZmaj = computed<'meritev' | 'ocena'>(() =>
+  zgodovina.value || (!povozeno.value && currentPm25.value != null) ? 'meritev' : 'ocena',
+)
 
 // Današnje stanje iz API-ja (ali demo, če zaledje ne teče).
 // Za predstavitev lahko stanje povoziš v naslovu: /igre/zmaj?pm=70&megla=1&vrh=500
@@ -348,7 +354,7 @@ function play() {
           <div class="tile t-red" :style="{ '--lvl': level.color }">
             <span class="label">Smog</span>
             <strong class="lvl">{{ kartica.pm }}</strong>
-            <span class="sub">µg/m³ · {{ level.label.toLowerCase() }}</span>
+            <span class="sub">µg/m³ · {{ level.label.toLowerCase() }} <VirZnacka :vrsta="virZmaj" /></span>
           </div>
           <div class="tile t-yellow">
             <span class="label">Preveč</span>
