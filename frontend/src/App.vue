@@ -3,6 +3,7 @@ import { computed, onMounted, watchEffect } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppNav from '@/components/AppNav.vue'
 import OzadjeLise from '@/components/OzadjeLise.vue'
+import PmSlovar from '@/components/PmSlovar.vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 
@@ -25,6 +26,8 @@ const brezNoge = computed(() => domov.value || route.name === 'igra-zmaj' || rou
 
 <template>
   <OzadjeLise />
+  <!-- razlaga PM2.5 / PM10 ob prehodu z miško po vsej strani -->
+  <PmSlovar />
   <AppNav :brez-glave="domov" />
   <main :class="{ domov }">
     <RouterView v-slot="{ Component }">
