@@ -50,3 +50,24 @@ export function razdalja(lat1: number, lon1: number, lat2: number, lon2: number)
   const h = Math.sin(dφ / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dλ / 2) ** 2
   return 2 * R * Math.asin(Math.sqrt(h))
 }
+
+/** Obratno od wgs84ToD96: D96/TM (EPSG:3794) -> WGS84. Newtonova iteracija, natančnost pod 1 mm v Sloveniji. */
+export function d96ToWgs84(e: number, n: number): { lat: number; lon: number } {
+  let lat = 46.05
+  let lon = 14.5
+  const h = 1e-6
+  for (let i = 0; i < 8; i++) {
+    const p = wgs84ToD96(lat, lon)
+    const fe = p.e - e
+    const fn = p.n - n
+    if (Math.abs(fe) < 1e-4 && Math.abs(fn) < 1e-4) break
+    const pl = wgs84ToD96(lat + h, lon)
+    const po = wgs84ToD96(lat, lon + h)
+    const a = (pl.e - p.e) / h, b = (po.e - p.e) / h // ∂e/∂lat, ∂e/∂lon
+    const c = (pl.n - p.n) / h, d = (po.n - p.n) / h // ∂n/∂lat, ∂n/∂lon
+    const det = a * d - b * c
+    lat -= (d * fe - b * fn) / det
+    lon -= (a * fn - c * fe) / det
+  }
+  return { lat, lon }
+}

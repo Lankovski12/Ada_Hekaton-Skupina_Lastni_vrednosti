@@ -1,18 +1,18 @@
 <script setup lang="ts">
-// Zavihek »Moj zrak«: osebni pregled za uporabnikovo lokacijo.
-// - lokacija iz brskalnika (ostane samo na napravi, v profilu), sicer center Ljubljane
-// - stanje zdaj na najbližji postaji ARSO in odgovor: ali naj grem ven, ali naj prezračim
+// Zavihek »Moj zrak«: osebni pregled za izbrano lokacijo.
+// - lokacija iz brskalnika ali poljubna lokacija iz iskalnika (šole in vrtci lokalno, naslovi prek
+//   OpenStreetMap / Photon); ostane samo na napravi, sicer center Ljubljane
+// - stanje zdaj na najbližji postaji ARSO in odgovori: ali lahko grem ven, ali lahko športam, ali naj prezračim
 // - graf za naslednjih 24 ur z najboljšo uro za ven in za zračenje ter primerjavo z običajnim dnem
 // - načrt za danes: kdaj je pametno iti ven, kdaj zračiti in kdaj ostati notri
 // - iz ARSOhack: nadmorska višina (relief) in ali si ob inverziji pod meglo, kakšen je običajno ta mesec
 // Pri vsaki številki piše, ali je meritev, napoved modela ali ocena iz starih meritev.
-import { computed, onMounted, ref, shallowRef } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { LEVELS, levelFor } from '@/lib/airQuality'
 import { typical } from '@/lib/klima'
-import { razdalja, wgs84ToD96 } from '@/lib/geo'
+import { d96ToWgs84, razdalja, wgs84ToD96 } from '@/lib/geo'
 import z from '@/data/zgodovina.json'
 import VirZnacka from '@/components/VirZnacka.vue'
 
@@ -88,10 +88,125 @@ async function uporabiLokacijo() {
         ? 'Iskanje lokacije je trajalo predolgo. Preverite povezavo in poskusite znova.'
         : 'Brskalnik ne ve, kje ste. Preverite, da so lokacijske storitve vklopljene v sistemu za ta brskalnik (Windows: Nastavitve → Zasebnost → Lokacija; macOS: Sistemske nastavitve → Zasebnost → Lokacijske storitve) in poskusite znova.'
 }
-function pozabiLokacijo() {
-  profile.lokacija = null
+// --- poljubna lokacija: iskalnik s samodejnim dopolnjevanjem ---
+// Predlogi: šole in vrtci (lokalno, assets/map/sole.json) in naslovi, ulice, kraji iz OpenStreetMap
+// (Photon, narejen za iskanje med tipkanjem). Vpisano besedilo gre na photon.komoot.io, lokacija ostane na napravi.
+interface Predlog {
+  id: string
+  ime: string
+  opis: string
+  lat: number
+  lon: number
+}
+const izbiram = ref(false)
+const iskanje = ref('')
+const odprt = ref(false)
+const iscemSplet = ref(false)
+const iskalnik = ref<HTMLInputElement | null>(null)
+const sole = shallowRef<Predlog[]>([])
+const spletni = shallowRef<Predlog[]>([])
+const norm = (t: string) =>
+  t
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+async function naloziSole() {
+  if (sole.value.length) return
+  try {
+    const base = `${import.meta.env.BASE_URL}assets/map/`
+    const [s, t] = await Promise.all([fetch(base + 'sole.json').then((r) => r.json()), teren.value ?? fetch(base + 'teren.json').then((r) => r.json())])
+    const [e0, n0] = t.izhodisce as [number, number]
+    sole.value = (s.sole as { id: number; ime: string; kat: string; naslov: string | null; cs: string | null; x: number; y: number }[]).map((x) => {
+      const g = d96ToWgs84(e0 + x.x, n0 + x.y)
+      return {
+        id: `sola-${x.id}`,
+        ime: x.ime,
+        opis: [x.kat === 'vrtec' ? 'vrtec' : 'šola', x.naslov, x.cs].filter(Boolean).join(' · '),
+        lat: g.lat,
+        lon: g.lon,
+      }
+    })
+  } catch {
+    /* brez seznama šol – ostanejo predlogi iz OpenStreetMap */
+  }
+}
+const lokalni = computed(() => {
+  const q = norm(iskanje.value.trim())
+  if (q.length < 2) return []
+  const besede = q.split(/\s+/)
+  return sole.value
+    .filter((s) => besede.every((b) => norm(`${s.ime} ${s.opis}`).includes(b)))
+    .sort((a, b) => (norm(a.ime).includes(q) ? 0 : 1) - (norm(b.ime).includes(q) ? 0 : 1) || a.ime.length - b.ime.length)
+    .slice(0, 4)
+})
+const predlogi = computed(() => [...lokalni.value, ...spletni.value].slice(0, 8))
+
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] }
+  properties: Record<string, string | undefined>
+}
+let zamik = 0
+let abort: AbortController | null = null
+watch(iskanje, (q) => {
+  window.clearTimeout(zamik)
+  abort?.abort()
+  if (q.trim().length < 3) {
+    spletni.value = []
+    iscemSplet.value = false
+    return
+  }
+  iscemSplet.value = true
+  zamik = window.setTimeout(async () => {
+    abort = new AbortController()
+    try {
+      const url = new URL('https://photon.komoot.io/api/')
+      url.search = new URLSearchParams({ q: q.trim(), limit: '6', lat: '46.05', lon: '14.51', bbox: '14.2,45.9,14.85,46.25' }).toString()
+      const res = await fetch(url, { signal: abort.signal })
+      const data = (await res.json()) as { features: PhotonFeature[] }
+      spletni.value = data.features.map((f, i) => {
+        const p = f.properties
+        const ulica = [p.street, p.housenumber].filter(Boolean).join(' ')
+        const ime = p.name || ulica || p.city || 'Lokacija'
+        return {
+          id: `osm-${p.osm_id ?? i}`,
+          ime,
+          opis: [ulica !== ime ? ulica : '', p.district, p.city !== ime ? p.city : ''].filter(Boolean).join(' · '),
+          lat: f.geometry.coordinates[1],
+          lon: f.geometry.coordinates[0],
+        }
+      })
+    } catch {
+      /* brez povezave ali prekinjeno – ostanejo lokalni predlogi */
+    } finally {
+      iscemSplet.value = false
+    }
+  }, 300)
+})
+onBeforeUnmount(() => {
+  window.clearTimeout(zamik)
+  abort?.abort()
+  window.removeEventListener('scroll', skrijNamig, true)
+})
+
+async function odpriIskanje() {
+  izbiram.value = !izbiram.value
+  if (!izbiram.value) return
+  naloziSole()
+  await new Promise((ok) => requestAnimationFrame(ok))
+  iskalnik.value?.focus()
+}
+function izberiLokacijo(p: Predlog) {
+  profile.lokacija = { ime: p.ime, lat: p.lat, lon: p.lon }
   status.value = 'idle'
-  refresh(undefined, true)
+  izbiram.value = false
+  odprt.value = false
+  iskanje.value = ''
+  refresh(profile.lokacija, true)
+}
+function potrdi() {
+  const p = predlogi.value[0]
+  if (p) izberiLokacijo(p)
 }
 
 // --- relief (ARSOhack, pripravljen za zemljevid) ---
@@ -107,15 +222,18 @@ interface Teren {
 const teren = shallowRef<Teren | null>(null)
 const visine = shallowRef<Uint16Array | null>(null)
 onMounted(async () => {
+  window.addEventListener('scroll', skrijNamig, { passive: true, capture: true }) // okence z zanimivostjo ne sme obviseti
   if (profile.lokacija) refresh(profile.lokacija, true)
-  // vprašaj za lokacijo takoj ob odprtju (razen če jo je uporabnik že zavrnil)
+  // vprašaj za lokacijo takoj ob odprtju (razen če je lokacija že izbrana ali jo je uporabnik zavrnil)
   let zavrnjeno = false
   try {
     zavrnjeno = (await navigator.permissions?.query({ name: 'geolocation' }))?.state === 'denied'
   } catch {
     /* Permissions API ni na voljo – vseeno poskusimo */
   }
-  if (zavrnjeno) {
+  if (profile.lokacija) {
+    /* lokacija je že izbrana – ne sprašuj znova */
+  } else if (zavrnjeno) {
     status.value = 'napaka'
     napaka.value =
       'Dostop do lokacije je v tem brskalniku zavrnjen. Kliknite ikono levo od naslova strani, pri »Lokacija« izberite »Dovoli« in nato »Poišči znova«.'
@@ -167,7 +285,6 @@ const lvl = computed(() => levelFor(pmZdaj.value, sensitivity.value))
 const stopnja = computed(() => LEVELS.findIndex((l) => l.key === lvl.value.key))
 // nasvet za starše – isto besedilo kot na domači strani (lib/airQuality.ts)
 const NASVET: Record<string, string> = Object.fromEntries(LEVELS.map((l) => [l.key, l.parents]))
-const otrok = computed(() => profile.ime.trim() || 'otrok')
 // od kod je številka zgoraj
 const virZdaj = computed(() => {
   const t = now.value?.cas_utc ? new Date(now.value.cas_utc).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) : ''
@@ -206,14 +323,21 @@ const hh = (h: number) => `${String(h).padStart(2, '0')}:00`
 
 const ven = computed(() => {
   const s = stopnja.value
-  if (s <= 1) return { ok: 'da', naslov: 'Da, na igrišče!', text: 'Primerno za igrišče, nogomet, kolo in sprehod.' }
-  if (s === 2)
-    return { ok: 'mogoce', naslov: 'Lahko, a mirneje', text: `Krajša igra zunaj je v redu. Za tek in divjanje počakajte${najVen.value ? ` do ${hh(najVen.value.h)}` : ' na čistejšo uro'}.` }
+  if (s <= 1) return { ok: 'da', naslov: 'Da', text: 'Primerno za sprehod, igrišče in igro zunaj.' }
+  if (s === 2) return { ok: 'mogoce', naslov: 'Da, a ne predolgo', text: 'Sprehod in mirnejša igra sta v redu.' }
   return {
     ok: 'ne',
-    naslov: 'Raje igra v hiši',
+    naslov: 'Raje ostanite notri',
     text: najVen.value ? `Ven le, kadar je nujno. Boljši zrak bo okoli ${hh(najVen.value.h)} (${Math.round(najVen.value.pm)} µg/m³).` : 'Ven le, kadar je nujno.',
   }
+})
+// pri športu dihamo hitreje in globlje, zato so meje strožje kot za sprehod
+const sport = computed(() => {
+  const s = stopnja.value
+  const kdaj = najVen.value ? ` Najboljša ura: ${hh(najVen.value.h)}.` : ''
+  if (s <= 1) return { ok: 'da', naslov: 'Da', text: 'Tek, nogomet in kolo – brez skrbi.' }
+  if (s === 2) return { ok: 'mogoce', naslov: 'Le lažji šport', text: `Pri teku in napornem športu vdihnemo več delcev.${kdaj}` }
+  return { ok: 'ne', naslov: 'Ne zunaj', text: `Šport prestavite v telovadnico ali na čistejšo uro.${kdaj}` }
 })
 const zracenje = computed(() => {
   const n = najZrac.value
@@ -248,7 +372,25 @@ const kategorija = (l: { key: string }) => {
 
 // --- graf 24 ur ---
 const izbrana = ref<number | null>(null)
-const izbranaUra = computed(() => (izbrana.value == null ? null : ure.value[izbrana.value] ?? null))
+// okence z zanimivostjo: kje je in za katero uro (pokaže se samo ob prehodu z miško / dotiku)
+const namig = ref<{ i: number; x: number; y: number } | null>(null)
+const namigUra = computed(() => (namig.value ? ure.value[namig.value.i] ?? null : null))
+function pokaziNamig(i: number, e: Event) {
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  izbrana.value = i
+  namig.value = { i, x: r.left + r.width / 2, y: r.top }
+}
+function skrijNamig() {
+  izbrana.value = null
+  namig.value = null
+}
+const namigSlog = computed(() => {
+  const n = namig.value
+  if (!n) return {}
+  const w = Math.min(280, window.innerWidth - 24)
+  const left = Math.max(12, Math.min(window.innerWidth - w - 12, n.x - w / 2))
+  return { left: `${left}px`, top: `${n.y - 10}px`, width: `${w}px`, '--puscica': `${n.x - left}px` }
+})
 const jeNapoved = computed(() => forecast.value?.model !== 'klima') // sicer so stolpci že »običajne« vrednosti
 // os y: lepi koraki po 5 ali 10 µg/m³
 const os = computed(() => {
@@ -297,16 +439,26 @@ const mesec = computed(() => {
 const MESECI = ['januar', 'februar', 'marec', 'april', 'maj', 'junij', 'julij', 'avgust', 'september', 'oktober', 'november', 'december']
 const fmt = (n: number) => n.toLocaleString('sl-SI', { maximumFractionDigits: 1 })
 const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m / 1000)} km`)
+
+// --- zanimivost za vsak razred kakovosti zraka (pokaže se ob prehodu z miško čez uro na grafu) ---
+const maj = z.meseci[4]!.pm25
+const jan = z.meseci[0]!.pm25
+const rekord = new Date(z.rekord.datum).toLocaleDateString('sl-SI', { day: 'numeric', month: 'long', year: 'numeric' })
+const ZANIMIVOST: Record<string, string> = {
+  odlicno: `Pod smernico WHO (15 µg/m³ na dan). Tak zrak je najpogostejši poleti in po dežju: maja je na Bežigradu povprečno le ${fmt(maj)} µg/m³.`,
+  dobro: `Okoli smernice WHO (15 µg/m³ na dan). Za primerjavo: januarja je na Bežigradu povprečno ${fmt(jan)} µg/m³, maja ${fmt(maj)} µg/m³.`,
+  zmerno: 'Nad smernico WHO. Delci PM2.5 so tako majhni, da iz pljuč preidejo v kri in z njo po vsem telesu.',
+  slabo: `Tak zrak je pogost ob zimskih večerih z inverzijo (povprečno ${fmt(z.primeri.inverzijaVecer)} µg/m³). Pri otrocih z astmo lahko sproži kašelj, piskanje in težko dihanje.`,
+  zeloSlabo: 'Kdor tak zrak diha veliko dni na leto, ima pogosteje okužbe dihal. Pri otrocih je povezan s počasnejšo rastjo pljuč.',
+  izjemnoSlabo: `Ob takem zraku več ljudi poišče zdravniško pomoč zaradi težav z dihanjem in srcem. Najslabši dan v 10 letih meritev je bil ${rekord} (PM10 ${fmt(z.rekord.pm10)} µg/m³).`,
+}
 </script>
 
 <template>
   <section class="container page" :style="{ '--lvl': lvl.color }">
     <!-- glava z lokacijo -->
     <header class="glava">
-      <div>
-        <span class="kicker">Za starše · načrt dneva</span>
-        <h1>Kdaj lahko {{ otrok }} gre ven?</h1>
-      </div>
+      <h1>Moj zrak</h1>
       <div class="lokacija">
         <span class="chip">
           <svg class="pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.4 7-11.5a7 7 0 0 0-14 0C5 14.6 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.4" /></svg>
@@ -314,18 +466,42 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
           <small v-if="mojaLokacija">· {{ km(odCentra) }} od centra</small>
         </span>
         <button class="btn" :disabled="status === 'iscem'" @click="uporabiLokacijo">
-          {{ status === 'iscem' ? 'Iščem …' : mojaLokacija ? 'Osveži lokacijo' : status === 'napaka' ? 'Poišči znova' : 'Uporabi mojo lokacijo' }}
+          {{ status === 'iscem' ? 'Iščem …' : 'Uporabi mojo lokacijo' }}
         </button>
-        <button v-if="mojaLokacija" class="btn ghost" @click="pozabiLokacijo">Pozabi lokacijo</button>
+        <button class="btn ghost" :aria-expanded="izbiram" @click="odpriIskanje">
+          {{ izbiram ? 'Zapri' : 'Izberi lokacijo' }}
+        </button>
+        <div v-if="izbiram" class="iskalnik" :class="{ odprt: odprt && iskanje.trim().length >= 2 }">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+          <input
+            ref="iskalnik"
+            v-model="iskanje"
+            type="search"
+            placeholder="Naslov, ulica, kraj, šola ali vrtec"
+            aria-label="Poišči lokacijo"
+            autocomplete="off"
+            @input="odprt = true"
+            @focus="odprt = true"
+            @keydown.enter.prevent="potrdi"
+            @keydown.esc="izbiram = false"
+          />
+          <ul v-if="odprt && predlogi.length" class="zadetki" role="listbox">
+            <li v-for="z in predlogi" :key="z.id" role="option">
+              <button @mousedown.prevent="izberiLokacijo(z)" @click="izberiLokacijo(z)">
+                <strong>{{ z.ime }}</strong>
+                <small v-if="z.opis">{{ z.opis }}</small>
+              </button>
+            </li>
+          </ul>
+          <p v-else-if="odprt && iskanje.trim().length >= 2" class="nic">
+            {{ iscemSplet ? 'Iščem …' : 'Ne najdem. Poskusite z ulico ali delom imena.' }}
+          </p>
+        </div>
       </div>
     </header>
     <p v-if="status === 'napaka'" class="opozorilo">{{ napaka }}</p>
     <p v-if="izvenLj" class="opozorilo">
-      Vaša lokacija je zunaj ljubljanske kotline. Prikazani so podatki za Ljubljano, ki so najbližji.
-    </p>
-    <p class="zasebnost">
-      Lokacija ostane samo na vaši napravi – strežnik je ne shrani.
-      <RouterLink to="/nastavitve">Družinski profil (ime otroka, astma) →</RouterLink>
+      Izbrana lokacija je zunaj ljubljanske kotline. Prikazani so podatki za Ljubljano, ki so najbližji.
     </p>
 
     <!-- stanje zdaj + odločitve -->
@@ -346,13 +522,19 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
       </article>
 
       <article class="card odlocitev" :class="ven.ok">
-        <span class="mali">Gremo lahko ven?</span>
+        <span class="mali">Lahko grem ven?</span>
         <h2>{{ ven.naslov }}</h2>
         <p>{{ ven.text }}</p>
       </article>
 
+      <article class="card odlocitev" :class="sport.ok">
+        <span class="mali">Lahko športam zunaj?</span>
+        <h2>{{ sport.naslov }}</h2>
+        <p>{{ sport.text }}</p>
+      </article>
+
       <article class="card odlocitev" :class="zracenje.ok">
-        <span class="mali">Naj prezračim stanovanje?</span>
+        <span class="mali">Naj prezračim?</span>
         <h2>{{ zracenje.naslov }}</h2>
         <p>{{ zracenje.text }}</p>
       </article>
@@ -361,17 +543,20 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
     <!-- načrt za danes -->
     <article class="card nacrt">
       <h2>Načrt za naslednjih 24 ur <VirZnacka :vrsta="jeNapoved ? 'model' : 'ocena'" /></h2>
-      <div class="pas-dneva" aria-hidden="true">
+      <div class="pas-dneva" @pointerleave="skrijNamig">
         <span
-          v-for="u in ure"
+          v-for="(u, i) in ure"
           :key="u.cas"
           class="seg"
-          :class="kategorija(u.lvl)"
-          :title="`${hh(u.h)}: ${Math.round(u.pm)} µg/m³`"
+          :class="[kategorija(u.lvl), { izbran: izbrana === i }]"
+          :aria-label="`${hh(u.h)}: ${Math.round(u.pm)} µg/m³, ${u.lvl.label}`"
+          @pointerenter="pokaziNamig(i, $event)"
+          @pointerdown="pokaziNamig(i, $event)"
         />
       </div>
+      <!-- ure: vsaka oznaka je na sredini svojega kvadratka -->
       <div class="pas-ure" aria-hidden="true">
-        <span v-for="(u, i) in ure" :key="u.cas">{{ i % 3 === 0 ? `${u.h}h` : '' }}</span>
+        <span v-for="u in ure" :key="u.cas"><b v-if="u.h % 3 === 0">{{ u.h }}h</b></span>
       </div>
       <ul class="okna">
         <li v-if="oknoVen" class="ven">
@@ -402,14 +587,7 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
         Višji stolpec pomeni več delcev PM2.5, barva pa, ali je zrak dober, zmeren ali slab.
       </p>
 
-      <div class="podrobno" aria-live="polite">
-        <template v-if="izbranaUra">
-          Ob <strong>{{ hh(izbranaUra.h) }}</strong>: {{ Math.round(izbranaUra.pm) }} µg/m³ –
-          <span class="lvl" :style="{ background: izbranaUra.lvl.color }">{{ izbranaUra.lvl.label }}</span>
-          <span v-if="jeNapoved" class="sivo"> · običajno ob tej uri {{ Math.round(izbranaUra.obicajno) }} µg/m³</span>
-        </template>
-        <span v-else class="sivo">Pokažite ali tapnite stolpec, da vidite posamezno uro.</span>
-      </div>
+      <p class="sivo namig-hint">Pokažite na stolpec za zanimivost o takem zraku.</p>
 
       <div class="g">
         <!-- os y -->
@@ -417,7 +595,7 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
           <span v-for="v in os.crte" :key="v" :style="{ bottom: `${pct(v)}%` }">{{ v }}</span>
           <em>µg/m³</em>
         </div>
-        <div class="g-plos" @pointerleave="izbrana = null">
+        <div class="g-plos" @pointerleave="skrijNamig">
           <!-- mreža -->
           <span v-for="v in os.crte" :key="v" class="mreza" :style="{ bottom: `${pct(v)}%` }" aria-hidden="true" />
           <!-- stolpci -->
@@ -427,9 +605,10 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
             class="st"
             :class="{ izbran: izbrana === i, novdan: i > 0 && u.h === 0 }"
             :aria-label="`${hh(u.h)}: ${Math.round(u.pm)} µg/m³, ${u.lvl.label}`"
-            @pointerenter="izbrana = i"
-            @focus="izbrana = i"
-            @click="izbrana = i"
+            @pointerenter="pokaziNamig(i, $event)"
+            @pointerdown="pokaziNamig(i, $event)"
+            @focus="pokaziNamig(i, $event)"
+            @blur="skrijNamig"
           >
             <span class="bar" :style="{ height: `${pct(u.pm)}%`, background: u.lvl.color, '--d': `${i * 25}ms` }">
               <span v-if="i === iMin" class="oznaka min" :class="{ levo: i < 2, desno: i > ure.length - 3 }">najčistejše<br /><b>{{ Math.round(u.pm) }}</b></span>
@@ -442,10 +621,10 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
           </svg>
           <span v-if="jeNapoved" class="crta-napis" :style="{ bottom: `${pct(ure[ure.length - 1]?.obicajno ?? 0)}%` }">običajno</span>
         </div>
-        <!-- os x -->
+        <!-- os x: vsaka oznaka je na sredini svojega stolpca -->
         <div class="g-ure" aria-hidden="true">
-          <span v-for="(u, i) in ure" :key="u.cas">
-            <template v-if="i === 0 || u.h % 3 === 0">{{ u.h }}h</template>
+          <span v-for="u in ure" :key="u.cas">
+            <b v-if="u.h % 3 === 0">{{ u.h }}h</b>
             <small v-if="u.h === 0 && new Date(u.cas).getDate() !== prviDan">jutri</small>
           </span>
         </div>
@@ -494,6 +673,17 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
         <p class="izvor"><VirZnacka vrsta="meritev" /> povprečje meritev ARSO na Bežigradu {{ z.pm25Od }}–{{ z.zadnjeLeto }}</p>
       </article>
     </div>
+    <!-- zanimivost ob prehodu z miško čez uro -->
+    <Teleport to="body">
+      <div v-if="namig && namigUra" class="ura-namig" :style="namigSlog" role="tooltip">
+        <span class="nv">
+          <strong>{{ hh(namigUra.h) }}</strong> · {{ Math.round(namigUra.pm) }} µg/m³
+          <span class="lvl" :style="{ background: namigUra.lvl.color }">{{ namigUra.lvl.label }}</span>
+        </span>
+        <span v-if="jeNapoved" class="ob">običajno ob tej uri {{ Math.round(namigUra.obicajno) }} µg/m³</span>
+        <p>{{ ZANIMIVOST[namigUra.lvl.key] }}</p>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -508,14 +698,6 @@ const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m 
   justify-content: space-between;
   gap: 14px;
 }
-.kicker {
-  display: block;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: color-mix(in srgb, var(--lvl) 75%, var(--ink));
-}
 h1 {
   font-size: clamp(2rem, 5vw, 3rem);
   margin: 4px 0 0;
@@ -524,7 +706,9 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
+  max-width: 640px;
 }
 .chip {
   padding: 8px 14px;
@@ -553,10 +737,80 @@ h1 {
   background: color-mix(in srgb, var(--aq-3) 20%, var(--card));
   font-weight: 700;
 }
-.zasebnost {
-  margin: 8px 0 18px;
+.glava {
+  margin-bottom: 18px;
+}
+/* iskalnik lokacije (isti videz kot iskanje šol na Zemljevidu): v svoji vrstici pod gumboma */
+.iskalnik {
+  position: relative;
+  flex: 1 1 100%;
+}
+.iskalnik > svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.iskalnik input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+}
+.iskalnik input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+.zadetki {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 40px -18px rgba(31, 45, 77, 0.45);
+}
+.zadetki button {
+  display: grid;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.zadetki button:hover {
+  background: var(--bg-soft);
+}
+.zadetki small {
   color: var(--ink-soft);
+}
+.iskalnik .nic {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 14px;
+  margin: 0;
   font-size: 0.85rem;
+  color: var(--ink-soft);
 }
 .mali {
   display: block;
@@ -568,7 +822,7 @@ h1 {
 /* zgoraj: stanje in odločitvi */
 .zgoraj {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr;
   gap: 18px;
   margin-bottom: 18px;
 }
@@ -670,17 +924,88 @@ h1 {
 .seg.slabo {
   background: var(--aq-5);
 }
+.seg {
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.seg.izbran {
+  transform: scaleY(1.35);
+}
+/* ure pod kvadratki in stolpci: oznaka na sredini svojega stolpca (lahko sega čez rob) */
 .pas-ure {
   display: flex;
   gap: 2px;
   margin-top: 4px;
 }
-.pas-ure span {
+.pas-ure span,
+.g-ure span {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--ink-soft);
   white-space: nowrap;
+}
+.pas-ure b,
+.g-ure b {
+  font-weight: 700;
+}
+.namig-hint {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+}
+/* okence z zanimivostjo ob prehodu z miško */
+.ura-namig {
+  position: fixed;
+  z-index: 1000;
+  transform: translateY(-100%);
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 40px -16px rgba(31, 45, 77, 0.45);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  pointer-events: none;
+}
+.ura-namig::after {
+  content: '';
+  position: absolute;
+  left: var(--puscica);
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transform: translateX(-50%) rotate(45deg);
+}
+.ura-namig .nv {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ura-namig .lvl {
+  padding: 1px 9px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.ura-namig .ob {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.ura-namig p {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
 }
 .okna {
   list-style: none;
@@ -736,20 +1061,6 @@ h1 {
 .povzetek {
   margin: 0;
   color: var(--ink-soft);
-}
-.podrobno {
-  min-height: 1.8em;
-  margin: 12px 0 10px;
-  font-weight: 600;
-}
-.podrobno .lvl {
-  display: inline-block;
-  padding: 1px 10px;
-  border-radius: 999px;
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.85rem;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 .sivo {
   color: var(--ink-soft);
@@ -900,15 +1211,7 @@ h1 {
   display: flex;
   gap: 3px;
   padding-top: 6px;
-}
-.g-ure span {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  overflow: visible;
+  border-left: 1px solid transparent; /* enako kot .g-plos, da so oznake točno pod stolpci */
 }
 .g-ure small {
   display: block;
@@ -969,6 +1272,11 @@ h1 {
   color: var(--ink);
 }
 
+@media (max-width: 1100px) {
+  .zgoraj {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 @media (max-width: 900px) {
   .zgoraj,
   .spodaj {
