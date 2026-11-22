@@ -178,7 +178,7 @@ const okna = [
           <span class="pika" />
           <span class="lvl">{{ level.label }}</span>
           <span class="loc" aria-hidden="true">·</span>
-          <span class="st">{{ Math.round(pm) }} <small>µg/m³</small></span>
+          <span class="st">{{ Math.round(pm) }} <small>µg/m³ PM2.5</small></span>
           <VirZnacka :vrsta="izmerjeno ? 'meritev' : 'ocena'" />
         </p>
         <p class="nasvet">
