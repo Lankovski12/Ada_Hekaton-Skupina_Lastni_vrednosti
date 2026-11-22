@@ -96,8 +96,8 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         </template>
         <template v-else>
           <h1>{{ timeLeft <= 0 ? 'Bravo! 🎉' : 'Khe khe! 😮‍💨' }}</h1>
-          <p>Pobral si <strong>{{ score }}</strong> oblačkov dima.</p>
-          <p class="tip">💡 Ali si vedel? Ko je zrak slab, je pametno, da se igraš v hiši in zračiš le na kratko.</p>
+          <p>Pobral(a) si <strong>{{ score }}</strong> oblačkov dima.</p>
+          <p class="tip">💡 Ali si vedel? Ko je zrak slab, se igraj v hiši. Prosi mamo ali očija, naj okno odpreta le na kratko.</p>
           <button class="btn" @click="start(levelIdx)">Še enkrat</button>
         </template>
       </div>

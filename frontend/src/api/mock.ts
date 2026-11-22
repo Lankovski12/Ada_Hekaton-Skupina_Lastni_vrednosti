@@ -88,9 +88,10 @@ export function mockDailyGame(): DailyGame {
 
 export function mockFacts(): Fact[] {
   return [
-    { besedilo: 'Večina delcev PM2.5 v ljubljanski kotlini pozimi prihaja iz kurjenja lesa.', stevilka: '~ 60 %', vir: 'ARSO (primer – preveri)' },
-    { besedilo: 'Ob temperaturni inverziji ostane onesnažen zrak ujet v kotlini kot pod pokrovko.', vir: 'ARSO' },
-    { besedilo: 'Zračenje: na kratko in na široko odpri okno, ko je zrak najčistejši.', vir: 'NIJZ (primer – preveri)' },
+    { besedilo: 'Otroci glede na telesno težo vdihnejo več zraka kot odrasli, njihova pljuča pa se razvijajo do najstniških let.', vir: 'WHO' },
+    { besedilo: 'Smernica WHO (2021) za dnevno povprečje PM2.5.', stevilka: '15 µg/m³', vir: 'WHO' },
+    { besedilo: 'Večina delcev PM2.5 v ljubljanski kotlini pozimi prihaja iz kurjenja lesa – tudi v soseski vrtca ali šole.', stevilka: '~ 60 %', vir: 'ARSO (primer – preveri)' },
+    { besedilo: 'Zračenje otroške sobe: na kratko in na široko odprite okno, ko je zrak najčistejši.', vir: 'NIJZ (primer – preveri)' },
   ]
 }
 

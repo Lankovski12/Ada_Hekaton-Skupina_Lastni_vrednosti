@@ -9,7 +9,7 @@ import { RouterLink } from 'vue-router'
     <RouterLink to="/otroci" class="back">← Igre</RouterLink>
     <div class="card">
       <h1>🧩 Poišči par</h1>
-      <p>Ta igra še nastaja. Prostor za vajino kodo!</p>
+      <p>Ta igra še nastaja. Kmalu boš lahko iskal(a) pare: kaj umaže zrak in kaj mu pomaga.</p>
     </div>
   </section>
 </template>

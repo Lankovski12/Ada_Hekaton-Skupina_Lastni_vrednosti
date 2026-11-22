@@ -3,9 +3,17 @@ Repozitoriji namenjen projektu, ki je nastal na Ada hekatonu. Avtorja projekta s
 
 ## Zrak za otroke in starše
 
+Aplikacija je namenjena **družinam z otroki v Ljubljani**. Otroci so na onesnažen zrak bolj občutljivi
+(dihajo hitreje, pljuča se jim še razvijajo), zato se vse vrti okrog enega vprašanja:
+**kdaj se lahko otrok varno igra zunaj?**
+
+- **Za otroke:** oblaček maskota v otroškem jeziku pove, kakšen je zrak danes, igre pa učijo na pravih podatkih.
+- **Za starše:** nasvet za danes (igrišče, zračenje, ostati doma), napoved za 48 ur z najboljšo uro za ven,
+  vrtci in šole v bližini ter dejstva o otrocih in zraku.
+- **Družinski profil:** ime otroka in astma (strožje meje) ostaneta samo na napravi.
+
 Spletna + mobilna aplikacija (ista Vue koda, na telefon s Capacitorjem) in Python zaledje (FastAPI),
 ki vsako uro prebere meritve ARSO in vreme ter napove PM2.5 za 1–48 ur.
-Otroci dobijo igre na pravih podatkih, starši napoved in nasvete. Profil (astma) ostane na napravi.
 
 Podatki hekatona: https://github.com/vidacex/ARSOhack (glej `data/README.md`).
 
@@ -49,7 +57,7 @@ frontend/                Vue 3 + TS + Vite + Pinia
   src/scenes/            DataSculpture (oblak delcev), Kotlina
   src/games/             igre (vsaka v svoji mapi)
   src/composables/       useAirData, useProfile
-  src/views/             Domov, Otroci, Starši, Profil
+  src/views/             Domov, Za otroke, Za starše, Družinski profil
 data/                    podatki za učenje (ni v gitu)
 docs/                    arhitektura
 ```

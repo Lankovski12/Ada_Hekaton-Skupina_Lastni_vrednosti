@@ -147,6 +147,8 @@ def daily_game():
 @app.get("/api/facts", response_model=list[FactOut])
 def facts():
     return [
+        FactOut(besedilo="Otroci glede na telesno težo vdihnejo več zraka kot odrasli, njihova pljuča pa se razvijajo "
+                         "do najstniških let.", vir="WHO"),
         FactOut(besedilo="Smernica WHO (2021) za dnevno povprečje PM2.5.", stevilka="15 µg/m³", vir="WHO"),
         FactOut(besedilo="Ob temperaturni inverziji ostane onesnažen zrak ujet v kotlini kot pod pokrovko.", vir="ARSO"),
     ]

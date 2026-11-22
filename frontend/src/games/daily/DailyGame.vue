@@ -49,7 +49,7 @@ function choose(o: string) {
           {{ o }}
         </button>
       </div>
-      <p v-if="myAnswer" class="done">Shranjeno! Vrni se jutri in poglej, ali si imel prav. ⭐ +1</p>
+      <p v-if="myAnswer" class="done">Shranjeno! Vrni se jutri in poglej, ali si uganil. ⭐ +1</p>
 
       <div v-if="daily.vceraj" class="yesterday">
         <h3>Včeraj</h3>

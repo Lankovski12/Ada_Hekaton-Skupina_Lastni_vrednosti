@@ -21,7 +21,7 @@ onMounted(() => refresh(profile.lokacija ?? undefined))
     </RouterView>
   </main>
   <footer class="container footer">
-    Podatki: ARSO, Sensor.Community, Open-Meteo · Ada hekaton 2026 · Skupina Lastne vrednosti
+    Za otroke in starše v Ljubljani · Podatki: ARSO, Sensor.Community, Open-Meteo · Ada hekaton 2026 · Skupina Lastne vrednosti
   </footer>
 </template>
 

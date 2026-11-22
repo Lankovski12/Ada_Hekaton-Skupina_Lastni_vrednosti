@@ -6,9 +6,9 @@ const progress = useProgressStore()
 
 const links = [
   { to: '/', label: 'Domov', icon: '🏠' },
-  { to: '/otroci', label: 'Otroci', icon: '🎮' },
-  { to: '/starsi', label: 'Starši', icon: '📈' },
-  { to: '/nastavitve', label: 'Profil', icon: '⚙️' },
+  { to: '/otroci', label: 'Za otroke', icon: '🎮' },
+  { to: '/starsi', label: 'Za starše', icon: '👨‍👩‍👧' },
+  { to: '/nastavitve', label: 'Družina', icon: '⚙️' },
 ]
 </script>
 
@@ -22,7 +22,7 @@ const links = [
       <nav class="desktop">
         <RouterLink v-for="l in links" :key="l.to" :to="l.to">{{ l.label }}</RouterLink>
       </nav>
-      <span class="points" title="Tvoje točke iz iger">⭐ {{ progress.tocke }}</span>
+      <span class="points" title="Zvezdice, ki jih otrok zbere v igrah">⭐ {{ progress.tocke }}</span>
     </div>
   </header>
 

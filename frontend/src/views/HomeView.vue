@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Domača stran = zgodba, ki naredi nevidno vidno (navdih: »Seeing the Invisible«, WHO + Google Arts & Culture).
+// Domača stran = zgodba za starše in otroke, ki naredi nevidno vidno (navdih: »Seeing the Invisible«, WHO + Google Arts & Culture).
 // Skulptura ostane pripeta, besedilo drsi čez njo; vsak korak skulpturi pove, kakšen zrak naj pokaže.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -26,45 +26,51 @@ interface Step {
 }
 const steps: Step[] = [
   {
-    kicker: 'Nevidno postane vidno',
-    title: 'Zrak, ki ga dihamo',
-    text: 'Drobnih delcev PM2.5 z očmi ne vidiš. Tukaj jih lahko. Vsaka pika je delček zraka nad Ljubljano. Povleci, da ga zavrtiš.',
+    kicker: 'Za otroke in starše',
+    title: 'Zrak, ki ga dihajo naši otroci',
+    text: 'Drobnih delcev PM2.5 z očmi ne vidimo, otroška pljuča pa jih čutijo. Tukaj jih lahko vidite skupaj. Vsaka pika je delček zraka nad Ljubljano. Povleci, da ga zavrtiš.',
     pm: () => live.value,
   },
   {
     kicker: 'Ljubljana, ta trenutek',
     title: '',
-    text: 'Toliko mikrogramov drobnih delcev je v vsakem kubičnem metru zraka. Bolj ko je oblak nemiren in bodičast, slabši je zrak.',
+    text: 'Toliko mikrogramov drobnih delcev je zdaj v vsakem kubičnem metru zraka, ki ga dihajo otroci na igrišču. Bolj ko je oblak nemiren in bodičast, slabši je zrak.',
+    pm: () => live.value,
+  },
+  {
+    kicker: 'Zakaj so otroci bolj občutljivi?',
+    title: 'Mala pljuča, hiter dih',
+    text: 'Otrok vdihne pogosteje kot odrasel in glede na svojo težo vdihne več zraka. Pljuča mu rastejo do najstniških let, zato jih delci prizadenejo bolj. Pa še bližje tlom so, kjer so izpuhi.',
     pm: () => live.value,
   },
   {
     kicker: 'Kako majhno je to?',
     title: '~30× tanjše od lasu',
-    text: 'Delec PM2.5 je velik največ 2,5 mikrometra. Tako je majhen, da ga vdihneš globoko v pljuča. Otroci dihajo hitreje kot odrasli, zato vdihnejo več.',
+    text: 'Delec PM2.5 je velik največ 2,5 mikrometra. Tako je majhen, da ga vdihnemo globoko v pljuča – pri otrocih z astmo lahko sproži kašelj ali napad.',
     pm: () => live.value,
   },
   {
     kicker: 'Smernica WHO',
     title: '15 µg/m³ na dan',
-    text: 'Svetovna zdravstvena organizacija priporoča, naj dnevno povprečje ne preseže 15 µg/m³. Tako izgleda zrak tik pod to mejo.',
+    text: 'Svetovna zdravstvena organizacija priporoča, naj dnevno povprečje ne preseže 15 µg/m³. Tak zrak je primeren za igro zunaj.',
     pm: () => 15,
   },
   {
     kicker: 'Zimski večer z inverzijo',
     title: '65 µg/m³',
-    text: 'Hladen zrak obleži na dnu kotline kot pod pokrovko. Dim iz dimnikov in izpuhov ne more ven – oblak postane nemiren in temen.',
+    text: 'Hladen zrak obleži na dnu kotline kot pod pokrovko, dim iz dimnikov ne more ven. Takrat naj se otroci igrajo v hiši, okna pa ostanejo zaprta.',
     pm: () => 65,
   },
   {
     kicker: 'Poletno jutro po dežju',
     title: '4 µg/m³',
-    text: 'Dež spere delce, veter jih odnese. Oblak se umiri in diha počasi.',
+    text: 'Dež spere delce, veter jih odnese. Pravi čas za igrišče, kolo in odprto okno v otroški sobi.',
     pm: () => 4,
   },
   {
-    kicker: 'Zdaj ti',
+    kicker: 'Zdaj vi – skupaj z otrokom',
     title: 'Ustvari svoj zrak',
-    text: 'Povleci drsnik in poglej, kako se oblak spreminja.',
+    text: 'Povleci drsnik in poglejta, kako se oblak spreminja in kaj to pomeni za igro zunaj.',
     pm: () => myPm.value,
     interactive: true,
   },
@@ -134,15 +140,15 @@ onBeforeUnmount(() => io?.disconnect())
   <section class="container section">
     <div class="section-head">
       <h2>Zakaj je pozimi v kotlini megla?</h2>
-      <p>Ponoči se hladen zrak ujame na dnu kotline – kot pod pokrovko. Dim iz dimnikov ne more ven. Predvajaj dan in opazuj meglo.</p>
+      <p>Ponoči se hladen zrak ujame na dnu kotline – kot pod pokrovko, dim iz dimnikov ne more ven. Predvajajte dan skupaj z otrokom in opazujte, kdaj se megla dvigne.</p>
     </div>
     <Kotlina v-if="scene" :scene="scene" />
   </section>
 
   <section class="container section">
     <div class="section-head">
-      <h2>Kdaj je najboljši čas za ven?</h2>
-      <p>Napoved za naslednjih 48 ur. Zvezdica ⭐ pokaže najčistejšo uro podnevi.</p>
+      <h2>Kdaj gremo lahko ven?</h2>
+      <p>Napoved za naslednjih 48 ur. Zvezdica ⭐ pokaže najčistejšo uro podnevi – takrat je najboljši čas za igrišče, sprehod ali zračenje otroške sobe.</p>
     </div>
     <div class="card">
       <ForecastStrip v-if="forecast" :forecast="forecast" :sensitivity="sensitivity" />
@@ -153,13 +159,13 @@ onBeforeUnmount(() => io?.disconnect())
     <RouterLink to="/otroci" class="door kids">
       <AirBuddy :mood="levelFor(live).mood" :color="levelFor(live).color" :size="140" />
       <h3>Za otroke</h3>
-      <p>Igre na pravih podatkih: pomagaj zmajčku očistiti nebo in ugani jutrišnji zrak.</p>
+      <p>Oblaček pove, kakšen je zrak danes. Igraj igre na pravih podatkih: pomagaj zmajčku očistiti nebo in ugani jutrišnji zrak.</p>
       <span class="btn">Igraj →</span>
     </RouterLink>
     <RouterLink to="/starsi" class="door parents">
       <span class="emoji">👨‍👩‍👧</span>
       <h3>Za starše</h3>
-      <p>Napoved, nasveti in opozorila – z upoštevanjem astme, ki ostane samo na tvojem telefonu.</p>
+      <p>Kdaj na igrišče, kdaj zračiti in kdaj ostati doma. Napoved in nasveti, prilagojeni vašemu otroku – podatek o astmi ostane samo na vašem telefonu.</p>
       <span class="btn">Poglej →</span>
     </RouterLink>
   </section>
