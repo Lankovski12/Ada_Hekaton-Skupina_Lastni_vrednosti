@@ -810,7 +810,6 @@ h1 {
   align-items: baseline;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
-  border-left: 5px solid var(--o);
   background: color-mix(in srgb, var(--o) 9%, var(--card));
 }
 .odlocitve li.mogoce {
