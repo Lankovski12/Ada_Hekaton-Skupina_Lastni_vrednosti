@@ -29,7 +29,7 @@ const nasvet = computed(() => {
   const stopnja = LEVELS.findIndex((l) => l.key === level.value.key)
   const dan = ure.filter((u) => u.h >= 7 && u.h <= 20)
   const naj = dan.reduce<(typeof dan)[number] | null>((a, b) => (!a || b.pm < a.pm ? b : a), null)
-  if (stopnja <= 1) return { text: 'Lep čas za ven in zračenje.', vrsta: null }
+  if (stopnja <= 1) return { text: 'Lep čas za sprehod in zračenje.', vrsta: null }
   if (!naj) return { text: 'Ven za krajši čas, zračite na kratko.', vrsta: null }
   if (naj === dan[0] && ure[0]?.h === naj.h) return { text: 'Zdaj je najčistejša ura dneva.', vrsta }
   return { text: `Najčistejši zrak bo ob ${hh(naj.h)}.`, vrsta }
@@ -123,7 +123,7 @@ const okna = [
     to: '/grafi',
     kicker: 'Poglej',
     title: 'Podatki',
-    text: 'Zakaj nastane megle in kaj kaže 10 let meritev ARSO.',
+    text: 'Zakaj nastane megle in kaj kaže 10 let meritev ARSO',
     color: 'var(--brand)',
     ikona: 'podatki',
     pos: 'r1',
