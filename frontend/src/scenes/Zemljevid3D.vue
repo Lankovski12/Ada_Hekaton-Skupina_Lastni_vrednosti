@@ -476,7 +476,11 @@ async function build() {
 
   renderer.domElement.addEventListener('pointermove', onPointer)
   renderer.domElement.addEventListener('pointerdown', onPointer)
-  renderer.domElement.addEventListener('pointerleave', () => (tip.value = null))
+  // miška zapusti zemljevid: okence skrijemo; pri dotiku brskalnik ta dogodek sproži ob vsakem dvigu prsta,
+  // zato tam okence ostane, dokler ne tapneš drugam ali povlečeš zemljevida
+  renderer.domElement.addEventListener('pointerleave', (e) => {
+    if (e.pointerType !== 'touch') tip.value = null
+  })
 
   resize()
   ro = new ResizeObserver(resize)
@@ -698,15 +702,43 @@ watch(show, () => {
   }
 })
 
+// telefon: kje se je prst dotaknil zemljevida (da ločimo tap na buciko od vlečenja zemljevida)
+let dotik: { x: number; y: number } | null = null
+
+// okence s podrobnostmi bucike; na telefonu je nad prstom in ne gre čez rob zemljevida
+const tipSpodaj = computed(() => {
+  const t = tip.value, el = host.value
+  return !!(t && el && telefon?.matches && t.y - el.offsetTop < 150) // premalo prostora nad prstom
+})
+const tipSlog = computed(() => {
+  const t = tip.value, el = host.value
+  if (!t) return {}
+  let x = t.x
+  if (el && telefon?.matches) x = Math.min(el.offsetLeft + el.clientWidth - 125, Math.max(el.offsetLeft + 125, x))
+  return { left: `${x}px`, top: `${t.y}px` }
+})
+
 function onPointer(e: PointerEvent) {
-  if (!renderer || !camera) return
+  if (!renderer || !camera || !host.value) return
+  const prst = e.pointerType === 'touch'
+  if (prst && e.type === 'pointermove') {
+    // vlečenje zemljevida s prstom: okence s podrobnostmi skrijemo, bucik med vlečenjem ne iščemo
+    if (dotik && Math.hypot(e.clientX - dotik.x, e.clientY - dotik.y) > 8) tip.value = null
+    return
+  }
+  if (prst) dotik = { x: e.clientX, y: e.clientY }
   const r = renderer.domElement.getBoundingClientRect()
   pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
   raycaster.setFromCamera(pointer, camera)
   const hit = raycaster.intersectObjects(pins.filter((p) => p.mesh.visible).map((p) => p.mesh))[0]
   if (hit && hit.instanceId != null) {
     const p = pins.find((pp) => pp.mesh === hit.object)!
-    tip.value = { x: e.clientX - r.left, y: e.clientY - r.top, l: p.items[hit.instanceId]! }
+    // položaj glede na zemljevid; na telefonu so nad zemljevidom kategorije (na računalniku je zamik 0)
+    tip.value = {
+      x: host.value.offsetLeft + e.clientX - r.left,
+      y: host.value.offsetTop + e.clientY - r.top,
+      l: p.items[hit.instanceId]!,
+    }
   } else if (e.type === 'pointerdown' || active.value) {
     tip.value = null
   }
@@ -965,7 +997,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- podrobnosti lokacije -->
-      <div v-if="tip" class="tip" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
+      <div v-if="tip" class="tip" :class="{ spodaj: tipSpodaj }" :style="tipSlog">
         <strong>{{ tip.l.ime ?? 'Brez imena' }}</strong>
         <span>{{ KAT_IME[tip.l.kat] }}<template v-if="tip.l.naslov"> · {{ tip.l.naslov }}</template></span>
         <span>{{ tip.l.z }} m n. v. · {{ tip.l.nadDnom }} m nad dnom kotline <VirZnacka vrsta="ocena" /></span>
@@ -1384,14 +1416,15 @@ onBeforeUnmount(() => {
     font-size: 0.8rem;
     color: var(--scene-muted);
   }
-  /* podrobnosti bucike: pod zemljevidom namesto ob prstu */
+  /* podrobnosti bucike: okence nad prstom na zemljevidu (kot na računalniku ob prehodu z miško) */
   .tip {
-    order: 3;
-    position: static;
-    left: auto !important;
-    top: auto !important;
-    transform: none;
-    max-width: none;
+    width: 240px;
+    max-width: 240px;
+    transform: translate(-50%, calc(-100% - 14px));
+    box-shadow: 0 10px 24px -10px rgba(31, 45, 77, 0.45);
+  }
+  .tip.spodaj {
+    transform: translate(-50%, 18px);
   }
   .actions {
     order: 4;
@@ -1462,7 +1495,7 @@ onBeforeUnmount(() => {
     top: calc(12px + env(safe-area-inset-top));
     right: 12px;
   }
-  .map.celo > :not(.canvas):not(.station):not(.fogbox) {
+  .map.celo > :not(.canvas):not(.station):not(.fogbox):not(.tip) {
     display: none;
   }
   .map.celo .fogbox {
