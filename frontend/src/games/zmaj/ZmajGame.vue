@@ -1293,5 +1293,28 @@ function play() {
   .score strong {
     font-size: 1.4rem;
   }
+  /* sporočila ob dobrotah (dež, veter, dimnik): spodaj in manjša, da ne zakrivajo igre */
+  .toast {
+    top: auto;
+    bottom: 112px; /* nad trakom vetra in namigom */
+    gap: 8px;
+    max-width: 92%;
+    padding: 8px 14px 8px 10px;
+    border-width: 3px;
+    border-radius: 18px;
+    font-size: 0.8rem;
+    line-height: 1.3;
+  }
+  .toast :deep(svg) {
+    width: 30px;
+    height: 30px;
+  }
+  .toast strong {
+    font-size: 1.05rem;
+  }
+  /* velik napis »Sunek vetra!« čez sredino zaslona: na telefonu ga ni, isto pove sporočilo spodaj */
+  .boost-banner {
+    display: none;
+  }
 }
 </style>
