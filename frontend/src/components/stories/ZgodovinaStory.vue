@@ -2,8 +2,9 @@
 // Poglavje »10 let meritev«: zgodovinski podatki ARSO (paket ARSOhack).
 // Številke izračuna backend/scripts/blog_statistika.py → src/data/zgodovina.json.
 // Ob drsenju se graf na levi spremeni; vsak korak pokaže eno ugotovitev.
-import { computed, ref } from 'vue'
-import ScrollStory from '@/components/ScrollStory.vue'
+// Na telefonu se lista kot »stories« (SwipeStory), na računalniku drsi (ScrollStory).
+import { computed, onMounted, ref } from 'vue'
+import { useNacinZgodbe, type NacinZgodbe } from '@/composables/useNacinZgodbe'
 import { levelFor } from '@/lib/airQuality'
 import z from '@/data/zgodovina.json'
 import VirZnacka from '@/components/VirZnacka.vue'
@@ -144,6 +145,11 @@ const steps: Step[] = [
   },
 ]
 
+const props = defineProps<NacinZgodbe>()
+const emit = defineEmits<{ konec: []; zacetek: []; stevilo: [n: number] }>()
+const { komponenta, vezave } = useNacinZgodbe(props)
+onMounted(() => emit('stevilo', steps.length))
+
 const active = ref(0)
 const step = computed(() => steps[active.value]!)
 const max = computed(() => Math.max(...(step.value.bars ?? []).map((b) => b.value)) * 1.08)
@@ -155,7 +161,15 @@ const dayColor = (v: number | null) => (v == null ? 'transparent' : v > 15 ? lev
 </script>
 
 <template>
-  <ScrollStory v-model:active="active" :count="steps.length" :color="step.color">
+  <component
+    :is="komponenta"
+    v-model:active="active"
+    :count="steps.length"
+    :color="step.color"
+    v-bind="vezave"
+    @konec="emit('konec')"
+    @zacetek="emit('zacetek')"
+  >
     <template #stage>
       <div class="panel-stage">
         <figure class="panel chart">
@@ -194,7 +208,7 @@ const dayColor = (v: number | null) => (v == null ? 'transparent' : v > 15 ? lev
         <VirZnacka v-if="steps[i]!.nasvetVir" :vrsta="steps[i]!.nasvetVir!" />
       </p>
     </template>
-  </ScrollStory>
+  </component>
 </template>
 
 <style scoped>

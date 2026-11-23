@@ -1,13 +1,18 @@
 <script setup lang="ts">
 // Poglavje »Zakaj je pozimi v kotlini megla?«: Kotlina čez cel zaslon, koraki ji nastavljajo uro.
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import ScrollStory from '@/components/ScrollStory.vue'
+// Na telefonu se lista kot »stories« (SwipeStory), na računalniku drsi (ScrollStory).
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Kotlina from '@/scenes/Kotlina.vue'
+import { useNacinZgodbe, type NacinZgodbe } from '@/composables/useNacinZgodbe'
 import { useAirData } from '@/composables/useAirData'
 import { useProfile } from '@/composables/useProfile'
 import { levelFor } from '@/lib/airQuality'
 import { klimaLabel, typicalPm25 } from '@/lib/klima'
 import VirZnacka from '@/components/VirZnacka.vue'
+
+const props = defineProps<NacinZgodbe>()
+const emit = defineEmits<{ konec: []; zacetek: []; stevilo: [n: number] }>()
+const { komponenta, vezave } = useNacinZgodbe(props)
 
 const { scene, currentPm25 } = useAirData()
 const { sensitivity } = useProfile()
@@ -84,10 +89,20 @@ watch(playing, (on) => {
   if (on) timer = window.setInterval(() => (hour.value = (hour.value + 1) % ure.value.length), 700)
 })
 onBeforeUnmount(() => window.clearInterval(timer))
+onMounted(() => emit('stevilo', steps.value.length))
 </script>
 
 <template>
-  <ScrollStory v-if="scene" v-model:active="active" :count="steps.length" :color="level.color">
+  <component
+    :is="komponenta"
+    v-if="scene"
+    v-model:active="active"
+    :count="steps.length"
+    :color="level.color"
+    v-bind="vezave"
+    @konec="emit('konec')"
+    @zacetek="emit('zacetek')"
+  >
     <template #stage>
       <div class="kot-stage">
         <Kotlina v-model:hour="hour" :scene="scene" bare :controls="false" />
@@ -115,7 +130,7 @@ onBeforeUnmount(() => window.clearInterval(timer))
         <span>{{ clock }} · {{ ure[hour] ? Math.round(ure[hour]!.pm25) : '–' }} µg/m³ · {{ level.kids }}</span>
       </div>
     </template>
-  </ScrollStory>
+  </component>
 </template>
 
 <style scoped>
@@ -137,6 +152,10 @@ onBeforeUnmount(() => window.clearInterval(timer))
   }
   .kot-stage::after {
     display: none; /* na telefonu je številka zgoraj – brez prehoda, da se bere */
+  }
+  /* zgodba za listanje: kotlina zapolni cel oder */
+  .swipe .kot-stage {
+    bottom: 0;
   }
 }
 </style>
