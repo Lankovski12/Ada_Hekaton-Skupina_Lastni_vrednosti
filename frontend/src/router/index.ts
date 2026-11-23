@@ -34,12 +34,27 @@ router.onError((err, to) => {
   }
   window.location.assign(to.fullPath)
 })
-router.afterEach(() => {
+router.afterEach((to) => {
   try {
     sessionStorage.removeItem('reloaded-for')
   } catch {
     /* ni pomembno */
   }
+  prestejObisk(to.path)
 })
+
+// Štetje obiskov z GoatCounter (index.html). Stran je ena aplikacija in ob prehodu med zavihki ne naloži
+// nove strani, zato vsak prehod preštejemo sami. Samo pot (brez ?datum=… ipd.), brez piškotkov.
+// Na localhost GoatCounter sam ne šteje. Če ga blokira oglasni filter, se ne zgodi nič.
+type GoatCounter = { count?: (o: { path: string }) => void }
+function prestejObisk(path: string) {
+  const gc = (window as unknown as { goatcounter?: GoatCounter }).goatcounter
+  if (gc?.count) {
+    gc.count({ path })
+    return
+  }
+  // skripta se nalaga asinhrono: ob prvem obisku počakamo, da se naloži
+  document.querySelector('script[data-goatcounter]')?.addEventListener('load', () => prestejObisk(path), { once: true })
+}
 
 export default router
