@@ -3,7 +3,7 @@
 // Naprej: poteg v levo, tap na desni del odra ali puščica ›. Nazaj: poteg v desno, tap na levi del odra ali ‹.
 // Ima iste reže kot ScrollStory (stage, naslov, step), zato jo zgodbe uporabijo namesto nje na telefonu.
 // Ko listaš čez zadnji (prvi) korak, sporoči »konec« (»zacetek«) – stran nato pokaže naslednje (prejšnje) poglavje.
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -18,6 +18,15 @@ const props = withDefaults(
 const emit = defineEmits<{ konec: []; zacetek: [] }>()
 const active = defineModel<number>('active', { default: 0 })
 const smer = ref<'naprej' | 'nazaj'>('naprej')
+
+// kratek prehod odra (graf, kotlina) ob vsakem koraku – v isti smeri kot besedilo.
+// Vsebine ne zamenjamo, samo ponovno sprožimo animacijo, zato kotlina ne začne znova.
+const premik = ref(true)
+watch(active, async () => {
+  premik.value = false
+  await nextTick()
+  requestAnimationFrame(() => (premik.value = true))
+})
 
 function naprej() {
   smer.value = 'naprej'
@@ -79,7 +88,7 @@ const trenutni = () => props.pred + active.value
       <span v-for="k in skupajKorakov()" :key="k" :class="{ done: k - 1 < trenutni(), now: k - 1 === trenutni() }" />
     </div>
 
-    <div class="oder" @click="tapOder">
+    <div class="oder" :class="premik ? `premik-${smer}` : ''" @click="tapOder">
       <slot name="stage" :active="active" />
     </div>
 
@@ -226,6 +235,31 @@ const trenutni = () => props.pred + active.value
   font-size: 0.8rem;
   font-weight: 800;
   color: var(--ink-soft);
+}
+/* prehod odra med koraki (enako dolg kot pri besedilu) */
+.oder.premik-naprej {
+  animation: oder-naprej 0.28s ease;
+}
+.oder.premik-nazaj {
+  animation: oder-nazaj 0.28s ease;
+}
+@keyframes oder-naprej {
+  from {
+    opacity: 0.35;
+    transform: translateX(24px);
+  }
+}
+@keyframes oder-nazaj {
+  from {
+    opacity: 0.35;
+    transform: translateX(-24px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oder.premik-naprej,
+  .oder.premik-nazaj {
+    animation: none;
+  }
 }
 /* prehod med koraki: v smeri listanja */
 .naprej-enter-active,
