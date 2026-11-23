@@ -465,6 +465,12 @@ async function build() {
   controls.maxDistance = 320
   controls.autoRotate = true
   controls.autoRotateSpeed = 0.35
+  controls.addEventListener('start', () => {
+    if (!telefon?.matches || !controls) return
+    dotaknjen = true
+    controls.autoRotate = false
+  })
+  telefon?.addEventListener('change', onTelefon)
   setActive(false)
   if (props.izbrana) pokaziSolo() // šola je bila izbrana, preden se je zemljevid naložil
 
@@ -489,14 +495,50 @@ function resize() {
   camera.updateProjectionMatrix()
 }
 
+// telefon (do 720 px): zemljevid je vedno vklopljen za prste – en prst premika, dva prsta približata in zavrtita.
+// Okna so na telefonu pod zemljevidom (glej CSS), zato stran drsiš pod njim.
+const telefon = typeof window !== 'undefined' ? window.matchMedia('(max-width: 720px)') : null
+let dotaknjen = false // na telefonu se zemljevid neha sam vrteti ob prvem dotiku
+
 function setActive(on: boolean) {
   active.value = on
   if (!controls || !renderer) return
+  const tel = telefon?.matches ?? false
+  if (tel) {
+    controls.enabled = true
+    controls.autoRotate = !dotaknjen
+    controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }
+    controls.screenSpacePanning = false // premikanje vzporedno s tlemi, kot pri zemljevidu
+    renderer.domElement.style.touchAction = 'none'
+    return
+  }
   controls.enabled = on
   controls.autoRotate = !on
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }
+  controls.screenSpacePanning = true
   // brez aktivacije zemljevid ne lovi kolesca in prstov, da lahko stran normalno drsiš naprej
   renderer.domElement.style.touchAction = on ? 'none' : 'pan-y'
 }
+const onTelefon = () => {
+  setActive(active.value)
+  if (!telefon?.matches) celo.value = false // celozaslonski prikaz je samo na telefonu
+}
+
+// --- telefon: zemljevid čez cel zaslon (na njem samo gumb za zapiranje in drsnik megle) ---
+const celo = ref(false)
+function preklopiCelo() {
+  celo.value = !celo.value
+}
+const onTipka = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') celo.value = false
+}
+watch(celo, (on) => {
+  document.body.style.overflow = on ? 'hidden' : '' // stran pod zemljevidom se ne premika
+  document.body.classList.toggle('zemljevid-celo', on) // skrije glavo in spodnjo navigacijo (glej spodnji <style>)
+  if (on) tip.value = null
+  if (on) window.addEventListener('keydown', onTipka)
+  else window.removeEventListener('keydown', onTipka)
+})
 
 function updateFog() {
   if (!fogMesh) return
@@ -690,23 +732,29 @@ function loop() {
   renderer.render(scene, camera)
   // utripajoč obroč svetilnika in oznaka z imenom šole
   const el = host.value!
+  // na telefonu so nad zemljevidom kategorije, zato oznakam prištejemo zamik zemljevida (na računalniku je 0)
+  const ox = el.offsetLeft
+  const oy = el.offsetTop
+  const naZemljevidu = (y: number) => y >= 0 && y <= el.clientHeight
   if (svetilnik?.visible && props.izbrana) {
     const k = 1 + 0.25 * Math.sin(performance.now() / 300)
     svetilnik.getObjectByName('obroc')?.scale.set(k, k, k)
     const v = svetilnikTop.clone().project(camera)
-    oznakaSole.value = { x: ((v.x + 1) / 2) * el.clientWidth, y: ((1 - v.y) / 2) * el.clientHeight, vis: v.z < 1 }
+    const y = ((1 - v.y) / 2) * el.clientHeight
+    oznakaSole.value = { x: ox + ((v.x + 1) / 2) * el.clientWidth, y: oy + y, vis: v.z < 1 && naZemljevidu(y) }
   }
   // oznake postaj
   labels.value = pillars.map((p) => {
     const v = p.top.clone().project(camera!)
+    const y = ((1 - v.y) / 2) * el.clientHeight
     return {
       ime: p.ime,
       pm: p.pm,
       unit: p.unit === 'PM10' || p.unit === 'običajno' ? p.unit : '',
       color: levelFor((p.kupola.userData.eq as number | null) ?? 0).color,
-      x: ((v.x + 1) / 2) * el.clientWidth,
-      y: ((1 - v.y) / 2) * el.clientHeight,
-      vis: v.z < 1,
+      x: ox + ((v.x + 1) / 2) * el.clientWidth,
+      y: oy + y,
+      vis: v.z < 1 && naZemljevidu(y),
     }
   })
 }
@@ -719,6 +767,10 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
+  telefon?.removeEventListener('change', onTelefon)
+  window.removeEventListener('keydown', onTipka)
+  document.body.style.overflow = ''
+  document.body.classList.remove('zemljevid-celo')
   io?.disconnect()
   ro?.disconnect()
   controls?.dispose()
@@ -735,13 +787,27 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="map" :class="{ 'is-live': live || !!dan }">
-    <div ref="host" class="canvas" />
+  <div class="map" :class="{ 'is-live': live || !!dan, celo }">
+    <div ref="host" class="canvas">
+      <!-- samo na telefonu: odpri / zapri zemljevid čez cel zaslon -->
+      <button
+        v-if="!loading && !error"
+        class="celo-gumb"
+        :aria-label="celo ? 'Zapri celozaslonski zemljevid' : 'Odpri zemljevid čez cel zaslon'"
+        @click="preklopiCelo"
+      >
+        <svg v-if="celo" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+      </button>
+    </div>
 
     <div v-if="loading" class="state">Nalagam 3D model Ljubljane …</div>
     <div v-else-if="error" class="state">{{ error }}</div>
 
     <template v-else>
+      <!-- samo na telefonu: kako premikaš zemljevid -->
+      <p class="namig-dotik">En prst premika zemljevid, z dvema ga približaš in zavrtiš. Tapni buciko za podrobnosti.</p>
+
       <!-- oznake postaj ARSO -->
       <div
         v-for="l in labels"
@@ -786,7 +852,7 @@ onBeforeUnmount(() => {
         <button class="btn explore" :class="{ on: !!dan }" @click="toggleDan">
           {{ dan ? 'Zapri' : 'Izberi dan' }}
         </button>
-        <button class="btn explore" @click="setActive(!active)">
+        <button class="btn explore raziskuj" @click="setActive(!active)">
           <template v-if="active">Končaj</template>
           <template v-else><span class="long">Raziskuj zemljevid</span><span class="short">Raziskuj</span></template>
         </button>
@@ -883,7 +949,8 @@ onBeforeUnmount(() => {
       <!-- megla -->
       <div class="fogbox">
         <label>
-          <span>Megla ob inverziji: <strong>{{ fog }} m</strong> nad dnom kotline</span>
+          <span class="dolgo">Megla ob inverziji: <strong>{{ fog }} m</strong> nad dnom kotline</span>
+          <span class="kratko">Megla</span>
           <input v-model.number="fog" type="range" min="0" max="200" step="5" aria-label="Višina megle" @input="onFogInput" />
         </label>
         <p v-if="live && zdaj && !zdaj.inv">Zdaj ni inverzije, zato se onesnažen zrak ne ujame na dnu kotline.</p>
@@ -1257,48 +1324,174 @@ onBeforeUnmount(() => {
   font-size: 0.75rem !important;
   color: var(--scene-muted) !important;
 }
+.namig-dotik,
+.celo-gumb,
+.fogbox .kratko {
+  display: none; /* samo na telefonu */
+}
+
+/* --- telefon: zemljevid na vrhu (vedno viden), vsa okna pod njim --- */
 @media (max-width: 720px) {
   .map {
-    height: 72svh;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
   }
+  .canvas {
+    position: relative;
+    inset: auto;
+    /* dovolj nizek, da je drsnik megle pod njim hkrati na zaslonu */
+    height: min(50svh, 460px);
+    min-height: 280px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--panel-line);
+    background: radial-gradient(ellipse at 50% 30%, var(--sky-bottom), var(--scene-bg) 75%);
+    box-shadow: var(--panel-shadow);
+  }
+  .state {
+    bottom: auto;
+    height: min(50svh, 460px);
+    min-height: 280px;
+  }
+  /* okna niso več čez zemljevid, ampak v vrsti pod njim */
+  .legend,
+  .actions,
+  .now,
+  .fogbox {
+    position: static;
+    max-width: none;
+    backdrop-filter: none;
+  }
+  /* vrstni red: kategorije, zemljevid, drsnik megle (da spremembo vidiš sproti), namig, podrobnosti, gumbi, okno dneva */
   .legend {
-    right: 14px;
-    top: 62px;
+    order: -1;
+  }
+  .fogbox {
+    order: 1;
+  }
+  .namig-dotik {
+    display: block;
+    order: 2;
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--scene-muted);
+  }
+  /* podrobnosti bucike: pod zemljevidom namesto ob prstu */
+  .tip {
+    order: 3;
+    position: static;
+    left: auto !important;
+    top: auto !important;
+    transform: none;
+    max-width: none;
+  }
+  .actions {
+    order: 4;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+  .actions .explore {
+    flex: 1;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+  .actions .raziskuj {
+    display: none; /* na telefonu je zemljevid vedno vklopljen za prste */
+  }
+  .now {
+    order: 5;
   }
   .chip {
     font-size: 0.75rem;
     padding: 4px 9px;
   }
-  .actions {
-    left: 14px;
-    right: 14px;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-between;
+
+  /* gumb v kotu zemljevida: odpri / zapri čez cel zaslon */
+  .celo-gumb {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 4;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--panel-line);
+    background: var(--panel);
+    color: var(--scene-ink);
+    box-shadow: 0 6px 16px -8px rgba(31, 45, 77, 0.45);
+    cursor: pointer;
   }
-  .explore {
-    font-size: 0.8rem;
-    padding: 6px 12px;
+  .celo-gumb svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
-  .explore .long {
+
+  /* zemljevid čez cel zaslon: samo zemljevid, gumb za zapiranje in drsnik megle */
+  .map.celo {
+    position: fixed;
+    inset: 0;
+    z-index: 60; /* nad glavo in spodnjo navigacijo */
+    gap: 0;
+    background: var(--scene-bg);
+  }
+  .map.celo .canvas {
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .map.celo .celo-gumb {
+    top: calc(12px + env(safe-area-inset-top));
+    right: 12px;
+  }
+  .map.celo > :not(.canvas):not(.station):not(.fogbox) {
     display: none;
   }
-  .explore .short {
+  .map.celo .fogbox {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 61;
+    padding: 10px 16px 12px;
+    background: var(--panel);
+    backdrop-filter: blur(8px);
+  }
+  .map.celo .fogbox .dolgo,
+  .map.celo .fogbox p {
+    display: none;
+  }
+  .map.celo .fogbox .kratko {
     display: inline;
   }
-  .map.is-live .fogbox {
-    display: none; /* na telefonu v načinu »zdaj« pokažemo samo kartico s stanjem */
-  }
-  .now {
-    top: auto;
-    bottom: 14px;
-    left: 14px;
-    right: 14px;
-    max-width: none;
-  }
-  .fogbox {
-    right: 14px;
-    max-width: none;
+}
+</style>
+
+<style>
+/* telefon, zemljevid čez cel zaslon: glava, spodnja navigacija in noga bi se sicer izrisale čez zemljevid */
+@media (max-width: 720px) {
+  body.zemljevid-celo header.top,
+  body.zemljevid-celo nav.mobile,
+  body.zemljevid-celo footer {
+    display: none;
   }
 }
 </style>
