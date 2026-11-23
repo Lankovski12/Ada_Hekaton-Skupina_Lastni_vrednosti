@@ -709,24 +709,56 @@ h1 {
     opacity: 0;
     visibility: hidden;
   }
+  /* okenca 2 × 2 v istem razporedu kot na računalniku: zgoraj Igre | Podatki, spodaj Zemljevid | Moj zrak */
   .okna {
     top: auto;
     left: 16px;
     right: 16px;
     bottom: 16px;
     display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'l1 r1'
+      'l2 r2';
     gap: 10px;
     padding: 0;
   }
   .stolpec {
     display: contents;
   }
+  .okno.l1 {
+    grid-area: l1;
+  }
+  .okno.l2 {
+    grid-area: l2;
+  }
+  .okno.r1 {
+    grid-area: r1;
+  }
+  .okno.r2 {
+    grid-area: r2;
+  }
   .okno,
   .levo .okno,
   .desno .okno {
     min-height: 0;
-    padding: 10px 14px;
+    padding: 12px 12px 12px 14px;
+    row-gap: 0;
     transform: translateY(16px);
+  }
+  /* v okencu: zgoraj ikona in puščica (vsaka na svojem robu), spodaj napis in naslov */
+  .okno .ikona {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .okno .k {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 8px;
+  }
+  .okno strong {
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
   .okno::after {
     display: none;
@@ -741,16 +773,16 @@ h1 {
     height: 24px;
   }
   .okno strong {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
   .okno .t {
     display: none; /* na telefonu kratka okenca, da se pljuča še vidijo */
   }
   .okno .go {
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: start;
   }
   .odprto .okno {
     transform: none;
