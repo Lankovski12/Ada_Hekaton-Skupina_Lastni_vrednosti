@@ -6,13 +6,11 @@
 // Številke izračuna backend/scripts/blog_statistika.py → src/data/zgodovina.json.
 import VirZnacka from '@/components/VirZnacka.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import posthog from 'posthog-js'
+import { zabelezi } from '@/analytics/posthog'
 
 const emit = defineEmits<{ zapri: [] }>()
 import { levelFor } from '@/lib/airQuality'
 import z from '@/data/zgodovina.json'
-
-const posthogEnabled = Boolean(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN && import.meta.env.VITE_POSTHOG_HOST)
 
 interface Bar {
   label: string
@@ -218,12 +216,8 @@ const prav = computed(() => izbrano.value === k.value?.pravilno)
 function odgovori_(i: number) {
   if (!k.value || razkrito.value) return
   odgovori[k.value.id] = i
-  if (posthogEnabled && stOdgovorjenih.value === kartice.length) {
-    posthog.capture('air_quiz_completed', {
-      answer_count: stOdgovorjenih.value,
-      correct_answers: stPravilnih.value,
-    })
-    posthog.logger.info('air quiz completed', {
+  if (stOdgovorjenih.value === kartice.length) {
+    zabelezi('air_quiz_completed', {
       answer_count: stOdgovorjenih.value,
       correct_answers: stPravilnih.value,
     })

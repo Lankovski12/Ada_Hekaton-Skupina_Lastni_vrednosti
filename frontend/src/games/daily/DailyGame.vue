@@ -3,7 +3,7 @@
 // Podatki: /api/vceraj (meritve ARSO) ali, če jih še ni, dan iz arhiva. Vaja: naključni dnevi iz arhiva.
 import VirZnacka from '@/components/VirZnacka.vue'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, type Component } from 'vue'
-import posthog from 'posthog-js'
+import { zabelezi } from '@/analytics/posthog'
 import { RouterLink, useRoute } from 'vue-router'
 import AirBuddy from '@/components/AirBuddy.vue'
 import Confetti from '../skupno/Confetti.vue'
@@ -20,8 +20,6 @@ import Pokrovka from './naloge/Pokrovka.vue'
 import Razvrsti from './naloge/Razvrsti.vue'
 import Ura from './naloge/Ura.vue'
 import Zemljevid from './naloge/Zemljevid.vue'
-
-const posthogEnabled = Boolean(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN && import.meta.env.VITE_POSTHOG_HOST)
 
 const NALOGE: Record<Vrsta, Component> = {
   zemljevid: Zemljevid,
@@ -84,18 +82,11 @@ onMounted(async () => {
 
 function konec(r: Rezultat) {
   rezultat.value = r
-  if (posthogEnabled) {
-    posthog.capture('daily_challenge_completed', {
-      challenge_mode: nacin.value,
-      challenge_type: vrsta.value,
-      stars: r.zvezdice,
-    })
-    posthog.logger.info('daily challenge completed', {
-      challenge_mode: nacin.value,
-      challenge_type: vrsta.value,
-      stars: r.zvezdice,
-    })
-  }
+  zabelezi('daily_challenge_completed', {
+    challenge_mode: nacin.value,
+    challenge_type: vrsta.value,
+    stars: r.zvezdice,
+  })
   if (r.zvezdice >= 2) sound.correct()
   else sound.wrong()
   if (r.zvezdice === 3) konfeti.value++
