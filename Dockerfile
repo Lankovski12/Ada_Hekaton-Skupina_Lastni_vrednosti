@@ -6,6 +6,9 @@ WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# ključ za PostHog (anonimna statistika) se vgradi ob gradnji; brez njega je statistika izklopljena
+ARG VITE_POSTHOG_KEY=""
+ENV VITE_POSTHOG_KEY=$VITE_POSTHOG_KEY
 RUN npm run build
 
 # 2) zaledje + zgrajen frontend

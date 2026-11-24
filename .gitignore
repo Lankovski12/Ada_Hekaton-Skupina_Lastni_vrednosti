@@ -15,5 +15,7 @@ data/ARSOhack/
 node_modules/
 frontend/dist/
 frontend/.env
+frontend/.env.*
+!frontend/.env.example
 .DS_Store
 data/data/
