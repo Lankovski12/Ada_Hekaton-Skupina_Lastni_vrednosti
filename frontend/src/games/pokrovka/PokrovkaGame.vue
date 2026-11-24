@@ -3,6 +3,7 @@
 // Tri stopnje: 1) dolina je dana, 2) obe temperaturi, 3) brez cilja, samo namigi. Prej (neobvezno) zgodba o inverziji.
 import VirZnacka from '@/components/VirZnacka.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import posthog from 'posthog-js'
 import { RouterLink, useRoute } from 'vue-router'
 import AirBuddy from '@/components/AirBuddy.vue'
 import Confetti from '../skupno/Confetti.vue'
@@ -13,6 +14,8 @@ import { dniZapored, nizIgre, zabeleziDan } from '../skupno/niz'
 import { datumSl, nakljucnoJutro, naloziArhiv, naloziVceraj, type Jutro } from './podatki'
 import Scena from './Scena.vue'
 import Zgodba from './Zgodba.vue'
+
+const posthogEnabled = Boolean(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN && import.meta.env.VITE_POSTHOG_HOST)
 
 const KEY = 'zrak-pokrovka'
 const shranjeno = reactive<{ zvezdice: number; zgodbaVidena: boolean }>(
@@ -109,6 +112,16 @@ function naslednja() {
     sound.pop()
     zacniStopnjo(stopnja.value + 1)
   } else {
+    if (posthogEnabled) {
+      posthog.capture('inversion_game_completed', {
+        total_stars: skupaj.value,
+        played_practice: vaja.value,
+      })
+      posthog.logger.info('inversion game completed', {
+        total_stars: skupaj.value,
+        played_practice: vaja.value,
+      })
+    }
     zabeleziDan('pokrovka')
     niz.value = nizIgre('pokrovka')
     sound.end(skupaj.value >= 6)

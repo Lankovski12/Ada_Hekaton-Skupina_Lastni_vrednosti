@@ -3,6 +3,7 @@ import VirZnacka from '@/components/VirZnacka.vue'
 // 3D igra: zmajček leti nad Ljubljano s smogom (danes ali resničen slab dan) in ga odpihuje.
 // Vsa 3D logika je v ./engine, tukaj so meniji, HUD, sporočila in vprašanja (v otroškem slogu).
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import posthog from 'posthog-js'
 import { RouterLink, useRoute } from 'vue-router'
 import AirBuddy from '@/components/AirBuddy.vue'
 import { useAirData } from '@/composables/useAirData'
@@ -18,6 +19,7 @@ import { DEJSTVA, sestaviVprasanja, type Vprasanje } from './vprasanja'
 
 const { currentPm25, scene, now, origin } = useAirData()
 const progress = useProgressStore()
+const posthogEnabled = Boolean(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN && import.meta.env.VITE_POSTHOG_HOST)
 
 const host = ref<HTMLDivElement | null>(null)
 const engine = shallowRef<ZmajEngine | null>(null)
@@ -167,6 +169,18 @@ onMounted(async () => {
     onHud: (s) => (hud.value = s),
     onEnd: (o) => {
       rezultat.value = Math.round(o * 100)
+      if (posthogEnabled) {
+        posthog.capture('dragon_game_completed', {
+          score_percent: rezultat.value,
+          correct_answers: pravilni.value,
+          questions_answered: postavljena.value,
+        })
+        posthog.logger.info('dragon game completed', {
+          score_percent: rezultat.value,
+          correct_answers: pravilni.value,
+          questions_answered: postavljena.value,
+        })
+      }
       progress.addPoints('zmaj', rezultat.value)
       trenutno.value = null
       state.value = 'konec'
