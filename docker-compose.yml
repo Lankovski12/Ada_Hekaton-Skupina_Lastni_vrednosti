@@ -2,7 +2,10 @@
 # Aplikacija: http://localhost:8000   ·   API dokumentacija: http://localhost:8000/docs
 services:
   zrak:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}   # iz okolja ali korenske .env (ni v gitu)
     ports:
       - "8000:8000"
     volumes:

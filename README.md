@@ -49,6 +49,6 @@ Ob vsaki številki piše, koliko ji lahko zaupaš:
 - Napovedi so izračuni modelov in se lahko zmotijo. Bolj zanesljive so za potek dneva (kdaj bo bolje in kdaj
   slabše) kot za točno številko.
 - Če uporabiš svojo lokacijo, ostane samo na tvoji napravi.
-- Obiske štejemo z GoatCounter, ki ne uporablja piškotkov in ne zbira osebnih podatkov.
+- Za anonimno statistiko obiska uporabljamo PostHog (strežniki v EU), brez piškotkov.
 
 Podatki hekatona: https://github.com/vidacex/ARSOhack
